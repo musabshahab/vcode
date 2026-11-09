@@ -281,23 +281,14 @@ thread asks for it.
 ### Give a role its own model
 
 A delegated subagent normally runs on its parent thread's model. To send one kind of work to
-another model, such as reviews to a model from a different provider, add `teamRoleModelSelections`
-to the server's `settings.json` in its `userdata` directory:
+another model, such as reviews to a model from a different provider, open
+**Settings → Threads → Subagent models** on web or desktop and pick a model for that role:
+implementation, research, review, test, or design. A role left on **Thread's model** keeps the
+parent's model, and so does a subagent the agent starts on a model it names itself.
 
-```json
-{
-  "teamRoleModelSelections": {
-    "review": { "instanceId": "claudeAgent", "model": "orbit-1" },
-    "research": { "instanceId": "codex", "model": "drift-9" }
-  }
-}
-```
-
-The roles are `implementation`, `research`, `review`, `design`, and `test`. `instanceId` is the
-provider's instance ID from **Settings → Providers**, and `model` is a model ID that provider
-lists. A role you leave out keeps the parent's model, and so does a subagent the agent starts
-on a model it names itself. If a role's provider is turned off or signed out, the agent is told
-the subagent could not start; it does not run on another model.
+The choice belongs to the environment and applies to threads you drive from any device. If a
+role's provider is turned off or signed out, the agent is told the subagent could not start; it
+does not run on another model.
 
 Expand a tool call in the conversation to see its full command and output.
 Summaries shorten shell wrappers and can still describe the latest call after it
