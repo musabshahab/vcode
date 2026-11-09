@@ -210,6 +210,7 @@ Returns:
 
 - the inherited provider instance and model;
 - the parent runtime and interaction modes;
+- `roleTargets`, the team model of each role that has one;
 - registered provider instances and advertised models;
 - whether each provider can run a child task; and
 - feature flags for polling, cancellation, and batch thread creation.
@@ -249,7 +250,11 @@ type DelegateTaskInput = {
 ```
 
 Provider, model, runtime mode, and interaction mode inherit from the parent
-when omitted. A driver-only target inherits the parent's provider instance
+when omitted. A `role` with a team model in the `teamRoleModelSelections`
+setting runs on that model instead, unless the target names a provider, driver,
+or model. `general` and a missing role always inherit. A team model that cannot
+run fails the call rather than falling back, so a role never runs on a model
+the user did not pick for it. A driver-only target inherits the parent's provider instance
 when it can run child tasks, and otherwise selects an available instance of
 that driver; an explicit `providerInstanceId` is honored exactly and fails
 when unavailable. Selecting a different provider without a model uses that

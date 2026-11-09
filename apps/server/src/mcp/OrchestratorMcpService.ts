@@ -124,6 +124,7 @@ import {
   resolveRuntimeMode,
   runtimeModeRank,
   taskPrompt,
+  teamRoleSelection,
 } from "./delegatedTaskModes.ts";
 import { isLiveCallerShell, threadNotFound } from "./threadAccess.ts";
 import * as SecretRequests from "../secrets/SecretRequests.ts";
@@ -1329,7 +1330,7 @@ const make = Effect.gen(function* () {
     const instanceId =
       input.target?.providerInstanceId ??
       (input.target?.driverKind === undefined
-        ? input.parent.thread.modelSelection.instanceId
+        ? (input.inherited ?? input.parent.thread.modelSelection).instanceId
         : undefined);
     const resolved = resolveTarget(input);
     if (instanceId === undefined) return resolved;
@@ -1348,9 +1349,12 @@ const make = Effect.gen(function* () {
     readonly parent: Pick<OrchestrationV2ThreadProjection, "thread">;
     readonly target: OrchestratorMcpTarget | undefined;
     readonly providers: ReadonlyArray<ServerProvider>;
+    /** What an unnamed provider, model, and options fall back to. Default: the parent's selection. */
+    readonly inherited?: ModelSelection;
     /** Receipt replays bypass current settings because they start no work. Dispatch must reuse the checked command ID. */
     readonly skipProjectEnablementFilter?: boolean;
   }): Effect.fn.Return<ResolvedTarget, OrchestratorMcpFailure> {
+    const inheritedSelection = input.inherited ?? input.parent.thread.modelSelection;
     const requestedInstanceId = input.target?.providerInstanceId;
     const requestedDriver = input.target?.driverKind;
     const orchestrationCapableInstanceIds = yield* loadOrchestrationCapableInstanceIds();
@@ -1372,7 +1376,7 @@ const make = Effect.gen(function* () {
         (candidate) => providerConstraints(candidate, true).length === 0,
       );
       const inheritedCandidate = healthyCandidates.find(
-        (candidate) => candidate.instanceId === input.parent.thread.modelSelection.instanceId,
+        (candidate) => candidate.instanceId === inheritedSelection.instanceId,
       );
       const orderedCandidates = [
         ...(inheritedCandidate === undefined ? [] : [inheritedCandidate]),
@@ -1399,7 +1403,7 @@ const make = Effect.gen(function* () {
         );
       }
     }
-    instanceId ??= input.parent.thread.modelSelection.instanceId;
+    instanceId ??= inheritedSelection.instanceId;
 
     const provider = input.providers.find((candidate) => candidate.instanceId === instanceId);
     if (provider === undefined) {
@@ -1425,7 +1429,6 @@ const make = Effect.gen(function* () {
       );
     }
 
-    const inheritedSelection = input.parent.thread.modelSelection;
     const requestedModel = input.target?.model;
     const model =
       requestedModel ??
@@ -2359,6 +2362,20 @@ const make = Effect.gen(function* () {
           ) ?? [],
         runtimeMode: limits.runtimeMode,
         interactionMode: limits.interactionMode,
+        ...(Object.keys(settings.teamRoleModelSelections).length === 0
+          ? {}
+          : {
+              roleTargets: Object.fromEntries(
+                Object.entries(settings.teamRoleModelSelections).map(([role, selection]) => [
+                  role,
+                  {
+                    providerInstanceId: selection.instanceId,
+                    model: selection.model,
+                    ...(selection.options === undefined ? {} : { options: selection.options }),
+                  },
+                ]),
+              ),
+            }),
         providers: providers.map((provider) => {
           // Snapshots list instances any project enables; delegate_task checks the caller's project.
           const enabledForCaller =
@@ -2468,12 +2485,33 @@ const make = Effect.gen(function* () {
         operation: "delegate-task",
       });
       const isRetryOfAcceptedDelegation = yield* threadManagement.hasReceipt(commandId);
+      const settings = yield* serverSettings.getSettings.pipe(
+        Effect.mapError(() => failure("orchestration_error", "Unable to read server settings.")),
+      );
+      const roleSelection = teamRoleSelection(input, settings.teamRoleModelSelections);
       const target = yield* resolveTargetRechecking({
         parent,
-        target: input.target,
+        target:
+          roleSelection === undefined
+            ? input.target
+            : {
+                ...input.target,
+                providerInstanceId: roleSelection.instanceId,
+                model: roleSelection.model,
+              },
         providers,
+        ...(roleSelection === undefined ? {} : { inherited: roleSelection }),
         skipProjectEnablementFilter: isRetryOfAcceptedDelegation,
-      });
+      }).pipe(
+        Effect.mapError((error) =>
+          roleSelection === undefined
+            ? error
+            : failure(
+                error.code,
+                `${error.message} Settings assigns ${roleSelection.instanceId} ${roleSelection.model} to the ${input.role} role.`,
+              ),
+        ),
+      );
       const runtimeMode = yield* resolveRuntimeMode(
         parent.thread.runtimeMode,
         input.runtimeMode,

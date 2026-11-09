@@ -3353,6 +3353,153 @@ describe("OrchestratorMcpService provider resolution", () => {
     }),
   );
 
+  it.effect("runs a role's delegated task on its team model unless the caller names one", () =>
+    Effect.gen(function* () {
+      const claudeInstanceId = ProviderInstanceId.make("claudeAgent");
+      const reviewer = {
+        instanceId: claudeInstanceId,
+        model: "reviewer-model",
+        options: [
+          { id: "effort", value: "high" },
+          { id: "retired", value: true },
+        ],
+      } as const;
+      const commands: Array<{ readonly modelSelection?: unknown }> = [];
+      const task = {
+        id: taskId,
+        threadId: parentThreadId,
+        origin: "app_owned",
+        childThreadId,
+        providerInstanceId: claudeInstanceId,
+        model: reviewer.model,
+        status: "running",
+        result: null,
+      };
+      const dependencies = Layer.mergeAll(
+        NodeServices.layer,
+        NodeCrypto.layer,
+        Layer.mock(ThreadManagementService.ThreadManagementService)({
+          hasReceipt: () => Effect.succeed(false),
+          assertProviderInstanceEnabled: () => Effect.void,
+          getThreadRecords: (threadId) =>
+            Effect.succeed(
+              threadId === parentThreadId
+                ? parentProjection(commands.length > 0 ? [task] : [])
+                : childProjection,
+            ),
+          dispatch: (command) =>
+            Effect.sync(() => {
+              commands.push(command as { readonly modelSelection?: unknown });
+              return {
+                sequence: 1,
+                storedEvents: [{ event: { type: "subagent.updated", payload: task } }],
+              } as never;
+            }),
+        }),
+        ServerSettings.layerTest({
+          teamRoleModelSelections: {
+            review: reviewer,
+            test: { instanceId: antigravityInstanceId, model: "tester-model" },
+          },
+        }),
+        providerRegistryLayer([
+          providerSnapshot({
+            instanceId: codexInstanceId,
+            driver: ProviderDriverKind.make("codex"),
+            model: "gpt-5.4",
+          }),
+          {
+            ...providerSnapshot({
+              instanceId: claudeInstanceId,
+              driver: ProviderDriverKind.make("claudeAgent"),
+            }),
+            models: [
+              {
+                slug: reviewer.model,
+                name: reviewer.model,
+                isCustom: false,
+                capabilities: {
+                  optionDescriptors: [
+                    {
+                      id: "effort",
+                      label: "Effort",
+                      type: "select",
+                      options: [
+                        { id: "high", label: "High" },
+                        { id: "max", label: "Max" },
+                      ],
+                    },
+                  ],
+                },
+              },
+            ],
+          },
+          providerSnapshot({
+            instanceId: antigravityInstanceId,
+            driver: ProviderDriverKind.make("antigravity"),
+            enabled: false,
+          }),
+        ]),
+        adapterRegistryLayer([codexInstanceId, claudeInstanceId, antigravityInstanceId]),
+        Layer.mock(ProjectService.ProjectService)({}),
+        Layer.mock(SecretRequests.SecretRequests)({}),
+        Layer.mock(RemoteDelegation.RemoteDelegation)({}),
+        Layer.mock(ScheduledTaskService.ScheduledTaskService)({}),
+      );
+      yield* Effect.gen(function* () {
+        const service = yield* OrchestratorMcpService.OrchestratorMcpService;
+        const { roleTargets } = yield* service.capabilities(scope);
+        assert.deepEqual(roleTargets?.review, {
+          providerInstanceId: claudeInstanceId,
+          model: reviewer.model,
+          options: reviewer.options,
+        });
+
+        const delegated = (input: {
+          readonly role?: "review" | "general";
+          readonly target?: unknown;
+        }) =>
+          Effect.gen(function* () {
+            yield* service.delegateTask(scope, {
+              task: "Review the change.",
+              mode: "async",
+              ...(input.role === undefined ? {} : { role: input.role }),
+              ...(input.target === undefined ? {} : { target: yield* decodeTarget(input.target) }),
+            });
+            return commands.at(-1)?.modelSelection;
+          });
+        const knownReviewerOptions = [reviewer.options[0]];
+        assert.deepEqual(yield* delegated({ role: "review" }), {
+          ...reviewer,
+          options: knownReviewerOptions,
+        });
+        assert.deepEqual(
+          yield* delegated({ role: "review", target: { options: { effort: "max" } } }),
+          {
+            ...reviewer,
+            options: [{ id: "effort", value: "max" }],
+          },
+        );
+        const parentSelection = { instanceId: codexInstanceId, model: "gpt-5.4" };
+        assert.deepEqual(
+          yield* delegated({ role: "review", target: { model: "gpt-5.4" } }),
+          parentSelection,
+        );
+        assert.deepEqual(yield* delegated({ role: "general" }), parentSelection);
+        assert.deepEqual(yield* delegated({}), parentSelection);
+
+        const unavailable = yield* service
+          .delegateTask(scope, { task: "Run the tests.", role: "test", mode: "async" })
+          .pipe(Effect.flip);
+        assert.equal(unavailable.code, "provider_unavailable");
+        assert.include(
+          unavailable.message,
+          "Settings assigns antigravity tester-model to the test role.",
+        );
+      }).pipe(Effect.provide(layerOrchestratorService.pipe(Layer.provide(dependencies))));
+    }),
+  );
+
   describe("resolveRuntimeMode", () => {
     const muse = {
       modelSelection: { instanceId: ProviderInstanceId.make("muse"), model: "muse-model" },

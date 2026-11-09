@@ -1330,6 +1330,19 @@ export const CloudSpeechCredentials = Schema.Struct({
   openrouter: CloudSpeechCredential,
 });
 
+// The `delegate_task` roles that can carry their own model; `general` always inherits.
+const teamRoleFields = <Value extends Schema.Top>(value: Value) => ({
+  implementation: Schema.optionalKey(value),
+  research: Schema.optionalKey(value),
+  review: Schema.optionalKey(value),
+  design: Schema.optionalKey(value),
+  test: Schema.optionalKey(value),
+});
+
+/** The model a delegated task of each role runs on; a role left out inherits its parent's. */
+export const TeamRoleModelSelections = Schema.Struct(teamRoleFields(ModelSelection));
+export type TeamRoleModelSelections = typeof TeamRoleModelSelections.Type;
+
 export const ServerSettings = Schema.Struct({
   // Null means unmigrated; empty is authoritative and must not resurrect cleared preferences.
   favorites: Schema.NullOr(ModelFavorites).pipe(Schema.withDecodingDefault(Effect.succeed(null))),
@@ -1545,6 +1558,10 @@ export const ServerSettings = Schema.Struct({
   ),
 
   usageModelAliases: Schema.Record(TrimmedNonEmptyString, TrimmedNonEmptyString).pipe(
+    Schema.withDecodingDefault(Effect.succeed({})),
+  ),
+
+  teamRoleModelSelections: TeamRoleModelSelections.pipe(
     Schema.withDecodingDefault(Effect.succeed({})),
   ),
 
@@ -1927,6 +1944,11 @@ export const ServerSettingsPatch = Schema.Struct({
 
   usageModelAliases: Schema.optionalKey(
     Schema.Record(TrimmedNonEmptyString, Schema.NullOr(TrimmedNonEmptyString)),
+  ),
+
+  // Merge per role; null returns a role to inheriting.
+  teamRoleModelSelections: Schema.optionalKey(
+    Schema.Struct(teamRoleFields(Schema.NullOr(ModelSelection))),
   ),
 });
 export type ServerSettingsPatch = typeof ServerSettingsPatch.Type;

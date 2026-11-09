@@ -6,6 +6,7 @@ import {
   type OrchestratorMcpRuntimeMode,
   type ProviderInteractionMode,
   type RuntimeMode,
+  type TeamRoleModelSelections,
 } from "@t3tools/contracts";
 import * as Effect from "effect/Effect";
 
@@ -85,6 +86,23 @@ export function resolveInteractionMode(
         }),
       )
     : Effect.succeed(resolved);
+}
+
+/** The team model for the task's role, unless the caller named a provider or model itself. */
+export function teamRoleSelection(
+  input: Pick<OrchestratorMcpDelegateTaskInput, "role" | "target">,
+  selections: TeamRoleModelSelections,
+): ModelSelection | undefined {
+  const { role, target } = input;
+  if (role === undefined || role === "general") return undefined;
+  if (
+    target?.providerInstanceId !== undefined ||
+    target?.driverKind !== undefined ||
+    target?.model !== undefined
+  ) {
+    return undefined;
+  }
+  return selections[role];
 }
 
 /** The task as its child receives it, with the role the caller asked for. */

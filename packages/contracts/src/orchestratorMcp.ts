@@ -650,6 +650,17 @@ export const OrchestratorMcpCapabilitiesResult = Schema.Struct({
   inheritedOptions: Schema.optional(Schema.Array(ProviderOptionSelection)),
   runtimeMode: RuntimeMode,
   interactionMode: ProviderInteractionMode,
+  /** What a `delegate_task` with that `role` runs on when its `target` names no provider or model. */
+  roleTargets: Schema.optional(
+    Schema.Record(
+      Schema.String,
+      Schema.Struct({
+        providerInstanceId: ProviderInstanceId,
+        model: Schema.String,
+        options: Schema.optional(Schema.Array(ProviderOptionSelection)),
+      }),
+    ),
+  ),
   providers: Schema.Array(OrchestratorMcpProviderCapability),
   features: Schema.Struct({
     appOwnedSubagents: Schema.Boolean,

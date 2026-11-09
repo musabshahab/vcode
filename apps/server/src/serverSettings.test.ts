@@ -646,6 +646,16 @@ it.layer(Layer.mergeAll(NodeServices.layer, NodeCrypto.layer))("server settings"
         yield* serverSettings.updateSettings({ usagePriceOverrides: { "example-model": null } });
         const restored = yield* readPersisted;
         assert.deepStrictEqual(restored.usagePriceOverrides, {});
+
+        const reviewer = { instanceId: ProviderInstanceId.make("claudeAgent"), model: "reviewer" };
+        const tester = { instanceId: ProviderInstanceId.make("codex"), model: "tester" };
+        yield* serverSettings.updateSettings({
+          teamRoleModelSelections: { review: reviewer, test: tester },
+        });
+        yield* serverSettings.updateSettings({ teamRoleModelSelections: { test: null } });
+        assert.deepStrictEqual((yield* readPersisted).teamRoleModelSelections, {
+          review: reviewer,
+        });
       }),
     ).pipe(Effect.provide(layerServerSettings())),
   );
