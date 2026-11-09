@@ -2006,17 +2006,23 @@ const postModel = Effect.fn("evaluateMcpToolUse.postModel")(function* (
       times: 8,
     }),
   );
+  // An OpenRouter key reaches the same Claude models through its Anthropic-shaped endpoint.
+  const openRouter = proxy === undefined && apiKey.startsWith("sk-or-");
   const response = yield* HttpClientRequest.post(
-    `${proxy?.url ?? "https://api.anthropic.com/v1"}/${responses ? "responses" : "messages"}`,
+    `${proxy?.url ?? (openRouter ? "https://openrouter.ai/api/v1" : "https://api.anthropic.com/v1")}/${responses ? "responses" : "messages"}`,
   ).pipe(
     HttpClientRequest.setHeaders({
-      ...(apiKey ? { "x-api-key": apiKey } : {}),
+      ...(openRouter
+        ? { authorization: `Bearer ${apiKey}` }
+        : apiKey
+          ? { "x-api-key": apiKey }
+          : {}),
       "anthropic-version": "2023-06-01",
       // Claude Code sends this beta for `defer_loading` tools and `tool_reference` results.
       "anthropic-beta": "advanced-tool-use-2025-11-20",
       ...proxy?.headers,
     }),
-    HttpClientRequest.bodyJson(body),
+    HttpClientRequest.bodyJson(openRouter ? openRouterBody(body) : body),
     Effect.flatMap(client.execute),
   );
   if (response.status !== 200) {
@@ -2025,6 +2031,11 @@ const postModel = Effect.fn("evaluateMcpToolUse.postModel")(function* (
   }
   return yield* response.text;
 });
+/** `claude-sonnet-5-5` is `anthropic/claude-sonnet-5.5` there. */
+const openRouterBody = (body: unknown) =>
+  typeof body === "object" && body !== null && "model" in body && typeof body.model === "string"
+    ? { ...body, model: `anthropic/${body.model.replace(/-(\d+)-(\d+)$/, "-$1.$2")}` }
+    : body;
 const callModel = (apiKey: string, body: unknown, proxy?: Config["proxy"]) =>
   postModel(apiKey, body, proxy).pipe(
     Effect.flatMap(Schema.decodeUnknownEffect(Schema.fromJsonString(ApiResponse))),
