@@ -296,6 +296,23 @@ Presets rank models by list price, and review with a different provider when it 
 comparable model. A model without a known price is left out; give it one under
 [Model prices](./usage.md#set-custom-model-prices) to include it. Adjust any role afterwards.
 
+### Run a task with the team
+
+Start a message with `/team` to have the agent lead a team on it:
+
+```text
+/team Add rate limiting to the public API routes, with tests
+```
+
+The agent plans the work, then hands research, each implementation step, the test run, and the
+review to subagents on the models you chose for those roles. Steps that touch different files run
+in parallel. It has findings fixed, reviews once more, and reports what changed with a commit
+message. For a one-line change it does the edit itself and says so.
+
+`/team` works in any composer, from `t3 thread`, and in scheduled tasks. It is not in the command
+menu. Without it, a thread works as usual. Choose **New worktree** for the thread to keep the
+run's changes away from your checkout.
+
 The choice belongs to the environment and applies to threads you drive from any device. If a
 role's provider is turned off or signed out, the agent is told the subagent could not start; it
 does not run on another model.

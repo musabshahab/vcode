@@ -4,6 +4,8 @@ import {
   T3_CODE_DEVICE_TOOL_INSTRUCTIONS,
   T3_CODE_DEVICE_TOOL_INSTRUCTIONS_WITH_TOOL_SEARCH,
   T3_CODE_ORCHESTRATION_INSTRUCTIONS,
+  T3_CODE_TEAM_RUN_BRIEF,
+  expandTeamCommand,
   t3AcpPromptWithInstructions,
   t3OrchestrationPrompt,
   t3OrchestrationSystemPrompt,
@@ -81,5 +83,21 @@ describe("T3 device instructions", () => {
       "Again.",
     );
     assert.notInclude(t3AcpPromptWithInstructions({ prompt: "Hi.", state }), "## T3 Code devices");
+  });
+});
+
+describe("expandTeamCommand", () => {
+  it("replaces a leading /team with the brief and leaves other text alone", () => {
+    assert.equal(
+      expandTeamCommand("  /Team add rate limiting\nto every route"),
+      `${T3_CODE_TEAM_RUN_BRIEF}\n\n## Task\n\nadd rate limiting\nto every route`,
+    );
+    assert.equal(
+      expandTeamCommand("/team"),
+      `${T3_CODE_TEAM_RUN_BRIEF}\n\n## Task\n\nThe request above in this conversation.`,
+    );
+    for (const text of ["/teams sync", "run /team on this", "/teamwork is good"]) {
+      assert.equal(expandTeamCommand(text), text);
+    }
   });
 });
