@@ -286,6 +286,16 @@ another model, such as reviews to a model from a different provider, open
 implementation, research, review, test, or design. A role left on **Thread's model** keeps the
 parent's model, and so does a subagent the agent starts on a model it names itself.
 
+**Presets** fills every role at once from the models your providers offer:
+
+- **Balanced** reviews with a strong model and gives the volume work to cheaper ones.
+- **Budget** writes code and reviews with mid-tier models.
+- **Max quality** writes code and reviews with the strongest models.
+
+Presets rank models by list price, and review with a different provider when it has a
+comparable model. A model without a known price is left out; give it one under
+[Model prices](./usage.md#set-custom-model-prices) to include it. Adjust any role afterwards.
+
 The choice belongs to the environment and applies to threads you drive from any device. If a
 role's provider is turned off or signed out, the agent is told the subagent could not start; it
 does not run on another model.

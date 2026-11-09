@@ -1,4 +1,4 @@
-import type { ModelSelection, ServerSettings } from "@t3tools/contracts";
+import type { ModelSelection, ServerSettings, SubagentModelPresetId } from "@t3tools/contracts";
 import { createModelSelection } from "@t3tools/shared/model";
 import { useNavigate } from "@tanstack/react-router";
 import * as Equal from "effect/Equal";
@@ -10,9 +10,12 @@ import {
   resolveProjectDefaultProviderModelSelection,
 } from "../../providerInstances";
 import { useEnvironmentProviders } from "../../state/environments";
-import { EMPTY_SERVER_PROVIDERS } from "../../state/server";
+import { EMPTY_SERVER_PROVIDERS, serverEnvironment } from "../../state/server";
+import { useAtomCommand } from "../../state/use-atom-command";
 import { ProviderModelPicker } from "../chat/ProviderModelPicker";
 import { TraitsPicker } from "../chat/TraitsPicker";
+import { Button } from "../ui/button";
+import { Menu, MenuItem, MenuPopup, MenuTrigger } from "../ui/menu";
 import { toastManager } from "../ui/toast";
 import { searchableSetting } from "./settingsSearch";
 import { useSettingsScope } from "./SettingsScopeContext";
@@ -23,7 +26,11 @@ import {
   SettingsSection,
 } from "./settingsLayout";
 import { useScopedModelDisabledReason } from "./useScopedModelAvailability";
-import { useScopedSettings, useUpdateScopedSettings } from "./useScopedSettings";
+import {
+  useScopedSettings,
+  useScopedSettingsWriteAllowed,
+  useUpdateScopedSettings,
+} from "./useScopedSettings";
 
 type SubagentRole = keyof ServerSettings["teamRoleModelSelections"];
 
@@ -56,6 +63,83 @@ const SUBAGENT_ROLE_ROWS = [
   },
 ] as const;
 
+const SUBAGENT_MODEL_PRESETS: ReadonlyArray<{
+  readonly id: SubagentModelPresetId;
+  readonly label: string;
+  readonly detail: string;
+}> = [
+  {
+    id: "balanced",
+    label: "Balanced",
+    detail: "Strong models review. Cheaper ones do the volume.",
+  },
+  { id: "budget", label: "Budget", detail: "Mid-tier models write code and review." },
+  {
+    id: "maxQuality",
+    label: "Max quality",
+    detail: "The strongest models write code and review.",
+  },
+];
+
+/** Each environment gets the preset built from its own providers and prices. */
+function SubagentModelPresetMenu() {
+  const { connectedEnvironments } = useSettingsScope();
+  const getPresets = useAtomCommand(serverEnvironment.getSubagentModelPresets, {
+    reportFailure: false,
+  });
+  const persist = useAtomCommand(serverEnvironment.updateSettings, { reportFailure: false });
+
+  const apply = async (presetId: SubagentModelPresetId, label: string) => {
+    const skipped: string[] = [];
+    await Promise.all(
+      connectedEnvironments.map(async ({ environmentId, label: environmentLabel }) => {
+        const presets = await getPresets({ environmentId, input: {} });
+        const preset =
+          presets._tag === "Success"
+            ? presets.value.presets.find((candidate) => candidate.id === presetId)
+            : undefined;
+        const saved =
+          preset === undefined
+            ? undefined
+            : await persist({
+                environmentId,
+                input: { patch: { teamRoleModelSelections: preset.selections } },
+              });
+        if (saved?._tag !== "Success") {
+          skipped.push(
+            presets._tag === "Success" && preset === undefined
+              ? `${environmentLabel} needs two models with a known price to choose between.`
+              : `Could not apply it on ${environmentLabel}.`,
+          );
+        }
+      }),
+    );
+    if (skipped.length > 0) {
+      toastManager.add({
+        type: "warning",
+        title: `${label} preset not applied everywhere`,
+        description: skipped.join("\n"),
+      });
+    }
+  };
+
+  return (
+    <Menu>
+      <MenuTrigger render={<Button size="xs" variant="outline" />}>Presets</MenuTrigger>
+      <MenuPopup align="end">
+        {SUBAGENT_MODEL_PRESETS.map(({ id, label, detail }) => (
+          <MenuItem key={id} onClick={() => void apply(id, label)}>
+            <span className="flex min-w-0 flex-col">
+              <span>{label}</span>
+              <span className="text-xs text-muted-foreground">{detail}</span>
+            </span>
+          </MenuItem>
+        ))}
+      </MenuPopup>
+    </Menu>
+  );
+}
+
 export function SubagentModelsSettings() {
   const { scope, environment, target, targets, connectedEnvironments } = useSettingsScope();
   const settings = useScopedSettings();
@@ -69,6 +153,7 @@ export function SubagentModelsSettings() {
       : undefined) ?? EMPTY_SERVER_PROVIDERS;
   const entries = providerInstanceEntriesFor(providers, settings, null);
   const modelDisabledReason = useScopedModelDisabledReason(settings, entries);
+  const canWrite = useScopedSettingsWriteAllowed();
 
   // Older servers drop the patch, so a saved choice would silently not apply.
   const supported =
@@ -92,7 +177,11 @@ export function SubagentModelsSettings() {
   };
 
   return (
-    <SettingsSection id="subagent-models" title="Subagent models">
+    <SettingsSection
+      id="subagent-models"
+      title="Subagent models"
+      headerAction={canWrite ? <SubagentModelPresetMenu /> : null}
+    >
       {SUBAGENT_ROLE_ROWS.map(({ role, item, description }) => {
         const stored = target?.settings.teamRoleModelSelections[role];
         const mixed = targets.some(

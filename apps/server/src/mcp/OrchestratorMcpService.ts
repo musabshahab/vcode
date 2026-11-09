@@ -295,7 +295,7 @@ const LISTED_MODEL_LIMIT = 8;
  * Lists visible models, keeping pinned models and limiting large catalogs by default.
  * Whole provider words select the provider; partial words filter models when any match.
  */
-function listCapabilityModels(input: {
+export function listCapabilityModels(input: {
   readonly provider: ServerProvider;
   readonly preferences:
     | { readonly hiddenModels: ReadonlyArray<string>; readonly modelOrder: ReadonlyArray<string> }
@@ -351,7 +351,7 @@ function capabilityModelOption(descriptor: ProviderOptionDescriptor): Orchestrat
   };
 }
 
-function providerConstraints(
+export function providerConstraints(
   provider: ServerProvider | undefined,
   supportsOrchestrationV2: boolean,
 ): ReadonlyArray<string> {

@@ -1343,6 +1343,17 @@ const teamRoleFields = <Value extends Schema.Top>(value: Value) => ({
 export const TeamRoleModelSelections = Schema.Struct(teamRoleFields(ModelSelection));
 export type TeamRoleModelSelections = typeof TeamRoleModelSelections.Type;
 
+export const SubagentModelPresetId = Schema.Literals(["balanced", "budget", "maxQuality"]);
+export type SubagentModelPresetId = typeof SubagentModelPresetId.Type;
+
+export const SubagentModelPresetsResult = Schema.Struct({
+  /** Empty when the environment has fewer than two models with a known price to choose between. */
+  presets: Schema.Array(
+    Schema.Struct({ id: SubagentModelPresetId, selections: TeamRoleModelSelections }),
+  ),
+});
+export type SubagentModelPresetsResult = typeof SubagentModelPresetsResult.Type;
+
 export const ServerSettings = Schema.Struct({
   // Null means unmigrated; empty is authoritative and must not resurrect cleared preferences.
   favorites: Schema.NullOr(ModelFavorites).pipe(Schema.withDecodingDefault(Effect.succeed(null))),

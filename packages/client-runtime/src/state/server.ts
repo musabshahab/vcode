@@ -1619,6 +1619,10 @@ export function createServerEnvironmentAtoms<R, E>(
       label: "environment-data:server:list-text-generator-models",
       tag: WS_METHODS.serverListTextGeneratorModels,
     }),
+    getSubagentModelPresets: createEnvironmentRpcCommand(runtime, {
+      label: "environment-data:server:get-subagent-model-presets",
+      tag: WS_METHODS.serverGetSubagentModelPresets,
+    }),
     retryResourceTelemetry: createEnvironmentRpcCommand(runtime, {
       label: "environment-data:server:retry-resource-telemetry",
       tag: WS_METHODS.serverRetryResourceTelemetry,

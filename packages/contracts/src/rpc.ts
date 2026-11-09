@@ -364,6 +364,7 @@ import {
   ServerSettingsPatch,
   ListTextGeneratorModelsInput,
   ListTextGeneratorModelsResult,
+  SubagentModelPresetsResult,
   TextGeneratorError,
 } from "./settings.ts";
 import {
@@ -547,6 +548,7 @@ export const WS_METHODS = {
   serverReportClientActivity: "server.reportClientActivity",
   serverGetUsageSummary: "server.getUsageSummary",
   serverRefreshUsageRates: "server.refreshUsageRates",
+  serverGetSubagentModelPresets: "server.getSubagentModelPresets",
 
   scheduledTasksSubscribe: "scheduledTasks.subscribe",
   scheduledTasksUpsert: "scheduledTasks.upsert",
@@ -1003,6 +1005,12 @@ const WsServerGetUsageSummaryRpc = Rpc.make(WS_METHODS.serverGetUsageSummary, {
 const WsServerRefreshUsageRatesRpc = Rpc.make(WS_METHODS.serverRefreshUsageRates, {
   payload: Schema.Struct({}),
   success: UsagePricing,
+  error: EnvironmentAuthorizationError,
+});
+
+const WsServerGetSubagentModelPresetsRpc = Rpc.make(WS_METHODS.serverGetSubagentModelPresets, {
+  payload: Schema.Struct({}),
+  success: SubagentModelPresetsResult,
   error: EnvironmentAuthorizationError,
 });
 
@@ -2123,6 +2131,7 @@ export const WsRpcGroup = RpcGroup.make(
   WsServerPrepareTriageRpc,
   WsServerGetUsageSummaryRpc,
   WsServerRefreshUsageRatesRpc,
+  WsServerGetSubagentModelPresetsRpc,
   WsServerSignalProcessRpc,
   WsScheduledTasksSubscribeRpc,
   WsScheduledTasksUpsertRpc,
