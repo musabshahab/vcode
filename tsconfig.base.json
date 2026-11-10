@@ -1,5 +1,5 @@
 {
-  // The Effect language service config lives apart so apps/mobile can extend it with Expo's base.
+  // The Effect language service config lives in tsconfig.effect.json.
   "extends": "./tsconfig.effect.json",
   "compilerOptions": {
     "target": "ESNext",
