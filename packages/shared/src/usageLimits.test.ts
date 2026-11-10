@@ -123,34 +123,6 @@ describe("new thread model fallback", () => {
       ),
     ).toBeDefined();
   });
-  it.each([
-    ["cursor", ["autoPercentUsed"], "claude-opus-5-5", false],
-    ["cursor", ["autoPercentUsed"], "composer-2.5", false],
-    ["cursor", ["autoPercentUsed", "apiPercentUsed"], "composer-2.5", true],
-    ["antigravity", ["gemini-weekly"], "claude-opus-5-5", false],
-    ["antigravity", ["3p-weekly"], "claude-opus-5-5", true],
-    ["antigravity", ["gemini-weekly"], "antigravity-default", true],
-    ["opencode", ["go_weekly"], "opencode/big-pickle", false],
-    ["opencode", ["go_weekly"], "opencode-go/big-pickle", true],
-  ] as const)("matches %s pools %s to %s", (driver, ids, model, usesFallback) => {
-    const defaultSelection = { ...selection, model };
-    expect(
-      resolveNewThreadModelSelection({
-        ...defaults,
-        defaultSelection,
-        providers: [
-          provider({
-            driver: ProviderDriverKind.make(driver),
-            usageLimits: {
-              checkedAt: limited.checkedAt,
-              windows: ids.map((id) => ({ ...window, id, usedPercent: 100 })),
-            },
-          }),
-          available,
-        ],
-      }).selection,
-    ).toEqual(usesFallback ? fallback : defaultSelection);
-  });
 });
 
 describe("pace", () => {
@@ -963,12 +935,12 @@ describe("pooled account columns", () => {
         { ...weekly, usedPercent: 99 },
         { ...weekly, id: "seven_day_fable", usedPercent: 40 },
       ]),
-      { ...blocked, key: "cursor", driver: ProviderDriverKind.make("cursor") },
+      { ...blocked, key: "codex", driver: ProviderDriverKind.make("codex") },
     ];
     const snapshot = structuredClone(accounts);
-    const [claude, cursor] = collectLimitPools(accounts, now);
+    const [claude, codex] = collectLimitPools(accounts, now);
     expect.soft(claude?.windows.map((row) => row.remainingPercent)).toEqual([40, 1, 70]);
-    expect.soft(cursor?.windows.map((row) => row.remainingPercent)).toEqual([60, 0, 80]);
+    expect.soft(codex?.windows.map((row) => row.remainingPercent)).toEqual([0, 0, 80]);
     expect(accounts).toEqual(snapshot);
   });
 

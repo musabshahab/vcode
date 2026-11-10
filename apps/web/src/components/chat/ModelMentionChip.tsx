@@ -3,7 +3,7 @@ import type { EnvironmentId, ProviderDriverKind } from "@t3tools/contracts";
 import * as Option from "effect/Option";
 import { Atom } from "effect/reactivity";
 
-import { brandProviderInstanceEntries, deriveProviderInstanceEntries } from "~/providerInstances";
+import { deriveProviderInstanceEntries } from "~/providerInstances";
 import { serverEnvironment } from "~/state/server";
 import { contextChipAccentWithHueOf } from "~/themePalette";
 import { ContextChipPopover } from "../contextChipParts";
@@ -15,8 +15,6 @@ interface ModelMentionPresentation {
   readonly providerLabel: string;
   readonly driverKind: ProviderDriverKind;
   readonly providerDisplayName: string;
-  readonly acpRegistryAgentId: string | undefined;
-  readonly acpRegistryIconUrl: string | undefined;
 }
 
 function presentationsEqual(left: ModelMentionPresentation, right: ModelMentionPresentation) {
@@ -24,9 +22,7 @@ function presentationsEqual(left: ModelMentionPresentation, right: ModelMentionP
     left.label === right.label &&
     left.providerLabel === right.providerLabel &&
     left.driverKind === right.driverKind &&
-    left.providerDisplayName === right.providerDisplayName &&
-    left.acpRegistryAgentId === right.acpRegistryAgentId &&
-    left.acpRegistryIconUrl === right.acpRegistryIconUrl
+    left.providerDisplayName === right.providerDisplayName
   );
 }
 
@@ -39,18 +35,13 @@ const modelMentionPresentationAtom = Atom.family((key: string) =>
     const provider = config?.providers.find((candidate) => candidate.instanceId === instanceId);
     const option = provider?.models.find((candidate) => candidate.slug === model);
     if (!config || !provider || !option) return null;
-    const [entry] = brandProviderInstanceEntries(
-      deriveProviderInstanceEntries([provider]),
-      config.settings,
-    );
+    const [entry] = deriveProviderInstanceEntries([provider]);
     if (!entry) return null;
     const next: ModelMentionPresentation = {
       label: getDisplayModelName(option),
       providerLabel: option.subProvider ?? entry.displayName,
       driverKind: entry.driverKind,
       providerDisplayName: entry.displayName,
-      acpRegistryAgentId: entry.acpRegistryAgentId,
-      acpRegistryIconUrl: entry.acpRegistryIconUrl,
     };
     const previous = Option.getOrNull(get.self<ModelMentionPresentation | null>());
     return previous && presentationsEqual(previous, next) ? previous : next;
@@ -105,8 +96,6 @@ export function ModelMentionChip(props: {
         <ProviderInstanceIcon
           driverKind={presentation.driverKind}
           displayName={presentation.providerDisplayName}
-          acpRegistryAgentId={presentation.acpRegistryAgentId}
-          acpRegistryIconUrl={presentation.acpRegistryIconUrl}
           className="z-auto"
           iconClassName="size-[1em]"
         />

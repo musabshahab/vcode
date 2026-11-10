@@ -18,11 +18,10 @@ describe("rankProvidersByMetric", () => {
     const totals = [
       { provider: "codex" as const, totalTokens: 10, costUsd: 1 },
       { provider: "claude" as const, totalTokens: 10, costUsd: 1 },
-      { provider: "grok" as const, totalTokens: 20, costUsd: 2 },
     ];
-    const providers = ["claude", "codex", "grok"] as const;
+    const providers = ["claude", "codex"] as const;
 
-    expect(rankProvidersByMetric(providers, totals, "tokens")).toEqual(["grok", "claude", "codex"]);
-    expect(providers).toEqual(["claude", "codex", "grok"]);
+    expect(rankProvidersByMetric(providers, totals, "tokens")).toEqual(["claude", "codex"]);
+    expect(providers).toEqual(["claude", "codex"]);
   });
 });

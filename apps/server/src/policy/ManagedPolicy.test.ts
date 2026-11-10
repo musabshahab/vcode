@@ -132,16 +132,6 @@ it.layer(NodeServices.layer)("ManagedPolicy.load", (it) => {
               },
             },
           }),
-          // The server would move it into the user's secret store, past the policy's removal.
-          JSON.stringify({
-            ...base,
-            settings: {
-              providerInstances: {
-                value: { gemini: { driver: "antigravity", config: { apiKey: "corp-key" } } },
-                locked: true,
-              },
-            },
-          }),
           // Startup reads OTLP endpoints before the policy, and environment variables outrank them.
           JSON.stringify({
             ...base,
@@ -154,7 +144,7 @@ it.layer(NodeServices.layer)("ManagedPolicy.load", (it) => {
             Effect.map((error) => error.reason),
           ),
       );
-      assert.lengthOf(reasons, 14);
+      assert.lengthOf(reasons, 13);
       assert.include(reasons[3], "storageCleanup.logsAfterDayz");
       assert.include(reasons[6], "adds entries users could not remove");
       assert.include(reasons[7], "adds entries users could not remove");
@@ -162,8 +152,7 @@ it.layer(NodeServices.layer)("ManagedPolicy.load", (it) => {
       assert.include(reasons[9], 'manage "idleCompaction" instead');
       assert.include(reasons[10], 'lock "worktreeCleanup" too');
       assert.include(reasons[11], 'lock "providerInstances.codex" as a whole');
-      assert.include(reasons[12], "holds a credential");
-      assert.include(reasons[13], "a policy cannot override");
+      assert.include(reasons[12], "a policy cannot override");
     }),
   );
 
@@ -184,11 +173,6 @@ it.layer(NodeServices.layer)("ManagedPolicy.load", (it) => {
         "config.binaryPath",
         "config.launchArgs",
         "config.homePath",
-        "environment",
-      ]);
-      assert.deepEqual(providers?.lockedInstanceFields?.[ProviderDriverKind.make("acpRegistry")], [
-        "config.commandPath",
-        "config.commandArgs",
         "environment",
       ]);
       // The host variable that replaces Codex's launch arguments is ignored too.
@@ -311,19 +295,6 @@ it.layer(NodeServices.layer)("ManagedPolicy.load", (it) => {
           [...(codexHome.summary?.limits?.providers?.lockedInstanceFields?.[codex] ?? [])],
           ["config.homePath", "config.shadowHomePath"],
         );
-        // A server URL makes OpenCode skip the local launch a pin sets, so the pin owns it too.
-        const opencode = ProviderDriverKind.make("opencode");
-        const opencodePinned = yield* ManagedPolicy.fromDocument("/test/policy.json", {
-          schemaVersion: 1,
-          organization: "Example Corp",
-          limits: {
-            providers: { instances: { [opencode]: { locked: true, binaryPath: "/opt/opencode" } } },
-          },
-        });
-        assert.include(
-          opencodePinned.summary?.limits?.providers?.lockedInstanceFields?.[opencode] ?? [],
-          "config.serverUrl",
-        );
         // The same override from the environment that starts the server is ignored too.
         const host = { PATH: "/usr/bin", T3CODE_CODEX_LAUNCH_ARGS: "--yolo" };
         assert.deepEqual(providerHostEnvironment((yield* policyOn("linux")).summary, host), {
@@ -399,7 +370,7 @@ it.layer(NodeServices.layer)("ManagedPolicy.load", (it) => {
       });
       assert.equal(
         disallowedDriverReason(policy.summary, ProviderDriverKind.make("cursor")),
-        "Example Corp's policy does not allow the Cursor provider.",
+        "Example Corp's policy does not allow the cursor provider.",
       );
       assert.isUndefined(disallowedDriverReason(policy.summary, ProviderDriverKind.make("codex")));
     }),
@@ -417,8 +388,6 @@ it.layer(NodeServices.layer)("ManagedPolicy.load", (it) => {
         [
           withProviders({ allowedDrivers: ["claudeAgent", "notAProvider"] }),
           withProviders({ instances: { notAProvider: { locked: true, binaryPath: "/x" } } }),
-          // Cursor has no launch arguments setting to pin.
-          withProviders({ instances: { cursor: { locked: true, launchArgs: "--x" } } }),
           withProviders({ instances: { codex: { locked: true, homePath: "/x" } } }),
           withProviders({
             instances: { codex: { locked: true, environment: [{ name: "1BAD", value: "" }] } },
@@ -432,10 +401,9 @@ it.layer(NodeServices.layer)("ManagedPolicy.load", (it) => {
             Effect.map((error) => error.reason),
           ),
       );
-      assert.lengthOf(reasons, 6);
+      assert.lengthOf(reasons, 5);
       assert.include(reasons[0], "notAProvider");
       assert.include(reasons[1], "notAProvider");
-      assert.include(reasons[2], "launchArgs");
     }),
   );
 

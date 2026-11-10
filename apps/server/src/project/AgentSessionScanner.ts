@@ -34,9 +34,7 @@ import * as ServerConfig from "../config.ts";
 import * as ProcessRunner from "../processRunner.ts";
 import * as ProjectStore from "../orchestration-v2/ProjectStore.ts";
 import { resolveCodexHomeLayout } from "../provider/Drivers/CodexHomeLayout.ts";
-import { mergeProviderInstanceEnvironment } from "@t3tools/provider-core/server/instanceEnvironment";
 import { expandHomePath } from "@t3tools/provider-core/server/pathExpansion";
-import { resolvePiSessionsDir } from "@t3tools/provider-pi/server/usage";
 import * as ServerSettings from "../serverSettings.ts";
 import { sourceControlDefinitions } from "../sourceControl/sourceControlDefinitions.ts";
 import {
@@ -145,13 +143,6 @@ const decodeClaudeSettings = Schema.decodeUnknownOption(ClaudeSettings);
 const decodeCodexSettings = Schema.decodeUnknownOption(CodexSettings);
 const decodeTranscriptRecord = Schema.decodeUnknownOption(Schema.fromJsonString(TranscriptRecord));
 const decodeTranscriptValue = Schema.decodeUnknownOption(TranscriptRecord);
-const decodePiEntryLinks = Schema.decodeUnknownOption(
-  Schema.Struct({
-    type: TranscriptRecord.fields.type,
-    id: TranscriptRecord.fields.id,
-    parentId: TranscriptRecord.fields.parentId,
-  }),
-);
 const selectTranscriptPath = createTranscriptJsonSelector(TranscriptRecord);
 const decodeCodexTurnMetadata = Schema.decodeUnknownOption(CodexTurnMetadata);
 const decodeCodexHistoryBase = Schema.decodeUnknownOption(
@@ -371,39 +362,6 @@ function deriveTitle(source: AgentSessionSource, text: string): string | undefin
   return request.trim().split("\n")[0]?.slice(0, 100).trim() || undefined;
 }
 
-// Pi keeps abandoned branches in the file; its active branch runs from the last entry to the root.
-function activePiBranch(
-  records: ReadonlyArray<DecodedTranscriptRecord>,
-): ReadonlyArray<DecodedTranscriptRecord> {
-  const entries = records.filter((record) => record.type !== "session");
-  const leaf = entries.at(-1);
-  // Version 1 sessions predate the tree and are linear.
-  if (leaf?.id === undefined) return entries;
-  const byId = new Map(
-    entries.flatMap((entry) => (entry.id === undefined ? [] : [[entry.id, entry] as const])),
-  );
-  const branch: Array<DecodedTranscriptRecord> = [];
-  for (
-    let entry: DecodedTranscriptRecord | undefined = leaf;
-    entry !== undefined && branch.length < entries.length;
-    entry = entry.parentId ? byId.get(entry.parentId) : undefined
-  ) {
-    branch.push(entry);
-  }
-  return branch.toReversed();
-}
-
-function isPiConversationRecord(
-  record: DecodedTranscriptRecord,
-): record is DecodedTranscriptRecord & {
-  readonly message: typeof TranscriptMessage.Type & { readonly role: "user" | "assistant" };
-} {
-  return (
-    record.type === "message" &&
-    (record.message?.role === "user" || record.message?.role === "assistant")
-  );
-}
-
 export function parseAgentSessionTranscript(
   input: AgentSessionTranscriptMetadata & {
     readonly contents: string;
@@ -428,16 +386,8 @@ function parseAgentSessionRecords(
   // Claude filenames are session IDs. Codex rollout filenames include extra
   // timestamp text, so only transcript metadata can provide a resumable ID.
   let providerSessionId =
-    input.source === "codex"
-      ? ""
-      : input.source === "pi"
-        ? records.find((record) => record.type === "session")?.id?.trim() || input.fallbackSessionId
-        : (claudeFields.sessionId ?? input.fallbackSessionId);
-  // Pi titles a session by its latest session_info on any branch; an empty name clears it.
-  const title =
-    input.source === "pi"
-      ? records.findLast((record) => record.type === "session_info")?.name?.trim() || null
-      : (claudeFields.title ?? null);
+    input.source === "codex" ? "" : (claudeFields.sessionId ?? input.fallbackSessionId);
+  const title = claudeFields.title ?? null;
   let model = claudeFields.model ?? null;
   let derivedTitle: string | undefined;
   let hasCodexSessionId = false;
@@ -530,20 +480,8 @@ function parseAgentSessionRecords(
   };
 
   let recordIndex = -1;
-  for (const record of input.source === "pi" ? activePiBranch(records) : records) {
+  for (const record of records) {
     recordIndex += 1;
-    if (input.source === "pi") {
-      if (!isPiConversationRecord(record)) continue;
-      const text = extractText(record.message.content);
-      if (text.length === 0) continue;
-      retainMessage({
-        role: record.message.role,
-        text,
-        createdAt: normalizeTimestamp(record.timestamp, fallbackTimestamp),
-        codexResponseUser: false,
-      });
-      continue;
-    }
     if (input.source === "claudeAgent") {
       if (isHiddenClaudeRecord(record)) continue;
       if (record.type !== "user" && record.type !== "assistant") continue;
@@ -648,8 +586,6 @@ function shouldRetainDecodedRecord(
   source: AgentSessionSource,
   record: DecodedTranscriptRecord,
 ): boolean {
-  // Any Pi entry can be a link on the active branch.
-  if (source === "pi") return true;
   if (source === "claudeAgent") {
     if (isHiddenClaudeRecord(record) || (record.type !== "user" && record.type !== "assistant")) {
       return false;
@@ -1065,27 +1001,14 @@ export const make = Effect.gen(function* () {
               if (recordCount > MAX_IMPORT_RECORDS) return false;
               const value = reader.finish();
               const decoded = decodeTranscriptValue(value);
-              if (Option.isNone(decoded) && source === "pi") {
-                // Pi accepts messages this schema rejects, such as null content; keep their tree links.
-                records.push(...Option.toArray(decodePiEntryLinks(value)));
-              } else if (Option.isSome(decoded)) {
+              if (Option.isSome(decoded)) {
                 if (Option.isNone(cwd)) cwd = Option.fromNullOr(extractDecodedCwd(decoded.value));
                 if (source === "claudeAgent") {
                   claudeFields = foldClaudeFields(claudeFields, decoded.value);
                 }
                 if (shouldRetainDecodedRecord(source, decoded.value)) {
-                  if (
-                    source === "pi" &&
-                    decoded.value.type === "message" &&
-                    !isPiConversationRecord(decoded.value)
-                  ) {
-                    // Tool output can dwarf the conversation; keep only the tree links.
-                    const { message: _message, ...links } = decoded.value;
-                    records.push(links);
-                  } else {
-                    records.push(decoded.value);
-                    historyBytes += recordBytes;
-                  }
+                  records.push(decoded.value);
+                  historyBytes += recordBytes;
                 }
               }
               recordBytes = 0;
@@ -1407,7 +1330,7 @@ export const make = Effect.gen(function* () {
     const raw: Array<RawCandidate> = [];
     let truncated = false;
 
-    for (const source of ["claudeAgent", "codex", "pi"] as const) {
+    for (const source of ["claudeAgent", "codex"] as const) {
       const instances: Array<{
         readonly instanceId: ProviderInstanceId;
         readonly config: ProviderInstanceConfig;
@@ -1445,13 +1368,7 @@ export const make = Effect.gen(function* () {
         };
 
         let homePath: string;
-        if (source === "pi") {
-          const environment = yield* mergeProviderInstanceEnvironment(
-            instance.environment,
-            hostEnvironment,
-          ).pipe(Effect.provideService(HostProcess.HomeDirectory, homeDir));
-          homePath = resolvePiSessionsDir(environment, homeDir, path);
-        } else if (source === "claudeAgent") {
+        if (source === "claudeAgent") {
           const config = decodeClaudeSettings(instance.config ?? {});
           if (Option.isNone(config)) continue;
           homePath = resolveClaudeConfigDir(

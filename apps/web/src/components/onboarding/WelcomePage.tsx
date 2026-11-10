@@ -95,13 +95,11 @@ import {
 import { terminalEnvironment } from "../../state/terminal";
 import { useAtomCommand } from "../../state/use-atom-command";
 import { getProviderSummary } from "../settings/providerStatus";
-import { AddProviderInstanceDialog } from "../settings/AddProviderInstanceDialog";
 import { useDesktopCliCommand } from "../settings/CliCommandSettingsRow";
 import { CodexSetupSection } from "../settings/CodexSetupSection";
 import { readCodexSetupMode } from "../settings/CodexSetupSection.logic";
 import { TerminalViewport } from "../ThreadTerminalDrawer";
 import { ProviderInstanceIcon } from "../chat/ProviderInstanceIcon";
-import { ACPRegistryIcon } from "../Icons";
 import { Button } from "../ui/button";
 import { Checkbox } from "../ui/checkbox";
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from "../ui/collapsible";
@@ -400,8 +398,6 @@ const isImportSource = Schema.is(AgentSessionSource);
 // The setup card opens below a long list, so bring it into view once.
 const revealOnMount = (node: HTMLElement | null) => node?.scrollIntoView({ block: "nearest" });
 
-const ACP_REGISTRY_DRIVER_KIND = ProviderDriverKind.make("acpRegistry");
-
 function AgentsSection({
   environmentId,
   label,
@@ -423,7 +419,6 @@ function AgentsSection({
   const canManageProviders = useEnvironmentScope(environmentId, AuthProvidersManageScope);
   const [terminalSession, setTerminalSession] = useState<AgentTerminalSession | null>(null);
   const [moreOpen, setMoreOpen] = useState<boolean | null>(null);
-  const [addingProvider, setAddingProvider] = useState(false);
   const [codexSetupId, setCodexSetupId] = useState<ProviderInstanceId | null>(null);
   const [cliTerminalFor, setCliTerminalFor] = useState<ProviderInstanceId | null>(null);
 
@@ -436,7 +431,6 @@ function AgentsSection({
   // status can be wrong, so this waits for the checks, and a later check never closes it.
   if (moreOpen === null && !checking && found.length === 0) setMoreOpen(true);
   const showMore = moreOpen ?? false;
-  const acpAllowed = isManagedDriverAllowed(serverConfig?.managedPolicy, ACP_REGISTRY_DRIVER_KIND);
   const stateOf = (provider: ServerProvider) => welcomeAgentState(provider, serverConfig?.settings);
   const needsInstallOrSignIn = (provider: ServerProvider) => {
     const state = stateOf(provider);
@@ -603,11 +597,10 @@ function AgentsSection({
       ? "This connection cannot control terminals."
       : null,
     !canManageProviders &&
-    (acpAllowed ||
-      [...found, ...available].some(
-        (provider) =>
-          stateOf(provider) === "disabled" || codexNeedsSetup(provider, serverConfig?.settings),
-      ))
+    [...found, ...available].some(
+      (provider) =>
+        stateOf(provider) === "disabled" || codexNeedsSetup(provider, serverConfig?.settings),
+    )
       ? "This connection cannot manage agents."
       : null,
   ].filter((note) => note !== null);
@@ -643,7 +636,7 @@ function AgentsSection({
           >
             {found.length > 0 ? "Add more agents" : "Set up an agent"}
           </span>
-          {showMore ? null : <AgentLogoStack providers={available} acp={acpAllowed} />}
+          {showMore ? null : <AgentLogoStack providers={available} />}
           <ChevronDownIcon className="ml-auto size-4 text-muted-foreground group-data-panel-open:rotate-180" />
         </CollapsibleTrigger>
         <CollapsiblePanel>
@@ -658,24 +651,6 @@ function AgentsSection({
               />
             ))}
           </div>
-          {acpAllowed ? (
-            <div className="flex min-h-9 items-center gap-3">
-              <RowIcon>
-                <ACPRegistryIcon className="size-4" />
-              </RowIcon>
-              <span className="min-w-0 flex-1 text-sm text-muted-foreground">
-                More agents in the ACP Registry
-              </span>
-              <Button
-                size="xs"
-                variant="outline"
-                disabled={!canManageProviders}
-                onClick={() => setAddingProvider(true)}
-              >
-                Browse
-              </Button>
-            </div>
-          ) : null}
         </CollapsiblePanel>
       </Collapsible>
       {codexSetupProvider !== null && serverConfig !== null ? (
@@ -701,33 +676,13 @@ function AgentsSection({
           }}
         />
       ) : null}
-      {addingProvider ? (
-        <AddProviderInstanceDialog
-          open
-          environmentId={environmentId}
-          environmentLabel={label}
-          showMoreProviders
-          onOpenChange={setAddingProvider}
-          onCreated={(_instanceId, driver) => {
-            void refreshProviders({ environmentId, input: {} });
-            // A new Claude Code, Codex, or Pi instance can bring more history to import.
-            if (isImportSource(driver)) onImportSourceEnabled();
-          }}
-        />
-      ) : null}
     </WelcomeSection>
   );
 }
 
 // A quiet preview of what the fold holds; the names are inside it.
-function AgentLogoStack({
-  providers,
-  acp,
-}: {
-  readonly providers: ReadonlyArray<ServerProvider>;
-  readonly acp: boolean;
-}) {
-  if (providers.length === 0 && !acp) return null;
+function AgentLogoStack({ providers }: { readonly providers: ReadonlyArray<ServerProvider> }) {
+  if (providers.length === 0) return null;
   return (
     <span className="flex items-center gap-2 opacity-60 grayscale" aria-hidden>
       {providers.slice(0, 6).map((provider) => (
@@ -738,7 +693,6 @@ function AgentLogoStack({
           iconClassName="size-3.5"
         />
       ))}
-      {acp ? <ACPRegistryIcon className="size-3.5" /> : null}
     </span>
   );
 }
@@ -1815,7 +1769,6 @@ function ImportCandidateRow({
 const IMPORT_SOURCE_NAMES: Record<AgentSessionSource, string> = {
   claudeAgent: "Claude Code",
   codex: "Codex",
-  pi: "Pi",
 };
 const IMPORT_SOURCES_LABEL = new Intl.ListFormat("en", { type: "conjunction" }).format(
   AgentSessionSource.literals.map((source) => IMPORT_SOURCE_NAMES[source]),

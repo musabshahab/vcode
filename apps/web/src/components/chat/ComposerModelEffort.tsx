@@ -178,7 +178,6 @@ export function describeComposerEffort(
 
 const COLUMN_ROW =
   "flex h-8 w-full shrink-0 cursor-pointer items-center gap-2 rounded-sm px-2 text-left text-sm text-foreground outline-none hover:bg-foreground/[0.09] focus-visible:bg-foreground/[0.09] disabled:cursor-not-allowed disabled:opacity-64";
-const COLUMN_LABEL = "px-2 pt-1.5 pb-1 font-medium text-muted-foreground text-xs";
 
 function ColumnRow(props: {
   label: string;
@@ -248,21 +247,6 @@ function moveBetweenRows(event: KeyboardEvent<HTMLElement>) {
 function EffortLevels(props: { traits: TraitsSelectionInput }) {
   const traits = useTraitsSelection(props.traits);
   const { effort, others } = columnControls(traits.selectDescriptors, traits.booleanDescriptors);
-  if (traits.modelIsUnavailable) {
-    return (
-      <>
-        {traits.descriptors.map((descriptor) => {
-          const value = traits.currentLabel(descriptor);
-          return value ? (
-            <div key={descriptor.id}>
-              <div className={COLUMN_LABEL}>{descriptor.label}</div>
-              <div className="px-2 pb-1.5 text-muted-foreground/80 text-xs">{value}</div>
-            </div>
-          ) : null;
-        })}
-      </>
-    );
-  }
   if (!effort && others.length === 0) return <NoEffortRow />;
   // Ultrathink in the prompt locks the levels; the first option then holds the tab stop.
   const locked =
@@ -562,7 +546,7 @@ function SpeedControl(props: { traits: TraitsSelectionInput }) {
     traits.selectDescriptors,
     traits.booleanDescriptors,
   );
-  if (traits.modelIsUnavailable || (!speedSelect && !fastToggle)) return null;
+  if (!speedSelect && !fastToggle) return null;
   return (
     <div
       role="radiogroup"
@@ -596,7 +580,7 @@ function SpeedControl(props: { traits: TraitsSelectionInput }) {
 function UltracodeControl(props: { traits: TraitsSelectionInput }) {
   const traits = useTraitsSelection(props.traits);
   const { ultracodeToggle } = splitSpeed(traits.selectDescriptors, traits.booleanDescriptors);
-  if (traits.modelIsUnavailable || !ultracodeToggle) return null;
+  if (!ultracodeToggle) return null;
   const on = ultracodeToggle.currentValue === true;
   return (
     <div className="flex rounded-lg bg-input/40 p-0.5">

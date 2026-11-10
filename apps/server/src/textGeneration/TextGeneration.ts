@@ -9,10 +9,7 @@ import {
 } from "@t3tools/contracts";
 import * as DateTime from "effect/DateTime";
 import { exhaustedUsageWindow } from "@t3tools/shared/usageLimits";
-import {
-  defaultTextGenerationModel,
-  fallbackTextGenerationModelSelection,
-} from "@t3tools/shared/serverSettings";
+import { fallbackTextGenerationModelSelection } from "@t3tools/shared/serverSettings";
 import * as ServerSettings from "../serverSettings.ts";
 import type { ProviderTextGeneration } from "@t3tools/provider-core/server/textGeneration";
 import { TextGenerationError } from "@t3tools/contracts";
@@ -110,7 +107,7 @@ export const make = Effect.gen(function* () {
       (selected?.enabled === true &&
         selected.status === "error" &&
         (!selected.installed || selected.auth.status === "unauthenticated"));
-    if (unusable || exhaustedUsageWindow(selected, now, selection.model)) {
+    if (unusable || exhaustedUsageWindow(selected, now)) {
       const settings = yield* serverSettings.getSettings.pipe(
         Effect.mapError(
           (cause) =>
@@ -136,7 +133,7 @@ export const make = Effect.gen(function* () {
               isProviderAvailable(provider) &&
               isProviderTextGenerationCapable(provider) &&
               (operation !== "generateReviewGuide" || INVESTIGATING_DRIVERS.has(driver)) &&
-              !exhaustedUsageWindow(provider, now, defaultTextGenerationModel(driver))
+              !exhaustedUsageWindow(provider, now)
             );
           },
           { includeConfiguredInstances: true },

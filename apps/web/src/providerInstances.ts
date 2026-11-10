@@ -31,8 +31,6 @@ export interface ProviderInstanceEntry {
   readonly driverKind: ProviderDriverKind;
   readonly displayName: string;
   readonly accentColor?: string | undefined;
-  readonly acpRegistryAgentId?: string | undefined;
-  readonly acpRegistryIconUrl?: string | undefined;
   readonly continuationGroupKey?: string | undefined;
   readonly enabled: boolean;
   readonly installed: boolean;
@@ -65,9 +63,6 @@ export function deriveProviderInstanceEntries(
       driverKind,
       displayName: resolveProviderInstanceDisplayName(snapshot),
       accentColor: normalizeProviderAccentColor(snapshot.accentColor),
-      ...(driverKind === "acpRegistry" && snapshot.iconUrl
-        ? { acpRegistryIconUrl: snapshot.iconUrl }
-        : {}),
       continuationGroupKey: snapshot.continuation?.groupKey,
       enabled: snapshot.enabled,
       installed: snapshot.installed,
@@ -82,32 +77,17 @@ export function deriveProviderInstanceEntries(
 
 /** Instance ids repeat across environments; lookups must stay scoped. */
 export function deriveProviderEntriesByEnvironment(
-  providersByEnvironment: Iterable<
-    readonly [
-      string,
-      ReadonlyArray<ServerProvider>,
-      Pick<ServerSettings, "providerInstances" | "projectSettingsOverrides">?,
-    ]
-  >,
+  providersByEnvironment: Iterable<readonly [string, ReadonlyArray<ServerProvider>]>,
 ): ReadonlyMap<string, ReadonlyMap<string, ProviderInstanceEntry>> {
   const byEnvironment = new Map<string, ReadonlyMap<string, ProviderInstanceEntry>>();
-  for (const [environmentId, providers, settings] of providersByEnvironment) {
-    const derived = deriveProviderInstanceEntries(providers);
-    const entries = settings ? brandProviderInstanceEntries(derived, settings) : derived;
+  for (const [environmentId, providers] of providersByEnvironment) {
+    const entries = deriveProviderInstanceEntries(providers);
     byEnvironment.set(
       environmentId,
       new Map(entries.map((entry) => [entry.instanceId as string, entry] as const)),
     );
   }
   return byEnvironment;
-}
-
-// The snapshot includes instances enabled by any project; machine settings alone do not.
-export function brandProviderInstanceEntries(
-  entries: ReadonlyArray<ProviderInstanceEntry>,
-  settings: Pick<ServerSettings, "providerInstances">,
-): ReadonlyArray<ProviderInstanceEntry> {
-  return entries.map((entry) => applyProviderInstanceBranding(entry, settings));
 }
 
 /** projectId applies project overrides; explicit null uses machine settings. */
@@ -118,39 +98,8 @@ export function applyProviderInstanceSettings(
 ): ReadonlyArray<ProviderInstanceEntry> {
   return entries.map((entry) => {
     const enabled = resolveProjectProviderInstanceEnabled(settings, projectId, entry.instanceId);
-    return applyProviderInstanceBranding(
-      enabled === entry.enabled ? entry : { ...entry, enabled },
-      settings,
-    );
+    return enabled === entry.enabled ? entry : { ...entry, enabled };
   });
-}
-
-function applyProviderInstanceBranding(
-  entry: ProviderInstanceEntry,
-  settings: Pick<ServerSettings, "providerInstances">,
-): ProviderInstanceEntry {
-  const explicitInstance = Object.hasOwn(settings.providerInstances, entry.instanceId)
-    ? settings.providerInstances[entry.instanceId]
-    : undefined;
-  if (entry.driverKind !== "acpRegistry" || explicitInstance === undefined) return entry;
-  const config =
-    explicitInstance.config !== null && typeof explicitInstance.config === "object"
-      ? (explicitInstance.config as Readonly<Record<string, unknown>>)
-      : null;
-  if (config?.source === "local") {
-    return { ...entry, acpRegistryAgentId: undefined, acpRegistryIconUrl: undefined };
-  }
-  const agentId = config?.agentId;
-  const iconUrl = config?.registryIconUrl;
-  return {
-    ...entry,
-    ...(typeof agentId === "string" && agentId.trim()
-      ? { acpRegistryAgentId: agentId.trim() }
-      : {}),
-    ...(typeof iconUrl === "string" && iconUrl.trim()
-      ? { acpRegistryIconUrl: iconUrl.trim() }
-      : {}),
-  };
 }
 
 /** Picker order: each driver's default instance first, then its custom instances. */

@@ -1,6 +1,5 @@
 import { useLegendListRef } from "~/hooks/useLegendListRef";
 import {
-  ANTIGRAVITY_DEFAULT_MODEL,
   type ProviderInstanceId,
   type EnvironmentId,
   type ProviderDriverKind,
@@ -76,27 +75,15 @@ type ModelPickerItem = {
   driverKind: ProviderDriverKind;
   instanceDisplayName: string;
   instanceAccentColor?: string | undefined;
-  acpRegistryAgentId?: string | undefined;
-  acpRegistryIconUrl?: string | undefined;
   continuationGroupKey?: string | undefined;
   isLegacy?: boolean | undefined;
   isUnavailable?: boolean | undefined;
 };
 
 export function resolveModelPickerSelectedModel(input: {
-  driverKind: ProviderDriverKind | undefined;
   model: string;
   options: ReadonlyArray<ModelEsque>;
 }) {
-  if (input.driverKind === "antigravity" && input.model === ANTIGRAVITY_DEFAULT_MODEL) {
-    const availableModels = input.options.filter(
-      (option) => option.slug !== ANTIGRAVITY_DEFAULT_MODEL && !option.isUnavailable,
-    );
-    return (
-      availableModels.find((option) => option.aliases?.includes(ANTIGRAVITY_DEFAULT_MODEL)) ??
-      availableModels.find((option) => option.isDefault)
-    );
-  }
   return input.options.find((option) => option.slug === input.model);
 }
 
@@ -106,13 +93,9 @@ function shouldIncludeModelPickerOption(input: {
   readonly activeInstanceId: ProviderInstanceId;
   readonly activeModel: string;
 }): boolean {
-  if (input.entry.driverKind === "antigravity" && input.option.slug === ANTIGRAVITY_DEFAULT_MODEL) {
-    return false;
-  }
   if (isProviderInstancePickerReady(input.entry)) return true;
   return (
     input.entry.enabled &&
-    (input.entry.driverKind === "opencode" || input.entry.driverKind === "antigravity") &&
     input.entry.instanceId === input.activeInstanceId &&
     input.option.slug === input.activeModel &&
     input.option.isUnavailable === true
@@ -368,19 +351,15 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
     (entry) => entry.instanceId === props.activeInstanceId,
   );
   const activeModel = resolveModelPickerSelectedModel({
-    driverKind: activeEntry?.driverKind,
     model: props.model,
     options: modelOptionsByInstance.get(props.activeInstanceId) ?? [],
   });
-  const activeModelSlug =
-    activeModel?.slug ?? (props.model === ANTIGRAVITY_DEFAULT_MODEL ? "" : props.model);
+  const activeModelSlug = activeModel?.slug ?? props.model;
   const activeModelKey = activeModelSlug
     ? modelPickerModelKey(props.activeInstanceId, activeModelSlug)
     : null;
   const selectedModelKeys = props.selectedModels?.map((selection) => {
-    const entry = instanceEntries.find((entry) => entry.instanceId === selection.instanceId);
     const model = resolveModelPickerSelectedModel({
-      driverKind: entry?.driverKind,
       model: selection.model,
       options: modelOptionsByInstance.get(selection.instanceId) ?? [],
     });
@@ -549,8 +528,6 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
           driverKind: entry.driverKind,
           instanceDisplayName: entry.displayName,
           ...(entry.accentColor ? { instanceAccentColor: entry.accentColor } : {}),
-          ...(entry.acpRegistryAgentId ? { acpRegistryAgentId: entry.acpRegistryAgentId } : {}),
-          ...(entry.acpRegistryIconUrl ? { acpRegistryIconUrl: entry.acpRegistryIconUrl } : {}),
           ...(entry.continuationGroupKey
             ? { continuationGroupKey: entry.continuationGroupKey }
             : {}),
@@ -1022,8 +999,6 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
                     driverKind={model.driverKind}
                     providerDisplayName={model.instanceDisplayName}
                     providerAccentColor={model.instanceAccentColor}
-                    acpRegistryAgentId={model.acpRegistryAgentId}
-                    acpRegistryIconUrl={model.acpRegistryIconUrl}
                     isFavorite={favoritesSet.has(providerModelKey(model.instanceId, model.slug))}
                     isSelected={
                       selectedModelKeys !== undefined

@@ -16,7 +16,7 @@ function summary(refreshing: readonly UsageProviderKind[] = []): UsageSummary {
     sinceDay: UsageDay.make("2026-09-05"),
     untilDay: UsageDay.make("2026-09-05"),
     buckets: [],
-    sources: (["codex", ...refreshing] as const).map((provider) => ({
+    sources: [...new Set<UsageProviderKind>(["codex", ...refreshing])].map((provider) => ({
       fingerprint: { hostId: "host", provider, resolvedHomePath: "/home", volumeId: "1:1" },
       status: "ok" as const,
       scannedFiles: 1,
@@ -24,7 +24,7 @@ function summary(refreshing: readonly UsageProviderKind[] = []): UsageSummary {
       malformedRecords: 0,
       distinctSessions: 1,
       message: null,
-      ...(provider === "codex" ? {} : { refreshing: true as const }),
+      ...(refreshing.includes(provider) ? { refreshing: true as const } : {}),
     })),
     pricing: { status: "fresh", source: "test", fetchedAt: null, knownModels: 1 },
     scanDurationMs: 1,
@@ -71,15 +71,15 @@ describe("usageProgress", () => {
   });
 
   it("names a slow source without dimming once its environment answers from cache", () => {
-    const partway = environment("a", { isPending: true, summary: summary(["cursor"]) });
-    expect(usageEnvironmentProgress(partway)).toEqual({ phase: "partway", providers: ["cursor"] });
+    const partway = environment("a", { isPending: true, summary: summary(["claude"]) });
+    expect(usageEnvironmentProgress(partway)).toEqual({ phase: "partway", providers: ["claude"] });
     expect(usageProgress([partway, environment("b")], options)).toEqual({
       dimmed: false,
-      label: "Updating cursor label…",
+      label: "Updating claude label…",
     });
     expect(
       usageProgress(
-        [partway, environment("b", { isPending: true, summary: summary(["cursor", "grok"]) })],
+        [partway, environment("b", { isPending: true, summary: summary(["claude", "codex"]) })],
         options,
       ),
     ).toEqual({ dimmed: false, label: "Updating 2 providers…" });

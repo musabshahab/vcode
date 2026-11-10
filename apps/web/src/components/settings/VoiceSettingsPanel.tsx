@@ -487,12 +487,7 @@ function CleanupModelRow() {
     },
     textGenerationProviders,
   );
-  const modelOptionsByInstance = getCustomModelOptionsByInstance(
-    settings,
-    textGenerationProviders,
-    selection.instanceId,
-    selection.model,
-  );
+  const modelOptionsByInstance = getCustomModelOptionsByInstance(settings, textGenerationProviders);
   const instanceEntry = instanceEntries.find((entry) => entry.instanceId === selection.instanceId);
   const modelDisabledReason = useScopedModelDisabledReason(settings, instanceEntries);
   const setModel = (next: ReturnType<typeof createModelSelection>) => {

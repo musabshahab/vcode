@@ -151,26 +151,6 @@ describe("getComposerProviderState", () => {
     expect(state.modelOptionsForDispatch).toEqual(selections(["agent", "build"]));
   });
 
-  it("preserves explicit options when the selected model is absent from the catalog", () => {
-    const state = getComposerProviderState({
-      provider: ProviderDriverKind.make("opencode"),
-      model: "opencode/kimi-k3",
-      models: [
-        {
-          slug: "opencode/big-pickle",
-          name: "Big Pickle",
-          isCustom: false,
-          capabilities: {},
-        },
-      ],
-      modelOptions: selections(["variant", "max"], ["agent", "build"]),
-    });
-
-    expect(state.modelOptionsForDispatch).toEqual(
-      selections(["variant", "max"], ["agent", "build"]),
-    );
-  });
-
   it("validates options for a known model selected through a legacy alias", () => {
     const state = getComposerProviderState({
       provider: ProviderDriverKind.make("claudeAgent"),
@@ -199,7 +179,7 @@ describe("getComposerProviderState", () => {
 
   it("defaults fastMode to false when the provider reports true but the user has not selected it", () => {
     const state = getComposerProviderState({
-      provider: ProviderDriverKind.make("cursor"),
+      provider: ProviderDriverKind.make("codex"),
       model: MODEL,
       models: modelWith([booleanDescriptor("fastMode", true)]),
       modelOptions: undefined,
@@ -307,15 +287,6 @@ describe("getComposerReasoningStep", () => {
     }
   });
 
-  it("steps Antigravity's thinking_level like other effort controls", () => {
-    expect(
-      step({
-        provider: ProviderDriverKind.make("antigravity"),
-        models: modelWith([selectDescriptor("thinking_level", LEVELS)]),
-      })?.modelOptions,
-    ).toStrictEqual(selections(["thinking_level", "high"]));
-  });
-
   it("never steps into Ultrathink and strips a typed prefix with the caret on the same character", () => {
     expect(step({ ...CLAUDE, modelOptions: selections(["effort", "high"]) })).toStrictEqual({
       prompt: "Fix the bug",
@@ -354,8 +325,8 @@ describe("getComposerReasoningStep", () => {
 
   it("keeps a provider-default Fast mode off unless the user chose it", () => {
     const cursor = {
-      provider: ProviderDriverKind.make("cursor"),
-      instanceId: ProviderInstanceId.make("cursor"),
+      provider: ProviderDriverKind.make("codex"),
+      instanceId: ProviderInstanceId.make("codex"),
       models: modelWith([
         selectDescriptor("reasoning_effort", LEVELS),
         booleanDescriptor("fastMode", true),

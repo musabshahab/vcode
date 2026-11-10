@@ -79,21 +79,13 @@ describe("usage source messages", () => {
   it("retains other diagnostics beside the combined warning", () => {
     const source = malformedSource(1);
     const readFailure = "2 transcript path(s) could not be read; usage may be incomplete.";
-    const cursor = malformedSource(0, {
-      fingerprint: { ...source.fingerprint, provider: "cursor" },
-      status: "ok",
-      message: "Cursor history is limited to the last 30 days.",
-    });
-
     expect(
       usageSourceMessages([
         { ...source, message: `${readFailure} ${source.message}` },
         { ...source, malformedRecords: 0, message: readFailure },
-        cursor,
       ]),
     ).toEqual([
       readFailure,
-      cursor.message,
       "1 malformed or inconsistent usage record(s) were skipped; usage may be incomplete.",
     ]);
   });

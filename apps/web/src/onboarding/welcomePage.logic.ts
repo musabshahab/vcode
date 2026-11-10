@@ -3,7 +3,6 @@ import {
   managedCapabilityDenial,
   type ManagedPolicySummary,
   type ProviderInstanceConfig,
-  ProviderDriverKind,
   type ProviderInstanceId,
   resolveProjectProviderInstanceEnabled,
   type ServerProvider,
@@ -20,8 +19,6 @@ type FoundState = keyof typeof FOUND_ORDER;
 
 const isFoundState = (state: string): state is FoundState => state in FOUND_ORDER;
 
-const ACP_REGISTRY_DRIVER = ProviderDriverKind.make("acpRegistry");
-
 /**
  * An agent's state for new threads on this computer. The server also lists agents that only some
  * projects turn on, lists an agent it could not load as off, which Turn on cannot fix, and can pass
@@ -37,8 +34,7 @@ export function welcomeAgentState(
   }
   const state = getOnboardingProviderState(provider);
   if (state === "ready" && provider.compatibilityAdvisory?.status === "broken") return "attention";
-  // An ACP agent that is not prepared reports the same fields as one still being checked.
-  return state === "checking" && provider.driver === ACP_REGISTRY_DRIVER ? "attention" : state;
+  return state;
 }
 
 /**

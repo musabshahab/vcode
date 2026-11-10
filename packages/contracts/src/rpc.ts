@@ -51,31 +51,6 @@ import {
   ProviderSetupInput,
 } from "./providerSetup.ts";
 
-import {
-  AcpRegistryAcceptUrlAuthInput,
-  AcpRegistryAcceptUrlAuthResult,
-  AcpRegistryDeleteSessionInput,
-  AcpRegistryDeleteSessionResult,
-  AcpRegistryDisableProviderInput,
-  AcpRegistryDisableProviderResult,
-  AcpRegistryImportSessionInput,
-  AcpRegistryImportSessionResult,
-  AcpRegistryListSessionsInput,
-  AcpRegistryListSessionsResult,
-  AcpRegistryListProvidersInput,
-  AcpRegistryListProvidersResult,
-  AcpRegistryLogoutInput,
-  AcpRegistryLogoutResult,
-  AcpRegistryManagedBinaryUninstallInput,
-  AcpRegistryManagedBinaryUninstallResult,
-  AcpRegistryOperationError,
-  AcpRegistryPrepareInput,
-  AcpRegistryPrepareResult,
-  AcpRegistrySearchInput,
-  AcpRegistrySearchResult,
-  AcpRegistrySetProviderInput,
-  AcpRegistrySetProviderResult,
-} from "./acpRegistry.ts";
 import { ExternalLauncherError, LaunchEditorInput } from "./editor.ts";
 import {
   AuthAccessStreamError,
@@ -224,7 +199,6 @@ import {
 import {
   ORCHESTRATION_V2_WS_METHODS,
   OrchestrationGetWorkflowScriptError,
-  OrchestrationV2GetNativeChildWorkError,
   OrchestrationV2StopWorkflowError,
   OrchestrationV2ForceStopThreadError,
   OrchestrationV2DispatchCommandError,
@@ -523,17 +497,6 @@ export const WS_METHODS = {
   peerLinksAnswerRequest: "peerLinks.answerRequest",
   serverUpdateSettings: "server.updateSettings",
   serverDiscoverSourceControl: "server.discoverSourceControl",
-  serverSearchAcpRegistry: "server.searchAcpRegistry",
-  serverPrepareAcpRegistryAgent: "server.prepareAcpRegistryAgent",
-  serverUninstallAcpRegistryManagedBinary: "server.uninstallAcpRegistryManagedBinary",
-  serverAcceptAcpRegistryUrlAuth: "server.acceptAcpRegistryUrlAuth",
-  serverListAcpRegistrySessions: "server.listAcpRegistrySessions",
-  serverImportAcpRegistrySession: "server.importAcpRegistrySession",
-  serverDeleteAcpRegistrySession: "server.deleteAcpRegistrySession",
-  serverListAcpRegistryProviders: "server.listAcpRegistryProviders",
-  serverSetAcpRegistryProvider: "server.setAcpRegistryProvider",
-  serverDisableAcpRegistryProvider: "server.disableAcpRegistryProvider",
-  serverLogoutAcpRegistry: "server.logoutAcpRegistry",
   serverGetTraceDiagnostics: "server.getTraceDiagnostics",
   serverGetProcessDiagnostics: "server.getProcessDiagnostics",
   serverGetHostResources: "server.getHostResources",
@@ -863,78 +826,6 @@ const WsServerDiscoverSourceControlRpc = Rpc.make(WS_METHODS.serverDiscoverSourc
   payload: Schema.Struct({}),
   success: SourceControlDiscoveryResult,
   error: EnvironmentAuthorizationError,
-});
-
-const WsServerSearchAcpRegistryRpc = Rpc.make(WS_METHODS.serverSearchAcpRegistry, {
-  payload: AcpRegistrySearchInput,
-  success: AcpRegistrySearchResult,
-  error: Schema.Union([AcpRegistryOperationError, EnvironmentAuthorizationError]),
-});
-
-const WsServerPrepareAcpRegistryAgentRpc = Rpc.make(WS_METHODS.serverPrepareAcpRegistryAgent, {
-  payload: AcpRegistryPrepareInput,
-  success: AcpRegistryPrepareResult,
-  error: Schema.Union([AcpRegistryOperationError, EnvironmentAuthorizationError]),
-});
-
-const WsServerUninstallAcpRegistryManagedBinaryRpc = Rpc.make(
-  WS_METHODS.serverUninstallAcpRegistryManagedBinary,
-  {
-    payload: AcpRegistryManagedBinaryUninstallInput,
-    success: AcpRegistryManagedBinaryUninstallResult,
-    error: Schema.Union([AcpRegistryOperationError, EnvironmentAuthorizationError]),
-  },
-);
-
-const WsServerAcceptAcpRegistryUrlAuthRpc = Rpc.make(WS_METHODS.serverAcceptAcpRegistryUrlAuth, {
-  payload: AcpRegistryAcceptUrlAuthInput,
-  success: AcpRegistryAcceptUrlAuthResult,
-  error: EnvironmentAuthorizationError,
-});
-
-const WsServerListAcpRegistrySessionsRpc = Rpc.make(WS_METHODS.serverListAcpRegistrySessions, {
-  payload: AcpRegistryListSessionsInput,
-  success: AcpRegistryListSessionsResult,
-  error: Schema.Union([AcpRegistryOperationError, EnvironmentAuthorizationError]),
-});
-
-const WsServerImportAcpRegistrySessionRpc = Rpc.make(WS_METHODS.serverImportAcpRegistrySession, {
-  payload: AcpRegistryImportSessionInput,
-  success: AcpRegistryImportSessionResult,
-  error: Schema.Union([AcpRegistryOperationError, EnvironmentAuthorizationError]),
-});
-
-const WsServerDeleteAcpRegistrySessionRpc = Rpc.make(WS_METHODS.serverDeleteAcpRegistrySession, {
-  payload: AcpRegistryDeleteSessionInput,
-  success: AcpRegistryDeleteSessionResult,
-  error: Schema.Union([AcpRegistryOperationError, EnvironmentAuthorizationError]),
-});
-
-const WsServerListAcpRegistryProvidersRpc = Rpc.make(WS_METHODS.serverListAcpRegistryProviders, {
-  payload: AcpRegistryListProvidersInput,
-  success: AcpRegistryListProvidersResult,
-  error: Schema.Union([AcpRegistryOperationError, EnvironmentAuthorizationError]),
-});
-
-const WsServerSetAcpRegistryProviderRpc = Rpc.make(WS_METHODS.serverSetAcpRegistryProvider, {
-  payload: AcpRegistrySetProviderInput,
-  success: AcpRegistrySetProviderResult,
-  error: Schema.Union([AcpRegistryOperationError, EnvironmentAuthorizationError]),
-});
-
-const WsServerDisableAcpRegistryProviderRpc = Rpc.make(
-  WS_METHODS.serverDisableAcpRegistryProvider,
-  {
-    payload: AcpRegistryDisableProviderInput,
-    success: AcpRegistryDisableProviderResult,
-    error: Schema.Union([AcpRegistryOperationError, EnvironmentAuthorizationError]),
-  },
-);
-
-const WsServerLogoutAcpRegistryRpc = Rpc.make(WS_METHODS.serverLogoutAcpRegistry, {
-  payload: AcpRegistryLogoutInput,
-  success: AcpRegistryLogoutResult,
-  error: Schema.Union([AcpRegistryOperationError, EnvironmentAuthorizationError]),
 });
 
 const WsServerGetTraceDiagnosticsRpc = Rpc.make(WS_METHODS.serverGetTraceDiagnostics, {
@@ -1890,15 +1781,6 @@ const WsOrchestrationV2GetWorkflowScriptRpc = Rpc.make(
   },
 );
 
-const WsOrchestrationV2GetNativeChildWorkRpc = Rpc.make(
-  ORCHESTRATION_V2_WS_METHODS.getNativeChildWork,
-  {
-    payload: OrchestrationV2RpcSchemas.getNativeChildWork.input,
-    success: OrchestrationV2RpcSchemas.getNativeChildWork.output,
-    error: Schema.Union([OrchestrationV2GetNativeChildWorkError, EnvironmentAuthorizationError]),
-  },
-);
-
 const WsOrchestrationV2GetTurnItemRpc = Rpc.make(ORCHESTRATION_V2_WS_METHODS.getTurnItem, {
   payload: OrchestrationV2RpcSchemas.getTurnItem.input,
   success: OrchestrationV2RpcSchemas.getTurnItem.output,
@@ -2101,17 +1983,6 @@ export const WsRpcGroup = RpcGroup.make(
   WsPeerLinksUnlinkRpc,
   WsPeerLinksAnswerRequestRpc,
   WsServerDiscoverSourceControlRpc,
-  WsServerSearchAcpRegistryRpc,
-  WsServerPrepareAcpRegistryAgentRpc,
-  WsServerUninstallAcpRegistryManagedBinaryRpc,
-  WsServerAcceptAcpRegistryUrlAuthRpc,
-  WsServerListAcpRegistrySessionsRpc,
-  WsServerImportAcpRegistrySessionRpc,
-  WsServerDeleteAcpRegistrySessionRpc,
-  WsServerListAcpRegistryProvidersRpc,
-  WsServerSetAcpRegistryProviderRpc,
-  WsServerDisableAcpRegistryProviderRpc,
-  WsServerLogoutAcpRegistryRpc,
   WsServerGetTraceDiagnosticsRpc,
   WsServerGetProcessDiagnosticsRpc,
   WsServerGetHostResourcesRpc,
@@ -2262,7 +2133,6 @@ export const WsRpcGroup = RpcGroup.make(
   WsSubscribeResourceTelemetryRpc,
   WsOrchestrationV2DispatchCommandRpc,
   WsOrchestrationV2GetWorkflowScriptRpc,
-  WsOrchestrationV2GetNativeChildWorkRpc,
   WsOrchestrationV2StopWorkflowRpc,
   WsOrchestrationV2ForceStopThreadRpc,
   WsOrchestrationV2GetTurnItemRpc,

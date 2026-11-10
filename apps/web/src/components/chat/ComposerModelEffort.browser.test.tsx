@@ -65,7 +65,7 @@ function traitsInput(
   onModelOptionsChange: (next: ReadonlyArray<ProviderOptionSelection> | undefined) => void,
 ): TraitsSelectionInput {
   return {
-    provider: ProviderDriverKind.make("acpRegistry"),
+    provider: ProviderDriverKind.make("claudeAgent"),
     instanceId: ProviderInstanceId.make("devin"),
     models,
     model: "fusion",

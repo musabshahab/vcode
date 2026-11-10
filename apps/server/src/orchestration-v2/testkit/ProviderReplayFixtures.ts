@@ -20,23 +20,11 @@ import {
   runOrchestratorV2ProviderReplayScenario,
   type OrchestratorV2ProviderReplayHarness,
 } from "./ProviderReplayHarness.ts";
-import { materializeReplayTranscriptRuntimeInstructions } from "./ReplayRuntimeInstructions.ts";
 
 // Each driver's fixtures run from its own <Provider>ReplayFixtures.integration.test.ts,
 // so a focused run loads one adapter. A fixture for a driver missing here would
 // silently never run, so loading this module fails instead.
-const DRIVERS_WITH_REPLAY_FIXTURE_FILES = new Set([
-  "acpRegistry",
-  "claudeAgent",
-  "codex",
-  "cursor",
-  "fx",
-  "grok",
-  "kiro",
-  "muse",
-  "opencode",
-  "pi",
-]);
+const DRIVERS_WITH_REPLAY_FIXTURE_FILES = new Set(["claudeAgent", "codex"]);
 for (const fixture of ORCHESTRATOR_REPLAY_FIXTURES) {
   for (const provider of fixture.providers) {
     if (!DRIVERS_WITH_REPLAY_FIXTURE_FILES.has(provider.driver)) {
@@ -47,7 +35,7 @@ for (const fixture of ORCHESTRATOR_REPLAY_FIXTURES) {
   }
 }
 
-export const readReplayFixtureTranscript = Effect.fn("readOrchestratorReplayTranscript")(function* (
+const readReplayFixtureTranscript = Effect.fn("readOrchestratorReplayTranscript")(function* (
   file: URL,
 ) {
   return yield* readProviderReplayTranscript(file);
@@ -116,9 +104,9 @@ const runFixtureProvider = Effect.fn("runOrchestratorReplayFixture")(function* <
 >(input: ReplayFixtureRun<Transcript, Error, WorkspaceError>) {
   const recordedTranscript = yield* readReplayFixtureTranscript(input.driver.transcriptFile);
   const rawTranscript = input.transformTranscript?.(recordedTranscript) ?? recordedTranscript;
-  const replayTranscript = materializeReplayTranscriptRuntimeInstructions(
-    transcriptEntriesThroughLabel(rawTranscript, input.driver.transcriptEntriesThroughLabel),
-    { driver: input.driver.driver, model: input.driver.modelSelection.model },
+  const replayTranscript = transcriptEntriesThroughLabel(
+    rawTranscript,
+    input.driver.transcriptEntriesThroughLabel,
   );
   const fixtureInput = input.buildInput();
   const workspace = yield* checkpointWorkspace(input.fixtureName, fixtureInput.workspaceFiles);

@@ -60,7 +60,7 @@ const PRICING = { status: "unavailable" as const, source: "test", fetchedAt: nul
 const cursorSource = (refreshing: boolean): UsageSource => ({
   fingerprint: {
     hostId: "cursor.com",
-    provider: "cursor",
+    provider: "claude",
     resolvedHomePath: "cursor-account:abc",
     volumeId: "abc",
   },

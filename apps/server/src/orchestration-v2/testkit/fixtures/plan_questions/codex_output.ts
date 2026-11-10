@@ -18,7 +18,7 @@ import {
   projectionFor,
 } from "../shared.ts";
 
-export function assertPlanQuestionsOutputBase(
+function assertPlanQuestionsOutputBase(
   result: OrchestratorV2ScenarioResult,
   transcript: ProviderReplayTranscript,
 ) {
@@ -46,14 +46,6 @@ function assertPlanQuestionId(
   const requestItem = projection.turnItems.find((item) => item.type === "user_input_request");
   assert.isDefined(requestItem);
   assert.equal(requestItem?.questions[0]?.id, questionId);
-}
-
-export function assertPlanQuestionsOutput(
-  result: OrchestratorV2ScenarioResult,
-  transcript: ProviderReplayTranscript,
-) {
-  assertPlanQuestionsOutputBase(result, transcript);
-  assertPlanQuestionId(result, transcript, "schema_vs_ui_flexibility");
 }
 
 export function assertCodexPlanQuestionsOutput(

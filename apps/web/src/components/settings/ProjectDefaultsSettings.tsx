@@ -75,12 +75,7 @@ export function ProjectDefaultsSettings({ category }: { category: ProjectSetting
     ? resolveEffectiveDefaultModelSelection(settings, providers, storedSelection)
     : null;
   const entries = providerInstanceEntriesFor(providers, settings, target?.projectId ?? null);
-  const modelOptions = getCustomModelOptionsByInstance(
-    settings,
-    providers,
-    selection?.instanceId,
-    selection?.model,
-  );
+  const modelOptions = getCustomModelOptionsByInstance(settings, providers);
   const activeEntry = entries.find((entry) => entry.instanceId === selection?.instanceId);
   const mixedModel = defaultModelSelectionsAreMixed(
     clientSettings,
@@ -96,12 +91,7 @@ export function ProjectDefaultsSettings({ category }: { category: ProjectSetting
   const mixedFallback = useScopedSettingsMixed(["fallbackModelSelection"]);
   const fallbackSelection = settings.fallbackModelSelection ?? selection;
   const fallbackEntry = entries.find((entry) => entry.instanceId === fallbackSelection?.instanceId);
-  const fallbackModelOptions = getCustomModelOptionsByInstance(
-    settings,
-    providers,
-    fallbackSelection?.instanceId,
-    fallbackSelection?.model,
-  );
+  const fallbackModelOptions = getCustomModelOptionsByInstance(settings, providers);
   const mixedPermissions = useScopedSettingsMixed(["defaultRuntimeMode"]);
   const PermissionIcon = runtimeModeConfig[settings.defaultRuntimeMode].icon;
   const mixedWorkspace = useScopedSettingsMixed(["defaultThreadEnvMode"]);

@@ -34,10 +34,10 @@ const decodeServerSettingsPatch = Schema.decodeUnknownSync(ServerSettingsPatch);
 const FOLDED_SERVER_SETTINGS = { ...DEFAULT_SERVER_SETTINGS, projectSettingsFolded: true };
 
 describe("fallbackTextGenerationModelSelection", () => {
-  it("uses Big Pickle when only OpenCode is enabled", () => {
+  it("uses Claude's text model when only Claude is enabled", () => {
     expect(
-      fallbackTextGenerationModelSelection({}, (instanceId) => instanceId === "opencode"),
-    ).toEqual({ instanceId: "opencode", model: "opencode/big-pickle" });
+      fallbackTextGenerationModelSelection({}, (instanceId) => instanceId === "claudeAgent"),
+    ).toEqual({ instanceId: "claudeAgent", model: "claude-haiku-5-5" });
   });
 
   it("replaces and clears the fallback without carrying model options", () => {

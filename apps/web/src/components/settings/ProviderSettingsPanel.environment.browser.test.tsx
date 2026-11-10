@@ -30,8 +30,6 @@ const state = vi.hoisted(() => ({
   mutationEnvironmentIds: [] as string[],
   refresh: vi.fn(),
   updateProvider: vi.fn(),
-  uninstall: vi.fn(),
-  acceptUrlAuth: vi.fn(),
   updateSettings: vi.fn(),
   updateModelPreferences: vi.fn(),
   toggleFavorite: vi.fn(),
@@ -50,8 +48,6 @@ vi.mock(import("../../state/server"), async (original) => {
   const commandLabels = {
     refreshProviders: "refresh",
     updateProvider: "update",
-    uninstallAcpRegistryManagedBinary: "uninstall",
-    acceptAcpRegistryUrlAuth: "accept-url-auth",
   } as const;
   const labelled = Object.fromEntries(
     Object.entries(commandLabels).map(([key, label]) => [
@@ -77,8 +73,6 @@ vi.mock(import("../../state/use-atom-command"), async (original) => ({
     ({
       refresh: state.refresh,
       update: state.updateProvider,
-      uninstall: state.uninstall,
-      "accept-url-auth": state.acceptUrlAuth,
     })[command.label ?? ""] ?? vi.fn()) as never,
 }));
 vi.mock(import("~/localApi"), async (original) => {
@@ -243,8 +237,6 @@ async function setup() {
   state.confirm.mockReset().mockResolvedValue(false);
   state.refresh.mockReset().mockResolvedValue(AsyncResult.success(undefined));
   state.updateProvider.mockReset().mockResolvedValue(AsyncResult.success(undefined));
-  state.uninstall.mockReset().mockResolvedValue(AsyncResult.success({}));
-  state.acceptUrlAuth.mockReset().mockResolvedValue(AsyncResult.success({ accepted: true }));
   await setProviders([]);
 }
 
@@ -282,43 +274,6 @@ describe("EnvironmentProviderSettings routing", () => {
       },
       {},
     );
-  });
-
-  it("routes explicit ACP browser authentication consent to the selected environment", async () => {
-    await setup();
-    const instanceId = ProviderInstanceId.make("acpRegistry_antigravity");
-    const action = {
-      elicitationId: "google-login-1",
-      url: "https://accounts.google.com/login",
-      message: "Continue with Google",
-    };
-    state.settings = {
-      ...DEFAULT_UNIFIED_SETTINGS,
-      providerInstances: {
-        [instanceId]: {
-          driver: ProviderDriverKind.make("acpRegistry"),
-          enabled: true,
-          config: { agentId: "antigravity" },
-        },
-      },
-    };
-    await setProviders([
-      {
-        ...provider(),
-        instanceId,
-        driver: ProviderDriverKind.make("acpRegistry"),
-        auth: { status: "unauthenticated", action },
-      },
-    ]);
-    await using _screen = await render(panel({ targetInstanceId: instanceId }));
-    const link = page.getByRole("link", { name: "Continue authentication" });
-    link.element().addEventListener("click", (event) => event.preventDefault());
-    await userEvent.click(link);
-
-    expect(state.acceptUrlAuth).toHaveBeenCalledWith({
-      environmentId,
-      input: { instanceId, elicitationId: action.elicitationId },
-    });
   });
 
   it("lets a signed-out managed Codex account switch to the existing CLI", async () => {
@@ -398,33 +353,6 @@ describe("EnvironmentProviderSettings instance removal", () => {
         instanceId: codexId,
       }),
     );
-  });
-
-  it("warns that resetting an enabled default-off provider turns it off", async () => {
-    await setup();
-    const antigravityId = ProviderInstanceId.make("antigravity");
-    const antigravity = ProviderDriverKind.make("antigravity");
-    state.settings = {
-      ...DEFAULT_UNIFIED_SETTINGS,
-      providerInstances: {
-        [antigravityId]: {
-          driver: antigravity,
-          enabled: true,
-          config: { binaryPath: "/opt/antigravity/bin/agy" },
-        },
-      },
-    };
-    await setProviders([{ ...provider(), instanceId: antigravityId, driver: antigravity }]);
-    await using _screen = await render(panel({ targetInstanceId: antigravityId }));
-    await userEvent.click(page.getByRole("button", { name: /^Reset .* provider settings/ }));
-
-    expect(state.confirm).toHaveBeenCalledWith(
-      expect.stringContaining("It will also be turned off."),
-      {
-        variant: "destructive",
-      },
-    );
-    expect(state.mutateProviderInstance).not.toHaveBeenCalled();
   });
 
   it("deletes a custom instance only once the user confirms", async () => {

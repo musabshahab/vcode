@@ -4,7 +4,6 @@ import type { OrchestrationV2TurnItem, ProviderReplayTranscript } from "@t3tools
 import type { OrchestratorV2ScenarioResult } from "../../OrchestratorScenario.ts";
 import {
   assertBaseProjection,
-  assertNoAcpClientFileOrTerminalRequests,
   assertSemanticProjectionIntegrity,
   assertUserMessagesInclude,
   assertVisibleTurnItemsMirrorLocalTurnItems,
@@ -61,31 +60,6 @@ export function assertToolCallReadOnlyOnRequestOutput(
   }
 }
 
-export function assertToolCallReadOnlyOnRequestGrokOutput(
-  result: OrchestratorV2ScenarioResult,
-  transcript: ProviderReplayTranscript,
-) {
-  assertToolCallReadOnlyOnRequestOutput(result, transcript);
-  assertNoAcpClientFileOrTerminalRequests(transcript);
-  const permissionKinds = transcript.entries.flatMap((entry) => {
-    if (entry.type !== "emit_inbound") return [];
-    const frame = entry.frame as {
-      method?: unknown;
-      params?: { toolCall?: { kind?: unknown } };
-    };
-    return frame.method === "session/request_permission" ? [frame.params?.toolCall?.kind] : [];
-  });
-  assert.deepEqual(permissionKinds, ["edit"], "Grok must ask T3 before its own write");
-
-  const approval = projectionFor(result, transcript.scenario).turnItems.find(
-    (item) => item.type === "approval_request",
-  );
-  assert.deepEqual(
-    approval?.type === "approval_request" ? approval.options?.map((option) => option.decision) : [],
-    ["cancel", "decline", "acceptForSession", "accept"],
-  );
-}
-
 function writtenContent(item: OrchestrationV2TurnItem): string | undefined {
   switch (item.type) {
     case "command_execution":
@@ -95,39 +69,4 @@ function writtenContent(item: OrchestrationV2TurnItem): string | undefined {
     default:
       return undefined;
   }
-}
-
-// Kiro gates the write with its own prompt and, Supervised under the explicit
-// approval policy, then asks the user to review the turn's changes. Its
-// prompts carry the tool call id but no kind, and only the choices T3 can
-// honour (no session-wide "always") reach the card.
-export function assertToolCallReadOnlyOnRequestKiroOutput(
-  result: OrchestratorV2ScenarioResult,
-  transcript: ProviderReplayTranscript,
-) {
-  assertBaseProjection({ result, transcript, runCount: 1, runStatuses: ["completed"] });
-  const projection = projectionFor(result, transcript.scenario);
-  assertSemanticProjectionIntegrity(projection);
-  assertUserMessagesInclude(projection, [TOOL_CALL_WRITE_PROMPT]);
-  assertNoAcpClientFileOrTerminalRequests(transcript);
-  assert.deepEqual(
-    projection.runtimeRequests.map((request) => [request.status, request.decision]),
-    [
-      ["resolved", "accept"],
-      ["resolved", "accept"],
-    ],
-    "the write and Kiro's review of changes both reach the user",
-  );
-  const writes = projection.turnItems.filter(
-    (item) => item.type === "command_execution" || item.type === "file_change",
-  );
-  assert.isTrue(
-    writes.some((item) => item.status === "completed"),
-    "the approved write must complete",
-  );
-  const approval = projection.turnItems.find((item) => item.type === "approval_request");
-  assert.deepEqual(
-    approval?.type === "approval_request" ? approval.options?.map((option) => option.decision) : [],
-    ["accept", "decline", "cancel"],
-  );
 }

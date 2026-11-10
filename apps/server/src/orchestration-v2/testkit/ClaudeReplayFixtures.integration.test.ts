@@ -17,7 +17,6 @@ import { provideDeterministicTestRuntime } from "./DeterministicRuntime.ts";
 import { subagentInput } from "./fixtures/subagent/input.ts";
 import { runOrchestratorV2Scenario } from "./OrchestratorScenario.ts";
 import * as ProviderReplayHarness from "./ProviderReplayHarness.ts";
-import { materializeReplayTranscriptRuntimeInstructions } from "./ReplayRuntimeInstructions.ts";
 import {
   CLAUDE_MODEL_SELECTION,
   materializeFixtureInput,
@@ -49,12 +48,7 @@ describe("Claude Agent SDK replay fixtures", () => {
   it.effect("refuses messages to a native subagent thread without touching it", () =>
     Effect.gen(function* () {
       const raw = yield* readClaudeTranscriptFixture("subagent");
-      const transcript = yield* ClaudeOrchestratorReplayHarness.decodeTranscript(
-        materializeReplayTranscriptRuntimeInstructions(raw, {
-          driver: ProviderDriverKind.make("claudeAgent"),
-          model: CLAUDE_MODEL_SELECTION.model,
-        }),
-      );
+      const transcript = yield* ClaudeOrchestratorReplayHarness.decodeTranscript(raw);
       const materialized = yield* materializeFixtureInput({
         scenario: "subagent",
         fixtureInput: subagentInput(),

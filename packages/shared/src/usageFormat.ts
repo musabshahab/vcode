@@ -28,7 +28,6 @@ export function usageSourceMessages(sources: readonly UsageSource[]): readonly s
     if (
       source.status !== "partial" &&
       source.status !== "failed" &&
-      source.fingerprint.provider !== "cursor" &&
       !(source.status === "missing" && source.malformedRecords > 0)
     ) {
       continue;

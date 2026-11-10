@@ -78,9 +78,9 @@ function environment(id: string, usageSummary: UsageSummary): EnvironmentUsage {
 }
 
 describe("mergeUsage", () => {
-  it("counts a Cursor account once across servers while retaining each server's other providers", () => {
+  it("counts a Claude account once across servers while retaining each server's other providers", () => {
     const account = {
-      provider: "cursor" as const,
+      provider: "claude" as const,
       hostId: "cursor.com",
       homePath: "cursor-account:account-hash",
       volumeId: "account-hash",
@@ -89,16 +89,16 @@ describe("mergeUsage", () => {
       [
         environment(
           "mac",
-          summary([bucket({ provider: "cursor", sourcePath: account.homePath })], [account]),
+          summary([bucket({ provider: "claude", sourcePath: account.homePath })], [account]),
         ),
         environment(
           "linux",
           summary(
             [
-              bucket({ provider: "cursor", sourcePath: account.homePath }),
-              bucket({ provider: "opencode", sourcePath: "/opencode" }),
+              bucket({ provider: "claude", sourcePath: account.homePath }),
+              bucket({ provider: "codex", sourcePath: "/opencode" }),
             ],
-            [account, { provider: "opencode", hostId: "linux", homePath: "/opencode" }],
+            [account, { provider: "codex", hostId: "linux", homePath: "/opencode" }],
           ),
         ),
       ],
@@ -107,8 +107,8 @@ describe("mergeUsage", () => {
     expect(
       merged.providers.map((provider) => [provider.provider, provider.costUsd]).sort(),
     ).toEqual([
-      ["cursor", 10],
-      ["opencode", 10],
+      ["claude", 10],
+      ["codex", 10],
     ]);
     expect(merged.duplicateSources).toHaveLength(1);
   });
@@ -165,12 +165,12 @@ describe("mergeUsage", () => {
 
   it("counts overlapping provider roots once while keeping each environment's unique root", () => {
     const source = (homePath: string) => ({
-      provider: "opencode" as const,
+      provider: "codex" as const,
       hostId: "host",
       homePath,
     });
     const usage = (sourcePath: string, costUsd: number) =>
-      bucket({ provider: "opencode", sourcePath, costUsd });
+      bucket({ provider: "codex", sourcePath, costUsd });
     const merged = mergeUsage(
       [
         environment(

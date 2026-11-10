@@ -56,15 +56,15 @@ describe("compatibility banners", () => {
     ).toBeNull();
   });
 
-  it("shows downgrade guidance instead of a broken OpenCode inventory timeout", () => {
+  it("shows downgrade guidance instead of a broken provider inventory timeout", () => {
     const message = "This provider version is known to be incompatible. Use 1.14.19.";
     const broken: ServerProvider = {
       ...provider,
-      driver: ProviderDriverKind.make("opencode"),
+      driver: ProviderDriverKind.make("codex"),
       version: "2.0.3",
       status: "error",
       auth: { status: "unknown" },
-      message: "Failed to load OpenCode provider inventory: Timed out waiting for server start.",
+      message: "Failed to load Codex provider inventory: Timed out waiting for server start.",
       compatibilityAdvisory: {
         status: "broken",
         message,

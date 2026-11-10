@@ -51,7 +51,6 @@ import {
 import { Tooltip, TooltipTrigger, TooltipPopup } from "../ui/tooltip";
 import {
   applyProviderInstanceSettings,
-  brandProviderInstanceEntries,
   deriveProviderInstanceEntries,
   shouldShowInstanceBadge,
   type ProviderInstanceEntry,
@@ -215,7 +214,6 @@ export function SubagentElapsed({ agent }: { agent: Parameters<typeof AgentElaps
 function SubagentAvatar({
   driver,
   displayName,
-  iconUrl,
   accentColor,
   showBadge,
   status,
@@ -223,7 +221,6 @@ function SubagentAvatar({
 }: {
   driver?: ProviderDriverKind | undefined;
   displayName?: string | undefined;
-  iconUrl?: string | undefined;
   accentColor?: string | undefined;
   showBadge: boolean;
   status?: OrchestrationV2TurnItem["status"] | undefined;
@@ -242,7 +239,6 @@ function SubagentAvatar({
           driverKind={driver}
           displayName={displayName ?? driver}
           accentColor={accentColor}
-          acpRegistryIconUrl={iconUrl}
           showBadge={showBadge}
           size="compact"
           className="z-auto"
@@ -281,11 +277,8 @@ export function EnvironmentSubagentAvatar({
 }) {
   const providerEnvironmentId = remote?.environmentId ?? environmentId;
   const providersAtom = serverEnvironment.providersValueAtom(providerEnvironmentId);
-  const settings = useAtomValue(serverEnvironment.settingsValueAtom(providerEnvironmentId));
-  const entries = (providers: ReadonlyArray<ServerProvider> | null | undefined) => {
-    const derived = deriveProviderInstanceEntries(providers ?? []);
-    return settings ? brandProviderInstanceEntries(derived, settings) : derived;
-  };
+  const entries = (providers: ReadonlyArray<ServerProvider> | null | undefined) =>
+    deriveProviderInstanceEntries(providers ?? []);
   const providerDriver = useAtomValue(
     providersAtom,
     (providers) =>
@@ -306,17 +299,11 @@ export function EnvironmentSubagentAvatar({
     const entry = all.find((candidate) => candidate.instanceId === providerInstanceId);
     return entry !== undefined && shouldShowInstanceBadge(entry, all);
   });
-  const iconUrl = useAtomValue(
-    providersAtom,
-    (providers) =>
-      providers?.find((provider) => provider.instanceId === providerInstanceId)?.iconUrl,
-  );
   return (
     <SubagentAvatar
       {...props}
       driver={providerDriver ?? (remote === undefined ? driver : undefined)}
       displayName={displayName}
-      iconUrl={iconUrl}
       accentColor={accentColor}
       showBadge={showBadge}
     />
@@ -706,8 +693,6 @@ function HandoffEndpoint(props: {
               driverKind={entry?.driverKind ?? ProviderDriverKind.make(props.instanceId)}
               displayName={entry?.displayName ?? props.instanceId}
               accentColor={entry?.accentColor}
-              acpRegistryAgentId={entry?.acpRegistryAgentId}
-              acpRegistryIconUrl={entry?.acpRegistryIconUrl}
               showBadge={showBadge}
               size="compact"
               iconClassName={cn(showBadge && "opacity-60")}

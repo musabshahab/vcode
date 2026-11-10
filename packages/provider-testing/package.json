@@ -18,10 +18,6 @@
     "./replayWorkspace": {
       "types": "./src/replayWorkspace.ts",
       "import": "./src/replayWorkspace.ts"
-    },
-    "./TestProviderHost": {
-      "types": "./src/TestProviderHost.ts",
-      "import": "./src/TestProviderHost.ts"
     }
   },
   "scripts": {
@@ -30,7 +26,6 @@
   "dependencies": {
     "@effect/platform-node": "catalog:",
     "@t3tools/contracts": "workspace:*",
-    "@t3tools/provider-core": "workspace:*",
     "@t3tools/shared": "workspace:*",
     "effect": "catalog:"
   },

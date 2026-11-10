@@ -64,22 +64,23 @@ describe("groupWelcomeAgents", () => {
   });
 
   it("uses this computer's settings and keeps agents that failed to load with the found ones", () => {
-    const acpRegistry = ProviderDriverKind.make("acpRegistry");
     const settings: Pick<ServerSettings, "providerInstances" | "projectSettingsOverrides"> = {
       providerInstances: {
-        [ProviderInstanceId.make("pi")]: { driver: ProviderDriverKind.make("pi") },
-        [ProviderInstanceId.make("registry")]: { driver: acpRegistry },
+        [ProviderInstanceId.make("claude")]: {
+          driver: ProviderDriverKind.make("claude"),
+          enabled: false,
+        },
       },
       projectSettingsOverrides: {
         [ProjectId.make("project-a")]: {
-          providerInstances: { [ProviderInstanceId.make("pi")]: { enabled: true } },
+          providerInstances: { [ProviderInstanceId.make("claude")]: { enabled: true } },
         },
       },
     };
     const groups = groupWelcomeAgents(
       [
-        // The server checks Pi because project A turns it on; new projects still cannot use it.
-        provider("Pi"),
+        // The server checks Claude because project A turns it on; new projects still cannot use it.
+        provider("Claude"),
         provider("Broken", {
           enabled: false,
           installed: false,
@@ -96,21 +97,14 @@ describe("groupWelcomeAgents", () => {
             recommendedRange: null,
           },
         }),
-        // An ACP agent that is not prepared looks like one still being checked.
-        provider("Registry", {
-          driver: acpRegistry,
-          installed: false,
-          status: "warning",
-          auth: { status: "unknown" },
-        }),
       ],
       settings,
       nameOf,
       allowAll,
     );
 
-    expect(names(groups.found)).toEqual(["Broken", "Codex", "Registry"]);
-    expect(names(groups.available)).toEqual(["Pi"]);
+    expect(names(groups.found)).toEqual(["Broken", "Codex"]);
+    expect(names(groups.available)).toEqual(["Claude"]);
     expect(groups.readyCount).toBe(0);
     expect(groups.checking).toBe(false);
   });

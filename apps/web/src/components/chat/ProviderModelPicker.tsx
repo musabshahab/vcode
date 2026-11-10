@@ -1,5 +1,4 @@
 import {
-  ANTIGRAVITY_DEFAULT_MODEL,
   type ProviderInstanceId,
   type EnvironmentId,
   type ProviderDriverKind,
@@ -157,18 +156,12 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
   const selectedInstanceOptions = props.modelOptionsByInstance.get(activeInstanceId) ?? [];
   const selectedModel =
     resolveModelPickerSelectedModel({
-      driverKind: activeEntry?.driverKind,
       model: props.model,
       options: selectedInstanceOptions,
-    }) ??
-    (activeEntry?.driverKind === "opencode" || activeEntry?.driverKind === "antigravity"
-      ? undefined
-      : selectedInstanceOptions[0]);
+    }) ?? selectedInstanceOptions[0];
   const triggerTitle = selectedModel
     ? getTriggerDisplayModelName(selectedModel, activeEntry?.driverKind)
-    : props.model === ANTIGRAVITY_DEFAULT_MODEL
-      ? "Choose model"
-      : props.model || "Choose model";
+    : props.model || "Choose model";
   const triggerLabel = selectedModel
     ? `${getDisplayModelName(selectedModel)}${selectedModel.isUnavailable ? " (Unavailable)" : ""}`
     : triggerTitle;
@@ -231,7 +224,6 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
       (candidate) => candidate.instanceId === selection.instanceId,
     );
     const model = resolveModelPickerSelectedModel({
-      driverKind: entry?.driverKind,
       model: selection.model,
       options: props.modelOptionsByInstance.get(selection.instanceId) ?? [],
     });
@@ -382,8 +374,6 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
                       driverKind={selection.entry.driverKind}
                       displayName={selection.entry.displayName}
                       accentColor={selection.entry.accentColor}
-                      acpRegistryAgentId={selection.entry.acpRegistryAgentId}
-                      acpRegistryIconUrl={selection.entry.acpRegistryIconUrl}
                       className="size-4 rounded-full bg-(--chat-composer-glass-surface,var(--background)) ring-2 ring-(--chat-composer-glass-surface,var(--background))"
                       iconClassName="size-4"
                     />
@@ -402,8 +392,6 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
                 driverKind={activeEntry.driverKind}
                 displayName={activeEntry.displayName}
                 accentColor={activeEntry.accentColor}
-                acpRegistryAgentId={activeEntry.acpRegistryAgentId}
-                acpRegistryIconUrl={activeEntry.acpRegistryIconUrl}
                 showBadge={showInstanceBadge}
                 className="size-4"
                 iconClassName={cn("size-4", props.activeProviderIconClassName)}

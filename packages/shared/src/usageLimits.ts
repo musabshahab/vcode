@@ -22,11 +22,7 @@ const MINUTE = 60_000;
 const HOUR = 60 * MINUTE;
 const DAY = 24 * HOUR;
 
-export function exhaustedUsageWindow(
-  provider: ServerProvider | undefined,
-  now: number,
-  model?: string,
-) {
+export function exhaustedUsageWindow(provider: ServerProvider | undefined, now: number) {
   const exhausted = (provider?.usageLimits?.windows ?? []).filter(
     (window) =>
       (window.usedPercent ?? 0) >= 100 &&
@@ -34,32 +30,7 @@ export function exhaustedUsageWindow(
         !Number.isFinite(Date.parse(window.resetsAt)) ||
         Date.parse(window.resetsAt) > now),
   );
-  if (model === undefined) return exhausted[0];
-  switch (provider?.driver) {
-    case "cursor": {
-      const api = exhausted.find((window) => window.id === "apiPercentUsed");
-      const auto = exhausted.find((window) => window.id === "autoPercentUsed");
-      return /^(auto|default|grok|composer)/.test(model) ? auto && api : api;
-    }
-    case "antigravity": {
-      const family = model.match(/^(gemini|claude|gpt)-/)?.[1];
-      return exhausted.find((window) => {
-        const pool = window.id.match(/^(gemini|claude|gpt|3p)-/)?.[1];
-        return (
-          pool === undefined ||
-          family === undefined ||
-          pool === family ||
-          (pool === "3p" && (family === "claude" || family === "gpt"))
-        );
-      });
-    }
-    case "opencode":
-      return exhausted.find(
-        (window) => !window.id.startsWith("go_") || model.startsWith("opencode-go/"),
-      );
-    default:
-      return exhausted[0];
-  }
+  return exhausted[0];
 }
 
 export function resolveNewThreadModelSelection(input: {
@@ -75,7 +46,7 @@ export function resolveNewThreadModelSelection(input: {
   const unchanged = { selection, fallback: null };
   if (input.explicitSelection || !selection || !input.fallbackSelection) return unchanged;
   const provider = input.providers.find((entry) => entry.instanceId === selection.instanceId);
-  const window = exhaustedUsageWindow(provider, input.now, selection.model);
+  const window = exhaustedUsageWindow(provider, input.now);
   const fallback = input.providers.find(
     (entry) => entry.instanceId === input.fallbackSelection?.instanceId,
   );
@@ -86,7 +57,7 @@ export function resolveNewThreadModelSelection(input: {
     !fallback.installed ||
     fallback.auth.status === "unauthenticated" ||
     !isProviderAvailable(fallback) ||
-    exhaustedUsageWindow(fallback, input.now, input.fallbackSelection.model) ||
+    exhaustedUsageWindow(fallback, input.now) ||
     (input.settings &&
       !resolveProjectProviderInstanceEnabled(
         input.settings,
@@ -112,33 +83,6 @@ export const CHATGPT_WORKSPACE_ADMIN_REQUEST =
 
 export function usesChatGptSharing(provider: ServerProvider | null | undefined): boolean {
   return provider?.auth.status === "authenticated" && provider.auth.subscriptionSharing === true;
-}
-
-export const CURSOR_USAGE_WINDOWS = [
-  {
-    id: "totalPercentUsed",
-    label: "Overall",
-    description: "Combined usage across both allowances, not a third quota.",
-  },
-  {
-    id: "autoPercentUsed",
-    label: "Cursor Models",
-    description: "Grok and Composer use this first. Auto can use either pool.",
-  },
-  {
-    id: "apiPercentUsed",
-    label: "Other Models",
-    description: "Claude, GPT, and Gemini use this pool. Grok and Composer fall back here.",
-  },
-] as const;
-
-export function cursorUsageWindowDetails(id: string) {
-  return CURSOR_USAGE_WINDOWS.find((window) => window.id === id);
-}
-
-function cursorUsageWindowRank(id: string): number {
-  const rank = CURSOR_USAGE_WINDOWS.findIndex((window) => window.id === id);
-  return rank < 0 ? CURSOR_USAGE_WINDOWS.length : rank;
 }
 
 function providersWithLimits(providers: readonly ServerProvider[]): readonly ServerProvider[] {
@@ -443,23 +387,7 @@ export interface LimitPool {
 }
 
 export function displayLimitWindows(pool: LimitPool) {
-  if (pool.driver === "antigravity") {
-    return [...pool.windows].sort(
-      (left, right) =>
-        Number(!left.id.startsWith("gemini-")) - Number(!right.id.startsWith("gemini-")) ||
-        left.id
-          .replace(/-(5h|weekly|quota)$/, "")
-          .localeCompare(right.id.replace(/-(5h|weekly|quota)$/, "")) ||
-        WINDOW_KIND_ORDER[left.kind] - WINDOW_KIND_ORDER[right.kind],
-    );
-  }
-  if (pool.driver !== "cursor") return pool.windows;
-  const hasAuto = pool.windows.some((window) => window.id === "autoPercentUsed");
-  const hasApi = pool.windows.some((window) => window.id === "apiPercentUsed");
-  const hasBothPools = hasAuto && hasApi;
-  return pool.windows
-    .filter((window) => !hasBothPools || window.id !== "totalPercentUsed")
-    .sort((left, right) => cursorUsageWindowRank(left.id) - cursorUsageWindowRank(right.id));
+  return pool.windows;
 }
 
 const WINDOW_KIND_ORDER: Record<ServerProviderUsageWindow["kind"], number> = {

@@ -1,5 +1,4 @@
 import {
-  AntigravitySettings,
   ClaudeSettings,
   CodexSettings,
   defaultInstanceIdForDriver,
@@ -15,15 +14,6 @@ import {
   type RuntimeMode,
   type ServerSettings,
 } from "@t3tools/contracts";
-import { acpRegistryClient } from "@t3tools/provider-acp-registry/client";
-import { cursorClient } from "@t3tools/provider-cursor/client";
-import { fxClient } from "@t3tools/provider-fx/client";
-import { grokClient } from "@t3tools/provider-grok/client";
-import { kiroClient } from "@t3tools/provider-kiro/client";
-import { museClient } from "@t3tools/provider-muse/client";
-import { openCodeClient } from "@t3tools/provider-opencode/client";
-import { piClient } from "@t3tools/provider-pi/client";
-import type { ProviderClientDefinition } from "@t3tools/provider-core/client";
 
 interface KnownDriver {
   readonly label: string;
@@ -42,20 +32,9 @@ const known = (
     { label, configFields: new Set(Object.keys(settingsSchema.fields)), hasDefaultInstance },
   ] as const;
 
-const PACKAGED_CLIENTS: ReadonlyArray<ProviderClientDefinition> = [
-  cursorClient,
-  grokClient,
-  fxClient,
-  kiroClient,
-  museClient,
-  openCodeClient,
-  piClient,
-  acpRegistryClient,
-];
-
 /**
  * Fields that make an instance launch without the settings a pin sets: managed Codex runs T3's own
- * runtime against OpenAI, and a server URL points OpenCode at a server it does not start. A policy
+ * runtime against OpenAI. A policy
  * that owns a pin owns these too, holding each at the value given here, which clients still send
  * when they add an instance.
  */
@@ -64,17 +43,12 @@ const PIN_BYPASS_FIELDS: ReadonlyMap<
   Readonly<Record<string, unknown>>
 > = new Map<ProviderDriverKind, Readonly<Record<string, unknown>>>([
   [ProviderDriverKind.make("codex"), { setupMode: "existing" }],
-  [ProviderDriverKind.make("opencode"), { serverUrl: "" }],
 ]);
 
 /** Drivers this build knows, by the names users see; a policy naming any other is refused. */
 const KNOWN_DRIVERS: ReadonlyMap<ProviderDriverKind, KnownDriver> = new Map([
   known("codex", "Codex", CodexSettings),
   known("claudeAgent", "Claude", ClaudeSettings),
-  known("antigravity", "Antigravity", AntigravitySettings),
-  ...PACKAGED_CLIENTS.map((client) =>
-    known(client.driverKind, client.label, client.settingsSchema, client.hasDefaultInstance),
-  ),
 ]);
 
 /** Each driver a policy may name, with the label users see. */

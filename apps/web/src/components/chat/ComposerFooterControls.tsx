@@ -280,14 +280,12 @@ export function ComposerModelPicker({
     options?: { focusComposer?: boolean },
   ) => void;
 }) {
-  const { instanceEntries, modelOptionsByInstance } = pickerProps;
+  const { modelOptionsByInstance } = pickerProps;
   const toggleModel = (instanceId: ProviderInstanceId, model: string) => {
     const current = multipleModelSelections ?? [selectedModelSelection];
     const matchesModel = (selection: ModelSelection) => {
       if (selection.instanceId !== instanceId) return false;
-      const entry = instanceEntries.find((entry) => entry.instanceId === selection.instanceId);
       const resolvedModel = resolveModelPickerSelectedModel({
-        driverKind: entry?.driverKind,
         model: selection.model,
         options: modelOptionsByInstance?.get(selection.instanceId) ?? [],
       });
