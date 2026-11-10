@@ -37,3 +37,12 @@ export const codexExecLaunchArgs = (launchArgs?: string) => {
 
   return execArgs;
 };
+
+/**
+ * Whether these launch arguments point Codex at OpenRouter. OpenRouter names models
+ * `<vendor>/<model>`, so the names in Codex's own catalog do not exist there.
+ */
+export const codexRunsOnOpenRouter = (launchArgs?: string) =>
+  codexLaunchArgv(launchArgs).some((arg) =>
+    /^(?:--config=|-c=)?model_provider=["']?openrouter["']?$/.test(arg),
+  );

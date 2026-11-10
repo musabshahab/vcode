@@ -2,7 +2,11 @@ import * as NodeAssert from "node:assert/strict";
 
 import { describe, it } from "vite-plus/test";
 
-import { codexAppServerArgs, codexExecLaunchArgs } from "./codexLaunchArgs.ts";
+import {
+  codexRunsOnOpenRouter,
+  codexAppServerArgs,
+  codexExecLaunchArgs,
+} from "./codexLaunchArgs.ts";
 
 describe("codexAppServerArgs", () => {
   it("preserves escaped TOML quotes in config values", () => {
@@ -25,5 +29,19 @@ describe("codexExecLaunchArgs", () => {
     NodeAssert.deepStrictEqual(codexExecLaunchArgs("--config --strict-config --enable --disable"), [
       "--strict-config",
     ]);
+  });
+});
+
+describe("codexRunsOnOpenRouter", () => {
+  it.each([
+    ["-c model_provider=openrouter -c model_providers.openrouter.wire_api=responses", true],
+    ['--config model_provider="openrouter"', true],
+    ["-c=model_provider=openrouter", true],
+    ["-c model_provider=azure", false],
+    // Defining the provider is not selecting it.
+    ["-c model_providers.openrouter.name=OpenRouter", false],
+    ["", false],
+  ])("reads the selected model provider from %s", (launchArgs, expected) => {
+    NodeAssert.equal(codexRunsOnOpenRouter(launchArgs), expected);
   });
 });

@@ -35,7 +35,11 @@ import {
   formatCodexModelName,
 } from "@t3tools/shared/model";
 import { resolveSpawnCommand } from "@t3tools/shared/shell";
-import { codexAppServerArgs, resolveCodexLaunchArgs } from "./codexLaunchArgs.ts";
+import {
+  codexRunsOnOpenRouter,
+  codexAppServerArgs,
+  resolveCodexLaunchArgs,
+} from "./codexLaunchArgs.ts";
 import {
   buildServerProvider,
   COMPACT_SLASH_COMMAND,
@@ -864,6 +868,10 @@ export const checkCodexProviderStatus = Effect.fn("checkCodexProviderStatus")(fu
     checkedAt,
     models: pipe(
       appendCustomCodexModels(snapshot.models ?? [], codexSettings.customModels),
+      (models) =>
+        codexRunsOnOpenRouter(codexSettings.launchArgs)
+          ? models.filter((model) => model.isCustom === true)
+          : models,
       applyPreferredCodexDefaultModel,
       (models) => applyConfiguredCodexServiceTier(models, snapshot.serviceTier),
     ),

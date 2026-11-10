@@ -146,11 +146,13 @@ model, or the reverse.
 ### Add OpenRouter
 
 OpenRouter is a provider of its own, paid per use with an OpenRouter key. In setup's **Connect
-providers** step, or in **Settings → Providers**, paste the key into **OpenRouter**, list the
-model ids you want, and choose **Connect OpenRouter**. Its models then appear in the model picker
-and can fill team roles.
+providers** step, or in **Settings → Providers**, paste the key into **OpenRouter** and choose
+**Connect OpenRouter**. Every OpenRouter model that can run an agent is added, from all vendors,
+and appears in the model picker and in the team's role choices. **Refresh models** picks up new
+ones.
 
-It runs through the Codex program, so Codex must be installed, but it needs no ChatGPT sign-in.
+Connecting does not change the model new threads start on. It runs through the Codex program, so
+Codex must be installed, but it needs no ChatGPT sign-in.
 
 ## Use the team
 
