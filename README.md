@@ -1,12 +1,28 @@
 # Ensemble
 
-Ensemble runs coding tasks with a team of AI agents, each on the model that suits its job. A lead
-plans the work and hands research, implementation, testing and review to subagents. You choose
-which model does which job, cap what the team may spend, and watch it work from a web app, a
-desktop app, or the command line.
+Ensemble makes a coding subscription go further. It runs each task with a team of AI agents and
+puts every job on the cheapest model that can do it, so your strongest model's allowance is spent
+on planning and review, not on reading files and running tests.
 
-It drives the coding agents you already have (Claude Code, Codex, and others), with your own
-subscriptions or API keys. Nothing is resold.
+## Why
+
+Used directly, Claude Code or Codex runs a whole task on one model. If that is your strongest
+model, every file it reads and every test it runs draws on the same daily and weekly limits as
+the hard thinking, and the limits arrive sooner.
+
+Ensemble splits the task by role. A lead plans the work and hands research, implementation,
+testing and review to subagents, each on the model you chose for that role. The strong model does
+the parts that need it. Cheaper models do the volume.
+
+- **On a subscription**, the same work uses less of your strongest model's limits. With two
+  subscriptions, such as Claude and Codex, the team also spreads the work across both.
+- **On API keys**, the same split lowers the bill.
+
+How much you save depends on the task and on how your plan counts each model. The app's **Usage**
+page shows what each model used and what is left in each limit.
+
+Ensemble drives the coding agents you already have, with your own sign-ins or keys. Nothing is
+resold. You run it from a web app, a desktop app, or the command line.
 
 > [!NOTE]
 > Ensemble is built on an open-source base whose names it has not replaced yet. The command is
@@ -17,8 +33,9 @@ subscriptions or API keys. Nothing is resold.
 
 - **A team per task.** Type `/team` before a task. The lead plans, splits the work into steps
   with the files each step owns, and delegates by role: research, implementation, test, review.
-- **A model per role.** Reviews can run on a different provider from the one that wrote the code,
-  so a second model family checks the first.
+- **A model per role.** Put the volume on cheaper models and keep the strong one for the lead and
+  the review. Reviews can run on a different provider from the one that wrote the code, so a
+  second model family checks the first.
 - **Presets.** Balanced, Budget and Max quality fill every role from the models your providers
   offer, with a rough cost for a typical task.
 - **A budget.** A dollar limit on what one request's subagents may use. When it is reached the
