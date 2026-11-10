@@ -171,6 +171,12 @@ export const OrchestratorMcpDelegateTaskInput = Schema.Struct({
   target: Schema.optional(OrchestratorMcpTarget),
   title: Schema.optional(OrchestratorMcpTitle),
   role: Schema.optional(OrchestratorMcpTaskRole),
+  files: Schema.optional(
+    Schema.Array(TrimmedNonEmptyString).annotate({
+      description:
+        "Paths this child may change, and no others. Refused while a running child holds one.",
+    }),
+  ),
   isolation: Schema.optional(
     Schema.Literals(["shared", "worktree"]).annotate({
       description:

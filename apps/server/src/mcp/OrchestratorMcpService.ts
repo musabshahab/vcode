@@ -92,6 +92,8 @@ import {
   subagentResultForRun,
   delegatedTaskProgress,
 } from "@t3tools/provider-core/server/subagentProjection";
+import { isTeamCommand } from "@t3tools/provider-core/server/orchestrationInstructions";
+import { resolveProjectSettings } from "@t3tools/shared/projectSettings";
 import {
   DispatchModeLimit,
   type DispatchModeRefusal,
@@ -123,7 +125,10 @@ import {
   resolveInteractionMode,
   resolveRuntimeMode,
   runtimeModeRank,
+  overlappingFiles,
+  taskFiles,
   taskPrompt,
+  taskRole,
   teamRoleSelection,
 } from "./delegatedTaskModes.ts";
 import { isLiveCallerShell, threadNotFound } from "./threadAccess.ts";
@@ -227,6 +232,15 @@ export class OrchestratorMcpService extends Context.Service<
 >()("t3/mcp/OrchestratorMcpService") {}
 
 const isThreadManagementError = Schema.is(ThreadManagementService.ThreadManagementError);
+
+/** Review delegates one `/team` request may start: the review, and one more after fixes. */
+const TEAM_RUN_REVIEW_ROUNDS = 2;
+const ACTIVE_TASK_STATUSES: ReadonlySet<string> = new Set([
+  "idle",
+  "pending",
+  "running",
+  "waiting",
+]);
 
 // Cents are enough except below ten cents, where they would round a real amount to nothing.
 const usd = (amount: number) => `$${amount.toFixed(amount < 0.1 ? 3 : 2)}`;
@@ -2353,6 +2367,9 @@ const make = Effect.gen(function* () {
         Effect.mapError(() => failure("orchestration_error", "Unable to read server settings.")),
       );
       const inherited = parent?.thread.modelSelection;
+      // A project can override the environment's role models.
+      const roleModels = resolveProjectSettings(settings, parent?.thread.projectId ?? null).settings
+        .teamRoleModelSelections;
       const searchTerms = input.search?.toLowerCase().split(/\s+/).filter(Boolean) ?? [];
       return {
         parentThreadId: parent?.thread.id ?? null,
@@ -2368,11 +2385,11 @@ const make = Effect.gen(function* () {
           ) ?? [],
         runtimeMode: limits.runtimeMode,
         interactionMode: limits.interactionMode,
-        ...(Object.keys(settings.teamRoleModelSelections).length === 0
+        ...(Object.keys(roleModels).length === 0
           ? {}
           : {
               roleTargets: Object.fromEntries(
-                Object.entries(settings.teamRoleModelSelections).map(([role, selection]) => [
+                Object.entries(roleModels).map(([role, selection]) => [
                   role,
                   {
                     providerInstanceId: selection.instanceId,
@@ -2503,10 +2520,47 @@ const make = Effect.gen(function* () {
           );
         }
       }
+      const ownsFiles = (input.files ?? []).length > 0;
+      if (!isRetryOfAcceptedDelegation && (ownsFiles || input.role === "review")) {
+        const { subagents } = yield* threadManagement
+          .getThreadRecords(scope.thread.threadId, ["subagents"])
+          .pipe(Effect.mapError(threadManagementFailure));
+        const runTasks = subagents.filter(
+          (task) => task.origin === "app_owned" && task.runId === parentRun.id,
+        );
+        const holder = runTasks.find(
+          (task) =>
+            ACTIVE_TASK_STATUSES.has(task.status) &&
+            overlappingFiles(input.files ?? [], taskFiles(task.prompt)).length > 0,
+        );
+        if (holder !== undefined) {
+          const [file] = overlappingFiles(input.files ?? [], taskFiles(holder.prompt));
+          return yield* failure(
+            "invalid_request",
+            `${holder.title ?? "Another delegate"} is still changing ${file}. Wait for it to finish, then start this one.`,
+          );
+        }
+        const request = parent.messages.find((message) => message.id === parentRun.userMessageId);
+        if (
+          input.role === "review" &&
+          request !== undefined &&
+          isTeamCommand(request.text) &&
+          runTasks.filter((task) => taskRole(task.prompt) === "review").length >=
+            TEAM_RUN_REVIEW_ROUNDS
+        ) {
+          return yield* failure(
+            "invalid_request",
+            `This team run has had its ${TEAM_RUN_REVIEW_ROUNDS} review rounds. Start no more reviews. Report what is still open and let the user decide.`,
+          );
+        }
+      }
       const settings = yield* serverSettings.getSettings.pipe(
         Effect.mapError(() => failure("orchestration_error", "Unable to read server settings.")),
       );
-      const roleSelection = teamRoleSelection(input, settings.teamRoleModelSelections);
+      const roleSelection = teamRoleSelection(
+        input,
+        resolveProjectSettings(settings, parent.thread.projectId).settings.teamRoleModelSelections,
+      );
       const target = yield* resolveTargetRechecking({
         parent,
         target:

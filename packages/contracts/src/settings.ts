@@ -1142,6 +1142,19 @@ export const WorktreeCleanup = Schema.NullOr(
 );
 export type WorktreeCleanup = typeof WorktreeCleanup.Type;
 
+// The `delegate_task` roles that can carry their own model; `general` always inherits.
+const teamRoleFields = <Value extends Schema.Top>(value: Value) => ({
+  implementation: Schema.optionalKey(value),
+  research: Schema.optionalKey(value),
+  review: Schema.optionalKey(value),
+  design: Schema.optionalKey(value),
+  test: Schema.optionalKey(value),
+});
+
+/** The model a delegated task of each role runs on; a role left out inherits its parent's. */
+export const TeamRoleModelSelections = Schema.Struct(teamRoleFields(ModelSelection));
+export type TeamRoleModelSelections = typeof TeamRoleModelSelections.Type;
+
 export const PROJECT_SCOPED_SERVER_SETTING_KEYS = [
   "worktreeCleanup",
   "defaultModelSelection",
@@ -1170,6 +1183,7 @@ export const PROJECT_SCOPED_SERVER_SETTING_KEYS = [
   "continueThreadsAfterServerUpdate",
   "responseStreamingMode",
   "speechProjectCustomWords",
+  "teamRoleModelSelections",
 ] as const;
 export type ProjectScopedServerSettingKey = (typeof PROJECT_SCOPED_SERVER_SETTING_KEYS)[number];
 
@@ -1208,6 +1222,7 @@ export const ProjectSettingsOverrides = Schema.Struct({
   continueThreadsAfterServerUpdate: Schema.optionalKey(Schema.Boolean),
   responseStreamingMode: Schema.optionalKey(ResponseStreamingMode),
   speechProjectCustomWords: Schema.optionalKey(SpeechCustomWords),
+  teamRoleModelSelections: Schema.optionalKey(TeamRoleModelSelections),
   providerInstances: Schema.optionalKey(
     Schema.Record(ProviderInstanceId, ProjectProviderInstanceOverride),
   ),
@@ -1330,19 +1345,6 @@ export const CloudSpeechCredentials = Schema.Struct({
   openrouter: CloudSpeechCredential,
 });
 
-// The `delegate_task` roles that can carry their own model; `general` always inherits.
-const teamRoleFields = <Value extends Schema.Top>(value: Value) => ({
-  implementation: Schema.optionalKey(value),
-  research: Schema.optionalKey(value),
-  review: Schema.optionalKey(value),
-  design: Schema.optionalKey(value),
-  test: Schema.optionalKey(value),
-});
-
-/** The model a delegated task of each role runs on; a role left out inherits its parent's. */
-export const TeamRoleModelSelections = Schema.Struct(teamRoleFields(ModelSelection));
-export type TeamRoleModelSelections = typeof TeamRoleModelSelections.Type;
-
 const DelegationBudgetUsd = Schema.Number.check(Schema.isFinite(), Schema.isGreaterThan(0));
 
 export const SubagentModelPresetId = Schema.Literals(["balanced", "budget", "maxQuality"]);
@@ -1351,8 +1353,15 @@ export type SubagentModelPresetId = typeof SubagentModelPresetId.Type;
 export const SubagentModelPresetsResult = Schema.Struct({
   /** Empty when the environment has fewer than two models with a known price to choose between. */
   presets: Schema.Array(
-    Schema.Struct({ id: SubagentModelPresetId, selections: TeamRoleModelSelections }),
+    Schema.Struct({
+      id: SubagentModelPresetId,
+      selections: TeamRoleModelSelections,
+      /** A typical team task's subagent cost in USD at list prices. A rough guide, not a quote. */
+      estimatedCostUsd: Schema.optional(Schema.Number),
+    }),
   ),
+  /** The same task with the strongest model in every role. */
+  strongestCostUsd: Schema.optional(Schema.Number),
 });
 export type SubagentModelPresetsResult = typeof SubagentModelPresetsResult.Type;
 

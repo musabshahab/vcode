@@ -241,6 +241,7 @@ type DelegateTaskInput = {
   };
   title?: string;
   role?: "implementation" | "research" | "review" | "design" | "test" | "general";
+  files?: string[];
   mode?: "async" | "wait";
   timeoutMs?: number;
   clientRequestId?: string;
@@ -275,6 +276,17 @@ A follow-up that needs the same child's conversation goes through `t3_thread_sen
 on its `childThreadId`. After the original task completes, that follow-up runs as a
 fresh task in the child thread; it does not reopen the completed task or change its
 published result.
+
+`files` names the paths a child may change. The child's prompt states them, and a
+call is refused while another unfinished task of the same run holds one of them:
+the same path, or one inside the other. This orders work that shares files; it
+does not sandbox the child, because each provider owns its own file tools. The
+role and the files are read back from the task's stored prompt, so the task
+record needs no extra fields.
+
+A run that a `/team` message started may delegate two `review` tasks. A third is
+refused. Other runs are not capped, since a user can ask for a review loop of
+their own.
 
 With `delegationBudgetUsd` set, a request whose delegated tasks have already used
 that much at list prices gets `budget_reached` instead of a new task. The spend

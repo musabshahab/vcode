@@ -265,6 +265,15 @@ export function planScopedSettingsPatch(
                   continue;
                 }
                 const base: unknown = effective[key as keyof ServerSettings];
+                // Role models merge per role, and a null role leaves the override.
+                if (key === "teamRoleModelSelections" && isPlainObject(value)) {
+                  next[key] = Object.fromEntries(
+                    Object.entries({ ...(isPlainObject(base) ? base : {}), ...value }).filter(
+                      ([, selection]) => selection !== null,
+                    ),
+                  );
+                  continue;
+                }
                 // A new model must not inherit the previous model's options.
                 if (
                   isPlainObject(value) &&

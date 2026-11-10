@@ -69,7 +69,7 @@ import * as RemoteDelegation from "../peer/RemoteDelegation.ts";
 import type { McpInvocationScope } from "./McpInvocationContext.ts";
 import { idleThreadProjection, liveThreadShell } from "./McpToolAccess.testkit.ts";
 import * as OrchestratorMcpService from "./OrchestratorMcpService.ts";
-import { resolveRuntimeMode } from "./delegatedTaskModes.ts";
+import { resolveRuntimeMode, taskFiles, taskPrompt } from "./delegatedTaskModes.ts";
 import type { ProjectionRecordFilter } from "../orchestration-v2/ProjectionStore.ts";
 import type * as ProviderAdapter from "@t3tools/provider-core/server/ProviderAdapter";
 
@@ -1235,6 +1235,7 @@ describe("OrchestratorMcpService provider resolution", () => {
         },
       ],
       contextTransfers: [],
+      messages: [],
       subagents,
     }) as unknown as OrchestrationV2ThreadProjection;
 
@@ -3398,10 +3399,16 @@ describe("OrchestratorMcpService provider resolution", () => {
               } as never;
             }),
         }),
+        // The project's override replaces the environment's role models.
         ServerSettings.layerTest({
-          teamRoleModelSelections: {
-            review: reviewer,
-            test: { instanceId: antigravityInstanceId, model: "tester-model" },
+          teamRoleModelSelections: { review: { instanceId: codexInstanceId, model: "gpt-5.4" } },
+          projectSettingsOverrides: {
+            [projectId]: {
+              teamRoleModelSelections: {
+                review: reviewer,
+                test: { instanceId: antigravityInstanceId, model: "tester-model" },
+              },
+            },
           },
         }),
         providerRegistryLayer([
@@ -3545,6 +3552,132 @@ describe("OrchestratorMcpService provider resolution", () => {
         assert.include(refused.message, "about $5.50 of the $5.00 budget");
         assert.deepEqual(commands, []);
       }).pipe(Effect.provide(layerOrchestratorService.pipe(Layer.provide(dependencies))));
+    }),
+  );
+
+  it.effect("holds a delegate back from files in use and caps a team run's reviews", () =>
+    Effect.gen(function* () {
+      const requestId = "message:request";
+      const earlier = (input: { title: string; prompt: string; status: string }) => ({
+        id: NodeId.make(`node:${input.title}`),
+        threadId: parentThreadId,
+        runId: parentRunId,
+        origin: "app_owned",
+        childThreadId: ThreadId.make(`thread:${input.title}`),
+        ...input,
+      });
+      const started = {
+        id: taskId,
+        threadId: parentThreadId,
+        runId: parentRunId,
+        origin: "app_owned",
+        childThreadId,
+        providerInstanceId: codexInstanceId,
+        model: "gpt-5.4",
+        prompt: "",
+        title: "Started",
+        status: "running",
+        result: null,
+      };
+      const run = (input: {
+        readonly request: string;
+        readonly tasks: ReadonlyArray<unknown>;
+        readonly delegate: { role: "review" | "implementation"; files?: ReadonlyArray<string> };
+      }) => {
+        const commands: Array<unknown> = [];
+        const base = () =>
+          parentProjection([...input.tasks, ...(commands.length > 0 ? [started] : [])]);
+        const dependencies = Layer.mergeAll(
+          NodeServices.layer,
+          NodeCrypto.layer,
+          Layer.mock(ThreadManagementService.ThreadManagementService)({
+            hasReceipt: () => Effect.succeed(false),
+            assertProviderInstanceEnabled: () => Effect.void,
+            getThreadRecords: (threadId) =>
+              Effect.succeed(
+                threadId === parentThreadId
+                  ? ({
+                      ...base(),
+                      runs: base().runs.map((entry) => ({ ...entry, userMessageId: requestId })),
+                      messages: [{ id: requestId, role: "user", text: input.request }],
+                    } as unknown as OrchestrationV2ThreadProjection)
+                  : childProjection,
+              ),
+            dispatch: (command) =>
+              Effect.sync(() => {
+                commands.push(command);
+                return {
+                  sequence: 1,
+                  storedEvents: [{ event: { type: "subagent.updated", payload: started } }],
+                } as never;
+              }),
+          }),
+          ServerSettings.layerTest(),
+          providerRegistryLayer([
+            providerSnapshot({
+              instanceId: codexInstanceId,
+              driver: ProviderDriverKind.make("codex"),
+              model: "gpt-5.4",
+            }),
+          ]),
+          adapterRegistryLayer([codexInstanceId]),
+          Layer.mock(ProjectService.ProjectService)({}),
+          Layer.mock(SecretRequests.SecretRequests)({}),
+          Layer.mock(RemoteDelegation.RemoteDelegation)({}),
+          Layer.mock(ScheduledTaskService.ScheduledTaskService)({}),
+        );
+        return Effect.gen(function* () {
+          const service = yield* OrchestratorMcpService.OrchestratorMcpService;
+          const outcome = yield* Effect.result(
+            service.delegateTask(scope, { task: "Do the step.", mode: "async", ...input.delegate }),
+          );
+          return {
+            refusal: outcome._tag === "Failure" ? outcome.failure.message : undefined,
+            task: (commands[0] as { readonly task?: string } | undefined)?.task,
+          };
+        }).pipe(Effect.provide(layerOrchestratorService.pipe(Layer.provide(dependencies))));
+      };
+
+      const reviews = ["first", "second"].map((title) =>
+        earlier({
+          title,
+          status: "completed",
+          prompt: taskPrompt({ task: "Review.", role: "review" }),
+        }),
+      );
+      const third = { role: "review" } as const;
+      assert.include(
+        (yield* run({ request: "/team ship it", tasks: reviews, delegate: third })).refusal,
+        "has had its 2 review rounds",
+      );
+      // A review loop the user asked for themselves is theirs to bound.
+      assert.isUndefined(
+        (yield* run({ request: "Loop until it approves.", tasks: reviews, delegate: third }))
+          .refusal,
+      );
+
+      const routes = (status: string) =>
+        earlier({
+          title: "Routes",
+          status,
+          prompt: taskPrompt({ task: "Edit.", role: "implementation", files: ["src/routes/"] }),
+        });
+      const step = {
+        role: "implementation",
+        files: ["./src/routes/users.ts", "README.md"],
+      } as const;
+      assert.equal(
+        (yield* run({ request: "/team ship it", tasks: [routes("running")], delegate: step }))
+          .refusal,
+        "Routes is still changing src/routes/users.ts. Wait for it to finish, then start this one.",
+      );
+      const afterwards = yield* run({
+        request: "/team ship it",
+        tasks: [routes("completed")],
+        delegate: step,
+      });
+      assert.isUndefined(afterwards.refusal);
+      assert.deepEqual(taskFiles(afterwards.task ?? ""), ["src/routes/users.ts", "README.md"]);
     }),
   );
 

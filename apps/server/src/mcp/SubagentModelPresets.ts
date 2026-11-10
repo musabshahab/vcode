@@ -14,6 +14,7 @@ import * as ProviderAdapterRegistry from "../orchestration-v2/ProviderAdapterReg
 import * as ProviderRegistry from "../provider/ProviderRegistry.ts";
 import * as ServerSettings from "../serverSettings.ts";
 import * as UsageService from "../usage/UsageService.ts";
+import type { TokenRates } from "../usage/usagePricing.ts";
 import { listCapabilityModels, providerConstraints } from "./OrchestratorMcpService.ts";
 
 export interface PresetCandidate {
@@ -22,6 +23,35 @@ export interface PresetCandidate {
   readonly model: string;
   /** USD per million output tokens. */
   readonly price: number;
+  /** Full list rates, when known, for the cost estimate. */
+  readonly rates?: TokenRates;
+}
+
+// One team task's delegates, for the estimate only: delegate turns measured on a small change,
+// scaled to a mid-sized one. An assumption about the work, not a record of the user's.
+const TYPICAL_TASK = {
+  research: { tasks: 2, input: 3_000, cacheRead: 250_000, cacheWrite: 25_000, output: 2_000 },
+  implementation: { tasks: 3, input: 5_000, cacheRead: 450_000, cacheWrite: 40_000, output: 4_000 },
+  test: { tasks: 1, input: 2_000, cacheRead: 200_000, cacheWrite: 15_000, output: 1_000 },
+  review: { tasks: 2, input: 3_000, cacheRead: 300_000, cacheWrite: 25_000, output: 3_000 },
+} as const;
+
+/** What the typical task costs on these role models, or nothing when a rate is missing. */
+function typicalTaskCostUsd(
+  models: Record<keyof typeof TYPICAL_TASK, PresetCandidate>,
+): number | undefined {
+  let total = 0;
+  for (const [role, work] of Object.entries(TYPICAL_TASK)) {
+    const rates = models[role as keyof typeof TYPICAL_TASK].rates;
+    if (rates === undefined) return undefined;
+    total +=
+      work.tasks *
+      (work.input * rates.inputCostPerToken +
+        work.cacheRead * rates.cacheReadCostPerToken +
+        work.cacheWrite * rates.cacheCreationCostPerToken +
+        work.output * rates.outputCostPerToken);
+  }
+  return total;
 }
 
 // List price is the one strength signal every provider's models share. Tiers are shares of the
@@ -72,12 +102,19 @@ function pick(
 
 export function recommendSubagentModelPresets(
   candidates: ReadonlyArray<PresetCandidate>,
-): SubagentModelPresetsResult["presets"] {
-  if (candidates.length < 2) return [];
+): SubagentModelPresetsResult {
+  if (candidates.length < 2) return { presets: [] };
   const top = Math.max(...candidates.map((candidate) => candidate.price));
+  const strongest = candidates.find((candidate) => candidate.price === top)!;
+  const strongestCostUsd = typicalTaskCostUsd({
+    research: strongest,
+    implementation: strongest,
+    test: strongest,
+    review: strongest,
+  });
   const tierOf = (candidate: PresetCandidate) =>
     TIER_FLOORS.findIndex((floor) => candidate.price >= floor * top);
-  return Object.entries(PRESET_TIERS).map(([id, tiers]) => {
+  const presets = Object.entries(PRESET_TIERS).map(([id, tiers]) => {
     const choose = (role: Role) => pick(candidates, tierOf, tiers[role]) ?? candidates[0]!;
     const implementation = choose("implementation");
     // A second model family catches different mistakes, if it is within a tier of the target.
@@ -94,6 +131,7 @@ export function recommendSubagentModelPresets(
       design: choose("design"),
       test: choose("test"),
     };
+    const estimatedCostUsd = typicalTaskCostUsd(chosen);
     return {
       id: id as SubagentModelPresetId,
       selections: Object.fromEntries(
@@ -102,8 +140,10 @@ export function recommendSubagentModelPresets(
           { instanceId: candidate.instanceId, model: candidate.model },
         ]),
       ) as TeamRoleModelSelections,
+      ...(estimatedCostUsd === undefined ? {} : { estimatedCostUsd }),
     };
   });
+  return { presets, ...(strongestCostUsd === undefined ? {} : { strongestCostUsd }) };
 }
 
 export class SubagentModelPresets extends Context.Service<
@@ -142,23 +182,22 @@ const make = Effect.gen(function* () {
           .map((model) => ({ provider, model: model.slug })),
       );
     const rates = yield* usage.tokenRates(offered.map(({ model }) => model));
-    return {
-      presets: recommendSubagentModelPresets(
-        offered.flatMap(({ provider, model }) => {
-          const rate = rates.get(model);
-          return rate === undefined
-            ? []
-            : [
-                {
-                  instanceId: provider.instanceId,
-                  driver: provider.driver,
-                  model,
-                  price: rate.outputCostPerToken * 1_000_000,
-                },
-              ];
-        }),
-      ),
-    };
+    return recommendSubagentModelPresets(
+      offered.flatMap(({ provider, model }) => {
+        const rate = rates.get(model);
+        return rate === undefined
+          ? []
+          : [
+              {
+                instanceId: provider.instanceId,
+                driver: provider.driver,
+                model,
+                price: rate.outputCostPerToken * 1_000_000,
+                rates: rate,
+              },
+            ];
+      }),
+    );
   }).pipe(Effect.withSpan("SubagentModelPresets.list"));
 
   return SubagentModelPresets.of({ list });

@@ -105,9 +105,52 @@ export function teamRoleSelection(
   return selections[role];
 }
 
-/** The task as its child receives it, with the role the caller asked for. */
-export function taskPrompt(input: OrchestratorMcpDelegateTaskInput): string {
-  return input.role === undefined || input.role === "general"
-    ? input.task
-    : `Act as the ${input.role} sub-agent for this task.\n\n${input.task}`;
+const ROLE_LINE = /^Act as the ([a-z]+) sub-agent for this task\.\n\n/;
+const FILES_LINE = "\n\nYou own these files and may change no others: ";
+
+/** A path as tasks compare it: no leading `./`, no trailing slash. */
+const normalizedFile = (file: string) => file.trim().replace(/^\.\//, "").replace(/\/+$/, "");
+
+/** The task as its child receives it, with the role and the files the caller gave it. */
+export function taskPrompt(
+  input: Pick<OrchestratorMcpDelegateTaskInput, "task" | "role" | "files">,
+): string {
+  const task =
+    input.role === undefined || input.role === "general"
+      ? input.task
+      : `Act as the ${input.role} sub-agent for this task.\n\n${input.task}`;
+  const files = (input.files ?? []).map(normalizedFile).filter((file) => file !== "");
+  return files.length === 0 ? task : `${task}${FILES_LINE}${JSON.stringify(files)}`;
+}
+
+/** The role a delegated task's prompt was written for. The prompt is the only record of it. */
+export function taskRole(prompt: string): string | undefined {
+  return ROLE_LINE.exec(prompt)?.[1];
+}
+
+/** The files a delegated task's prompt says it owns. */
+export function taskFiles(prompt: string): ReadonlyArray<string> {
+  const start = prompt.lastIndexOf(FILES_LINE);
+  if (start === -1) return [];
+  try {
+    const files: unknown = JSON.parse(prompt.slice(start + FILES_LINE.length));
+    return Array.isArray(files) ? files.filter((file) => typeof file === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+/** The files of `mine` that `theirs` also covers: the same path, or one inside the other. */
+export function overlappingFiles(
+  mine: ReadonlyArray<string>,
+  theirs: ReadonlyArray<string>,
+): ReadonlyArray<string> {
+  const held = theirs.map(normalizedFile);
+  return mine
+    .map(normalizedFile)
+    .filter((file) =>
+      held.some(
+        (other) => file === other || file.startsWith(`${other}/`) || other.startsWith(`${file}/`),
+      ),
+    );
 }

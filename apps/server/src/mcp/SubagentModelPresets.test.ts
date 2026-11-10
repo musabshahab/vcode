@@ -12,7 +12,7 @@ const candidate = (driver: string, model: string, price: number): PresetCandidat
 
 const models = (candidates: ReadonlyArray<PresetCandidate>) =>
   Object.fromEntries(
-    recommendSubagentModelPresets(candidates).map(({ id, selections }) => [
+    recommendSubagentModelPresets(candidates).presets.map(({ id, selections }) => [
       id,
       Object.fromEntries(
         Object.entries(selections).map(([role, selection]) => [role, selection.model]),
@@ -68,6 +68,37 @@ describe("recommendSubagentModelPresets", () => {
   });
 
   it("offers nothing without two priced models to choose between", () => {
-    expect(recommendSubagentModelPresets([candidate("orbit", "orbit-pro", 15)])).toEqual([]);
+    expect(recommendSubagentModelPresets([candidate("orbit", "orbit-pro", 15)])).toEqual({
+      presets: [],
+    });
+  });
+
+  it("estimates a typical task on each preset and on the strongest model throughout", () => {
+    // Output-only rates, so a role costs its delegates' output tokens at the model's price.
+    const priced = (driver: string, model: string, price: number) => ({
+      ...candidate(driver, model, price),
+      rates: {
+        inputCostPerToken: 0,
+        cacheReadCostPerToken: 0,
+        cacheCreationCostPerToken: 0,
+        outputCostPerToken: price / 1_000_000,
+      },
+    });
+    const result = recommendSubagentModelPresets([
+      priced("orbit", "orbit-max", 80),
+      priced("orbit", "orbit-mini", 16),
+    ]);
+    // 4k research + 12k implementation + 1k test + 6k review output tokens.
+    expect(result.strongestCostUsd).toBeCloseTo((23_000 * 80) / 1_000_000);
+    const cost = Object.fromEntries(
+      result.presets.map((preset) => [preset.id, preset.estimatedCostUsd]),
+    );
+    // Max quality keeps research and tests one tier down, which here is the cheaper model.
+    expect(cost.maxQuality).toBeCloseTo((18_000 * 80 + 5_000 * 16) / 1_000_000);
+    expect(cost.budget).toBeCloseTo((23_000 * 16) / 1_000_000);
+    expect(
+      recommendSubagentModelPresets([candidate("orbit", "a", 80), candidate("orbit", "b", 16)])
+        .presets[0]?.estimatedCostUsd,
+    ).toBeUndefined();
   });
 });

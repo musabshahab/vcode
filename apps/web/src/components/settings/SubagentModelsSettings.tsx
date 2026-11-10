@@ -1,7 +1,13 @@
-import type { ModelSelection, ServerSettings, SubagentModelPresetId } from "@t3tools/contracts";
+import type {
+  ModelSelection,
+  ServerSettings,
+  SubagentModelPresetId,
+  SubagentModelPresetsResult,
+} from "@t3tools/contracts";
 import { createModelSelection } from "@t3tools/shared/model";
 import { useNavigate } from "@tanstack/react-router";
 import * as Equal from "effect/Equal";
+import { useState } from "react";
 
 import { getCustomModelOptionsByInstance } from "../../modelSelection";
 import {
@@ -84,8 +90,12 @@ const SUBAGENT_MODEL_PRESETS: ReadonlyArray<{
 ];
 
 /** Each environment gets the preset built from its own providers and prices. */
+const dollars = (amount: number) => `$${amount.toFixed(2)}`;
+
 function SubagentModelPresetMenu() {
-  const { connectedEnvironments } = useSettingsScope();
+  const { connectedEnvironments, environment } = useSettingsScope();
+  // Estimates come from the shown environment's providers and prices.
+  const [estimates, setEstimates] = useState<SubagentModelPresetsResult | null>(null);
   const getPresets = useAtomCommand(serverEnvironment.getSubagentModelPresets, {
     reportFailure: false,
   });
@@ -125,18 +135,37 @@ function SubagentModelPresetMenu() {
     }
   };
 
+  const loadEstimates = (open: boolean) => {
+    if (!open || !environment) return;
+    void getPresets({ environmentId: environment.environmentId, input: {} }).then((result) =>
+      setEstimates(result._tag === "Success" ? result.value : null),
+    );
+  };
+
   return (
-    <Menu>
+    <Menu onOpenChange={loadEstimates}>
       <MenuTrigger render={<Button size="xs" variant="outline" />}>Presets</MenuTrigger>
       <MenuPopup align="end">
-        {SUBAGENT_MODEL_PRESETS.map(({ id, label, detail }) => (
-          <MenuItem key={id} onClick={() => void apply(id, label)}>
-            <span className="flex min-w-0 flex-col">
-              <span>{label}</span>
-              <span className="text-xs text-muted-foreground">{detail}</span>
-            </span>
-          </MenuItem>
-        ))}
+        {SUBAGENT_MODEL_PRESETS.map(({ id, label, detail }) => {
+          const cost = estimates?.presets.find((preset) => preset.id === id)?.estimatedCostUsd;
+          return (
+            <MenuItem key={id} onClick={() => void apply(id, label)}>
+              <span className="flex min-w-0 flex-col">
+                <span>{label}</span>
+                <span className="text-xs text-muted-foreground">
+                  {detail}
+                  {cost === undefined ? "" : ` About ${dollars(cost)} a task.`}
+                </span>
+              </span>
+            </MenuItem>
+          );
+        })}
+        {estimates?.strongestCostUsd === undefined ? null : (
+          <p className="max-w-72 px-2 py-1 text-xs text-muted-foreground">
+            Rough guide: the subagents of a typical task at API prices. With the strongest model in
+            every role, about {dollars(estimates.strongestCostUsd)}.
+          </p>
+        )}
       </MenuPopup>
     </Menu>
   );
@@ -153,7 +182,8 @@ export function SubagentModelsSettings() {
     (environment?.serverConfig
       ? providersByEnvironment.get(environment.environmentId)
       : undefined) ?? EMPTY_SERVER_PROVIDERS;
-  const entries = providerInstanceEntriesFor(providers, settings, null);
+  const projectId = target?.projectId ?? null;
+  const entries = providerInstanceEntriesFor(providers, settings, projectId);
   const modelDisabledReason = useScopedModelDisabledReason(settings, entries);
   const canWrite = useScopedSettingsWriteAllowed();
   const mixedBudget = useScopedSettingsMixed(["delegationBudgetUsd"]);
@@ -165,7 +195,9 @@ export function SubagentModelsSettings() {
       (candidate) =>
         candidate.serverConfig?.environment.capabilities.teamRoleModelSelections === true,
     );
-  if (scope.kind === "project" || scope.kind === "checkout" || !supported) return null;
+  if (!supported) return null;
+  // A project overrides the role models as one set; the budget and presets belong to the environment.
+  const isProjectScope = scope.kind === "project" || scope.kind === "checkout";
 
   const supportsBudget = connectedEnvironments.every(
     (candidate) => candidate.serverConfig?.environment.capabilities.delegationBudget === true,
@@ -185,7 +217,7 @@ export function SubagentModelsSettings() {
   };
 
   // An unset role shows where the picker opens, not a saved choice.
-  const threadModel = resolveProjectDefaultProviderModelSelection(providers, settings, null);
+  const threadModel = resolveProjectDefaultProviderModelSelection(providers, settings, projectId);
 
   const setRole = (role: SubagentRole, value: ModelSelection | null) => {
     const reason = value ? modelDisabledReason(value.instanceId, value.model) : null;
@@ -200,9 +232,9 @@ export function SubagentModelsSettings() {
     <SettingsSection
       id="subagent-models"
       title="Subagent models"
-      headerAction={canWrite ? <SubagentModelPresetMenu /> : null}
+      headerAction={canWrite && !isProjectScope ? <SubagentModelPresetMenu /> : null}
     >
-      {supportsBudget ? (
+      {supportsBudget && !isProjectScope ? (
         <SettingsRow
           serverScoped
           settingKeys={["delegationBudgetUsd"]}
@@ -248,8 +280,11 @@ export function SubagentModelsSettings() {
           <SettingsRow
             key={role}
             serverScoped
-            // settingKeys would report the whole setting's source on a role that is not set.
-            managedPaths={["teamRoleModelSelections"]}
+            // For an environment, settingKeys would report the whole setting's source on a role
+            // that is not set. A project needs them: its override is the whole set of roles.
+            {...(isProjectScope
+              ? { settingKeys: ["teamRoleModelSelections"] as const }
+              : { managedPaths: ["teamRoleModelSelections"] })}
             mixed={mixed}
             {...searchableSetting(item)}
             description={description}

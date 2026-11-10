@@ -316,9 +316,14 @@ Start a message with `/team` to have the agent lead a team on it:
 ```
 
 The agent plans the work, then hands research, each implementation step, the test run, and the
-review to subagents on the models you chose for those roles. Steps that touch different files run
-in parallel. It has findings fixed, reviews once more, and reports what changed with a commit
-message. For a one-line change it does the edit itself and says so.
+review to subagents on the models you chose for those roles. It has findings fixed, reviews once
+more, and reports what changed with a commit message. For a one-line change it does the edit
+itself and says so.
+
+Each implementation step names the files it owns. Steps that touch different files run in
+parallel; a step whose files another running step holds waits for it. A step is told to change
+only its own files, but nothing stops it from writing elsewhere, so check the diff as you would
+for any agent. A team run gets two review rounds: the review, and one more after fixes.
 
 Pick `/team` from the composer's `/` menu or type it. It also works from `t3 thread` and in
 scheduled tasks. Without it, a thread works as usual.

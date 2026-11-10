@@ -38,7 +38,7 @@ Every delegate is a \`delegate_task\` with a \`role\` and no \`target\`, so it r
 
 1. Plan. Read enough to split the work into steps and name the files each step owns. If one small edit settles the task, make it yourself and say no team was needed.
 2. Research. Open questions go to \`role:"research"\` delegates, one per question, in parallel.
-3. Implement. One \`role:"implementation"\` delegate per step. Steps that share no files run in parallel, the rest in order. Tell each delegate which files it owns and to change no others.
+3. Implement. One \`role:"implementation"\` delegate per step, with the step's files in \`files\`. Steps that share no files run in parallel, the rest in order.
 4. Test. A \`role:"test"\` delegate runs the project's checks on the result.
 5. Review. A \`role:"review"\` delegate reviews the whole change. Have findings fixed, then review once more. Stop after two review rounds.
 6. Report what changed, the test result, the review verdict and anything still open, with a commit message.
@@ -46,6 +46,9 @@ Every delegate is a \`delegate_task\` with a \`role\` and no \`target\`, so it r
 A delegate that fails its step twice gets one more try with \`target\` set to a stronger model from \`orchestrator_capabilities\`. Then stop and report.`;
 
 const TEAM_COMMAND = /^\s*\/team(?:\s+([\s\S]*))?$/i;
+
+/** Whether a message asks for a team run. */
+export const isTeamCommand = (text: string) => TEAM_COMMAND.test(text);
 
 /** Replaces a leading `/team` with the lead's brief; other text is returned unchanged. */
 export function expandTeamCommand(text: string): string {
