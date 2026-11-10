@@ -100,7 +100,6 @@ function isSettledSubagentStatus(status: OrchestrationV2Subagent["status"]): boo
 const NATIVE_SUBAGENT_TURN_ORIGIN: ProviderUsageAnalytics.ProviderTurnOrigin = {
   createdBy: "agent",
   creationSource: "provider",
-  scheduled: false,
   subagent: true,
 };
 
@@ -885,7 +884,6 @@ export const layer: Layer.Layer<
         const rootTurnOrigin: ProviderUsageAnalytics.ProviderTurnOrigin = {
           createdBy: input.message.createdBy,
           creationSource: input.message.creationSource,
-          scheduled: input.message.scheduledTaskId !== undefined,
           subagent: input.appThread.lineage.relationshipToParent === "subagent",
         };
         // Startup failure and stream shutdown can report the same attempt.

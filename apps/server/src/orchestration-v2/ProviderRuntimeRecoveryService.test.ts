@@ -507,13 +507,9 @@ it.effect.each([
   "starting",
   "starting-other-request",
   "starting-own-request",
-  "starting-scheduled",
 ] as const)("recovers $0 work after restart", (scenario) => {
   const status = scenario.startsWith("starting") ? "starting" : scenario;
-  const terminalized =
-    status === "preparing" ||
-    scenario === "starting-own-request" ||
-    scenario === "starting-scheduled";
+  const terminalized = status === "preparing" || scenario === "starting-own-request";
   const threadId = ThreadId.make("thread_queued_restart");
   const runId = RunId.make("run_queued_restart");
   const attemptId = RunAttemptId.make("attempt_queued_restart");
@@ -588,7 +584,6 @@ it.effect.each([
             {
               id: MessageId.make("message_queued_restart"),
               createdBy: "user",
-              ...(scenario === "starting-scheduled" ? { scheduledTaskId: "scheduled-task" } : {}),
             },
           ]
         : [],

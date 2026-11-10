@@ -26,7 +26,6 @@ export type SettingsPath =
   | "/settings/providers"
   | "/settings/threads"
   | "/settings/browser"
-  | "/settings/scheduled-tasks"
   | "/settings/source-control"
   | "/settings/worktrees"
   | "/settings/connections"
@@ -97,7 +96,6 @@ export const SETTINGS_SECTION_LABELS: Readonly<Record<SettingsPath, string>> = {
   "/settings/providers": "Providers",
   "/settings/threads": "Threads",
   "/settings/browser": "Browser",
-  "/settings/scheduled-tasks": "Scheduled tasks",
   "/settings/source-control": "Source control",
   "/settings/worktrees": "Worktrees",
   "/settings/connections": "Environments",
@@ -125,12 +123,7 @@ export const SETTINGS_NAV_GROUPS: ReadonlyArray<{
   },
   {
     heading: "Agents",
-    paths: [
-      "/settings/providers",
-      "/settings/threads",
-      "/settings/browser",
-      "/settings/scheduled-tasks",
-    ],
+    paths: ["/settings/providers", "/settings/threads", "/settings/browser"],
   },
   {
     heading: "Code",
@@ -332,7 +325,7 @@ export const SETTINGS_SEARCH_ITEMS = [
     title: "Thread details",
     to: "/settings/appearance",
     searchTerms: [
-      "customize show hide panel card environment editor scripts branch pull request git changes servers automations lineage usage limits 5 hour weekly quota tokens context window",
+      "customize show hide panel card environment editor scripts branch pull request git changes servers lineage usage limits 5 hour weekly quota tokens context window",
     ],
   },
   {
@@ -1137,7 +1130,6 @@ const SETTINGS_CATEGORY_SCOPES: Readonly<Record<SettingsPath, SettingsSearchScop
   "/settings/worktrees": "project-defaults",
   "/settings/connections": "connections",
   "/settings/access": "connections",
-  "/settings/scheduled-tasks": null,
   "/settings/maintenance": null,
   "/settings/labs": null,
   "/settings/about": null,

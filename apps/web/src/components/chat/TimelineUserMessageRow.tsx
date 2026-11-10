@@ -1,18 +1,9 @@
 import { InlineAudioPreview } from "../files/InlineAudioPreview";
 import { filePreviewKind } from "@t3tools/shared/filePreview";
 import { findRevealRef } from "./markdownFindContext";
-import {
-  type EnvironmentId,
-  type MessageId,
-  type ScheduledTaskId,
-  type ServerProviderSkill,
-  ThreadId,
-} from "@t3tools/contracts";
+import { type MessageId, type ServerProviderSkill, ThreadId } from "@t3tools/contracts";
 import { resolveUserMessagePresentation } from "@t3tools/client-runtime/user-message";
-import { Link } from "@tanstack/react-router";
 import { useQuietThreadShell } from "../../state/entities";
-import { useEnvironmentQuery } from "../../state/query";
-import { serverEnvironment } from "../../state/server";
 import { replaceComposerContextReferences } from "@t3tools/shared/composerContextReferences";
 import { memo, use, useState, type ReactNode } from "react";
 import {
@@ -27,7 +18,6 @@ import {
 } from "../../types";
 import ChatMarkdown from "../ChatMarkdown";
 import {
-  CalendarClockIcon,
   ChevronDownIcon,
   DownloadIcon,
   EyeIcon,
@@ -80,11 +70,7 @@ import { useMediaQuery } from "~/hooks/useMediaQuery";
 import { formatChatTimestampTooltip, formatDayAwareTimestamp } from "../../timestampFormat";
 import { WorkflowOpeningBlock } from "./WorkflowOpeningBlock";
 import { TimelineRowCtx, TimelineRowActivityCtx, type TimelineRow } from "./timelineRowContext";
-import {
-  MESSAGE_HEADING_LEVEL,
-  MessageAuthorHeading,
-  TimelineRowTimestamp,
-} from "./TimelineRowParts";
+import { MESSAGE_HEADING_LEVEL, MessageAuthorHeading } from "./TimelineRowParts";
 import { UserMessageContextReferenceChip } from "./UserMessageContextChips";
 import {
   resolvePreviewAnnotationImage,
@@ -269,109 +255,9 @@ function UserMessageContent({ row }: { row: Extract<TimelineRow, { kind: "messag
       environmentId={ctx.activeThreadEnvironmentId}
       onOpenThread={(threadId) => ctx.onOpenThread(ThreadId.make(threadId))}
     />
-  ) : resolveUserMessagePresentation(row.message).attribution === "automation" ? (
-    <AutomationMessageRow row={row} />
   ) : (
     <UserTimelineRow row={row} />
   );
-}
-
-/** Automation prompts are long, repeated runbooks; a folded bubble keeps them out of the way. */
-function AutomationMessageRow({ row }: { row: Extract<TimelineRow, { kind: "message" }> }) {
-  const ctx = use(TimelineRowCtx);
-  const [expanded, setExpanded] = useState(false);
-  const revealRef = findRevealRef(() => setExpanded(true));
-  const { text, scheduledTaskId } = resolveUserMessagePresentation(row.message);
-  const summary =
-    useScheduledTaskTitle(ctx.activeThreadEnvironmentId, scheduledTaskId) ??
-    text.trim().split(/\r?\n/, 1)[0] ??
-    "";
-
-  const revertTurnCount = row.revertTurnCount;
-  const promptLink = promptLinkFor(text);
-  // Find reads the DOM, so a folded prompt stays mounted but hidden while find is open.
-  const bodyMounted = expanded || ctx.findActive;
-
-  return (
-    <div className="group flex flex-col items-end gap-1" data-user-message-attribution="automation">
-      {row.message.inputIntent === "steer" ||
-      row.message.inputIntent === "promoted_queued_to_steer" ? (
-        <UserMessageIntentMarker intent={row.message.inputIntent} />
-      ) : null}
-      <div
-        className={cn(
-          "min-w-0 max-w-[80%] rounded-2xl bg-message text-message-foreground",
-          BUBBLE_CHIP_CLASS_NAME,
-          expanded && "w-full",
-        )}
-      >
-        <MessageAuthorHeading>Automation</MessageAuthorHeading>
-        <FoldedMessageHeader
-          icon={CalendarClockIcon}
-          label="Automation"
-          summary={summary}
-          expanded={expanded}
-          onToggle={() => setExpanded((value) => !value)}
-        />
-        {bodyMounted ? (
-          // `beforematch` does not bubble, so the reveal listener sits on the hidden fold itself.
-          <div
-            ref={revealRef}
-            hidden={!expanded}
-            className={cn("px-3 pb-3", !ctx.findActive && "max-h-96 overflow-auto")}
-            data-thread-find-text="true"
-          >
-            <UserMessageBody text={text} skills={ctx.skills} markdownCwd={ctx.markdownCwd} />
-          </div>
-        ) : null}
-      </div>
-      <UserMessageProjectedStatus row={row} />
-      {expanded ? (
-        <div className="flex w-full max-w-[80%] items-center justify-end pe-1 text-xs tabular-nums opacity-0 transition-opacity duration-200 pointer-coarse:opacity-100 focus-within:opacity-100 group-hover:opacity-100">
-          <div className="flex shrink-0 items-center gap-2">
-            {scheduledTaskId ? (
-              <Link
-                to="/settings/scheduled-tasks"
-                search={{ environmentId: ctx.activeThreadEnvironmentId, taskId: scheduledTaskId }}
-                className="rounded-sm text-xs text-muted-foreground hover:underline focus-visible:outline-2 focus-visible:outline-ring"
-              >
-                Open automation
-              </Link>
-            ) : null}
-            <TimelineRowTimestamp
-              createdAt={row.message.createdAt}
-              timestampFormat={ctx.timestampFormat}
-              alwaysVisible
-            />
-            <div className="flex items-center gap-0.5">
-              {typeof revertTurnCount === "number" && (
-                <RevertUserMessageButton turnCount={revertTurnCount} messageId={row.message.id} />
-              )}
-              <MessageCopyButton text={text} variant="ghost" />
-              {promptLink !== null && (
-                <MessageCopyButton
-                  text={promptLink}
-                  label="Copy prompt link"
-                  icon={LinkIconNode}
-                  variant="ghost"
-                />
-              )}
-            </div>
-          </div>
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
-export function useScheduledTaskTitle(
-  environmentId: EnvironmentId,
-  scheduledTaskId: ScheduledTaskId | undefined,
-): string | undefined {
-  const tasksQuery = useEnvironmentQuery(
-    scheduledTaskId ? serverEnvironment.scheduledTasksLive({ environmentId, input: {} }) : null,
-  );
-  return tasksQuery.data?.tasks.find((task) => task.id === scheduledTaskId)?.title;
 }
 
 export function FoldedMessageHeader(props: {

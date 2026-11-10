@@ -33,7 +33,6 @@ import {
   ProviderThreadId,
   ProviderTurnId,
   RunId,
-  ScheduledTaskId,
   ThreadId,
 } from "@t3tools/contracts";
 import * as Effect from "effect/Effect";
@@ -83,14 +82,9 @@ import { CodexProviderCapabilitiesV2 } from "./Adapters/CodexAdapterV2.ts";
 import * as ThreadManagementService from "./ThreadManagementService.ts";
 import * as ManagedProjectFolders from "../project/ManagedProjectFolders.ts";
 import * as ScratchThreadPromotion from "../project/ScratchThreadPromotion.ts";
-import * as ScheduledTaskService from "../scheduledTasks/ScheduledTaskService.ts";
-import * as ManagedPolicy from "../policy/ManagedPolicy.ts";
-import * as Scheduler from "../scheduling/Scheduler.ts";
-import * as SecretRequests from "../secrets/SecretRequests.ts";
 import * as PreviewManager from "../preview/Manager.ts";
 import * as TerminalManager from "../terminal/Manager.ts";
 import * as ResourceCleanupService from "./ResourceCleanupService.ts";
-import * as ThreadLaunchService from "./ThreadLaunchService.ts";
 import * as ThreadCommandExecutor from "./ThreadCommandExecutor.ts";
 import type * as ProviderAdapter from "@t3tools/provider-core/server/ProviderAdapter";
 
@@ -325,32 +319,7 @@ const layerLegacyImportTest = Layer.merge(RuntimeLayer.layer, layerProjectionRep
   Layer.provide(layerPlatformTest),
 );
 
-const layerScheduledTasksTest = ScheduledTaskService.layer.pipe(
-  Layer.provide(
-    Layer.mergeAll(
-      ManagedPolicy.layerTest(),
-      Layer.mock(ThreadLaunchService.ThreadLaunchService)({}),
-      // The orchestrator depends on this layer, so read the shell from its projection.
-      Layer.unwrap(
-        ProjectionStore.ProjectionStoreV2.pipe(
-          Effect.map(({ getThreadShell }) =>
-            Layer.mock(ThreadManagementService.ThreadManagementService)({
-              getThreadShell: (threadId) => getThreadShell(threadId).pipe(Effect.orDie),
-            }),
-          ),
-        ),
-      ).pipe(Layer.provide(ProjectionStore.layer)),
-      Layer.mock(SecretRequests.SecretRequests)({}),
-      Layer.mock(ManagedProjectFolders.ManagedProjectFolders)({
-        namedProjectsRoot: "/projects",
-        isScratchProject: () => Effect.succeed(false),
-      }),
-      Scheduler.layer,
-    ),
-  ),
-);
 const layerResourceCleanupTest = ResourceCleanupService.layer.pipe(
-  Layer.provideMerge(layerScheduledTasksTest),
   Layer.provide(
     Layer.mergeAll(
       Layer.mock(PreviewManager.PreviewManager)({ close: () => Effect.void }),
@@ -400,132 +369,6 @@ const layerProjectDeletionTest = Layer.mergeAll(
 );
 
 it.layer(layerProjectDeletionTest)("project deletion during thread commands", (it) => {
-  it.effect.each(["thread", "project"] as const)(
-    "deleting a %s removes its thread-bound automations through the effect worker",
-    (deletion) =>
-      Effect.gen(function* () {
-        const projects = yield* ProjectService.ProjectService;
-        const orchestrator = yield* Orchestrator.OrchestratorV2;
-        const worker = yield* EffectWorker.OrchestrationEffectWorkerV2;
-        const tasks = yield* ScheduledTaskService.ScheduledTaskService;
-        const projectId = ProjectId.make(`automation-delete-project:${deletion}`);
-        const threadId = ThreadId.make(`automation-delete-thread:${deletion}`);
-        const otherThreadId = ThreadId.make(`automation-surviving-thread:${deletion}`);
-        const otherProjectId = ProjectId.make("automation-other-project");
-        yield* projects.create({
-          commandId: CommandId.make(`automation-create-project:${deletion}`),
-          projectId,
-          title: "Automation lifecycle",
-          workspaceRoot: `/work/automation-lifecycle/${deletion}`,
-        });
-        for (const id of [threadId, otherThreadId]) {
-          yield* orchestrator.dispatch({
-            type: "thread.create",
-            commandId: CommandId.make(`automation-create:${id}`),
-            createdBy: "user",
-            creationSource: "web",
-            threadId: id,
-            projectId: id === threadId ? projectId : otherProjectId,
-            title: "Automation target",
-            modelSelection,
-            runtimeMode: "full-access",
-            interactionMode: "default",
-            branch: null,
-            worktreePath: null,
-          });
-        }
-        const save = (name: string, target: ThreadId | null, webhook = false) =>
-          tasks.upsert({
-            // As schedule_task sends it, so clearing the thread unbinds the task.
-            threadMode: target === null ? "new_thread" : "continue",
-            id: ScheduledTaskId.make(`automation:${deletion}:${name}`),
-            title: name,
-            prompt: "Check orchestration progress",
-            enabled: !webhook,
-            schedule: webhook ? { type: "webhook" } : { type: "interval", everyMs: 60_000 },
-            projectId: target === otherThreadId ? otherProjectId : projectId,
-            threadId: target,
-            workspaceStrategy: { type: "root" },
-            modelSelection,
-            runtimeMode: "full-access",
-            interactionMode: "default",
-            createdBy: "agent",
-            creationSource: "mcp",
-          });
-        const { task: bound } = yield* save("bound", threadId);
-        const { task: webhook } = yield* save("webhook", threadId, true);
-        const { task: independent } = yield* save("independent", null);
-        yield* save("detached", threadId);
-        const { task: detached } = yield* save("detached", null);
-        yield* save("moved", threadId);
-        const { task: moved } = yield* save("moved", otherThreadId);
-        const { task: other } = yield* save("other", otherThreadId);
-        yield* tasks.triggerWebhook({
-          hookId: webhook.id,
-          token: webhook.webhook!.path.split("/").at(-1)!,
-          method: "POST",
-          path: webhook.webhook!.path,
-          query: "",
-          headers: {},
-          body: new Uint8Array(),
-          bodyText: "",
-        });
-        assert.lengthOf((yield* tasks.listWebhookDeliveries({ id: webhook.id })).deliveries, 1);
-
-        yield* orchestrator.dispatch({
-          type: "thread.archive",
-          commandId: CommandId.make(`automation-archive:${deletion}`),
-          threadId,
-        });
-        yield* worker.drain();
-        assert.include(
-          (yield* tasks.list()).tasks.map((task) => task.id),
-          bound.id,
-        );
-
-        if (deletion === "thread") {
-          yield* orchestrator.dispatch({
-            type: "thread.delete",
-            commandId: CommandId.make(`automation-delete:${deletion}`),
-            threadId,
-          });
-        } else {
-          yield* projects.delete({
-            commandId: CommandId.make(`automation-delete:${deletion}`),
-            projectId,
-            force: true,
-          });
-        }
-        yield* worker.drain();
-        const remainingIds = (yield* tasks.list()).tasks.map((task) => task.id);
-        assert.notInclude(remainingIds, bound.id);
-        assert.notInclude(remainingIds, webhook.id);
-        assert.includeMembers(remainingIds, [independent.id, detached.id, moved.id, other.id]);
-        assert.lengthOf((yield* tasks.listWebhookDeliveries({ id: webhook.id })).deliveries, 0);
-        const rejected = yield* tasks.runNow({ id: bound.id }).pipe(Effect.flip);
-        assert.equal(rejected.message, "Schedule task not found.");
-        assert.equal(
-          (yield* tasks.triggerWebhook({
-            hookId: webhook.id,
-            token: webhook.webhook!.path.split("/").at(-1)!,
-            method: "POST",
-            path: webhook.webhook!.path,
-            query: "",
-            headers: {},
-            body: new Uint8Array(),
-            bodyText: "",
-          }))._tag,
-          "not_found",
-        );
-        // Retried cleanup is harmless and cannot affect unrelated tasks.
-        yield* tasks.deleteForThread(threadId);
-        assert.sameMembers(
-          (yield* tasks.list()).tasks.map((task) => task.id),
-          remainingIds,
-        );
-      }),
-  );
-
   it.effect("waits for an in-flight thread update before planning deletion", () =>
     Effect.gen(function* () {
       const projects = yield* ProjectService.ProjectService;
@@ -7177,31 +7020,15 @@ it.layer(layerScratchPromotionTest)("turning a No project thread into a project"
       Effect.flatMap((orchestrator) => orchestrator.getThreadShell(threadId)),
     );
 
-  it.effect("moves every thread in the folder and its bound tasks into one project", () =>
+  it.effect("moves every thread in the folder into one project", () =>
     Effect.gen(function* () {
       const promotion = yield* ScratchThreadPromotion.ScratchThreadPromotion;
       const projects = yield* ProjectService.ProjectService;
       const orchestrator = yield* Orchestrator.OrchestratorV2;
-      const tasks = yield* ScheduledTaskService.ScheduledTaskService;
       const { folder, createThread } = yield* setup("moves");
       const threadId = yield* createThread("main", folder);
       const siblingId = yield* createThread("sibling", folder);
       const otherId = yield* createThread("other", `${SCRATCH_ROOT}/2026-01-01-elsewhere`);
-      const { task } = yield* tasks.upsert({
-        id: ScheduledTaskId.make("promotion-moves-bound"),
-        title: "Bound",
-        prompt: "Check in",
-        enabled: true,
-        schedule: { type: "interval", everyMs: 60_000 },
-        projectId: SCRATCH_PROJECT_ID,
-        threadId: siblingId,
-        workspaceStrategy: { type: "root" },
-        modelSelection,
-        runtimeMode: "full-access",
-        interactionMode: "default",
-        createdBy: "user",
-        creationSource: "web",
-      });
       yield* orchestrator.dispatch({
         type: "thread.archive",
         commandId: CommandId.make("promotion-moves-sibling-archive"),
@@ -7219,8 +7046,6 @@ it.layer(layerScratchPromotionTest)("turning a No project thread into a project"
         assert.isNull(shell?.worktreePath);
       }
       assert.equal((yield* shellOf(otherId))?.projectId, SCRATCH_PROJECT_ID);
-      const saved = (yield* tasks.list()).tasks.find((candidate) => candidate.id === task.id);
-      assert.equal(saved?.projectId, projectId);
       assert.deepEqual(yield* promotion.promote({ threadId }), { projectId });
     }),
   );

@@ -22,13 +22,6 @@ vi.mock(import("../../state/entities"), async (importOriginal) => ({
     target === null ? null : { title: "Release lead" }) as never,
 }));
 
-vi.mock(import("../../state/query"), async (importOriginal) => ({
-  ...(await importOriginal()),
-  useEnvironmentQuery: (() => ({
-    data: { tasks: [{ id: "task:webhook", title: "PR dispatcher" }] },
-  })) as never,
-}));
-
 vi.mock(import("../../state/use-atom-command"), async (importOriginal) => ({
   ...(await importOriginal()),
   useAtomCommand: (() => async () => undefined) as never,
@@ -111,7 +104,7 @@ it("previews assistant quotes as readable text and preserves the citation when e
   );
 });
 
-it("shows who sent a queued message and folds automation and agent prompts", async () => {
+it("shows who sent a queued message and folds agent prompts", async () => {
   setup();
   const message = (id: string, fields: Record<string, unknown>) => ({
     id,
@@ -124,14 +117,6 @@ it("shows who sent a queued message and folds automation and agent prompts", asy
     activeRun: { id: "run:active" },
     canPromoteToSteer: true,
     queuedRuns: [
-      [
-        "run:automation",
-        "GitHub labeled a pull request.\nFollow the runbook.",
-        {
-          createdBy: "agent",
-          scheduledTaskId: "task:webhook",
-        },
-      ],
       [
         "run:agent",
         "Review finished.",
@@ -158,13 +143,6 @@ it("shows who sent a queued message and folds automation and agent prompts", asy
   };
   const onOpenThread = vi.fn();
   await using _screen = await renderQueue({ onOpenThread });
-
-  const automation = page.getByRole("button", { name: /PR dispatcher/ });
-  await expect.element(automation).toHaveAttribute("aria-expanded", "false");
-  await expect.element(page.getByText(/Follow the runbook/)).not.toBeInTheDocument();
-  await automation.click();
-  await expect.element(page.getByText(/Follow the runbook/)).toBeVisible();
-  await expect.element(page.getByRole("link", { name: "Open automation" })).toBeInTheDocument();
 
   await expect.element(page.getByRole("button", { name: /Release lead/ })).toBeVisible();
   await page.getByRole("button", { name: "Open thread" }).click({ force: true });

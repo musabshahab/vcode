@@ -13,7 +13,6 @@ import {
   ProviderThreadId,
   ProviderTurnId,
   RuntimeRequestId,
-  ScheduledTaskId,
   ThreadId,
   TurnItemId,
 } from "@t3tools/contracts";
@@ -752,35 +751,6 @@ it.effect("a message the user sends after Stop releases the held queue; an agent
       payload: { ...nudge, status: "completed", completedAt: now },
     });
 
-    // A scheduled task the user created is not the user coming back.
-    yield* orchestrator.dispatch({
-      type: "message.dispatch",
-      commandId: CommandId.make("scheduled-send"),
-      threadId,
-      messageId: MessageId.make(`message:${threadId}:scheduled`),
-      text: "Nightly check",
-      attachments: [],
-      dispatchMode: { type: "queue_after_active" },
-      createdBy: "user",
-      creationSource: "web",
-      scheduledTaskId: ScheduledTaskId.make("scheduled:nightly"),
-    });
-    const scheduled = (yield* orchestrator.getThreadProjection(threadId)).runs.at(-1)!;
-    assert.deepEqual((yield* threadState(threadId)).runs, [
-      "interrupted",
-      "queued:held",
-      "completed",
-      "starting",
-    ]);
-    yield* projections.apply({
-      id: EventId.make("event:stop-release:scheduled-completed"),
-      type: "run.updated",
-      threadId,
-      runId: scheduled.id,
-      occurredAt: now,
-      payload: { ...scheduled, status: "completed", completedAt: now },
-    });
-
     // The user is back: the held message follows their run, and a wake that
     // queues behind it is not held by the old Stop.
     yield* send(threadId, "back", "start_immediately");
@@ -788,7 +758,6 @@ it.effect("a message the user sends after Stop releases the held queue; an agent
     assert.deepEqual((yield* threadState(threadId)).runs, [
       "interrupted",
       "queued",
-      "completed",
       "completed",
       "starting",
       "queued",

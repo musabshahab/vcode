@@ -34,7 +34,6 @@ import * as ManagedProjectFolders from "../project/ManagedProjectFolders.ts";
 import * as ProjectCloneTracker from "../project/ProjectCloneTracker.ts";
 import * as ProjectService from "../project/ProjectService.ts";
 import * as ProviderRegistry from "../provider/ProviderRegistry.ts";
-import * as ScheduledTaskService from "../scheduledTasks/ScheduledTaskService.ts";
 import * as ServerSettings from "../serverSettings.ts";
 import * as CommandReceiptStore from "../orchestration-v2/CommandReceiptStore.ts";
 import * as SecretRequests from "../secrets/SecretRequests.ts";
@@ -130,7 +129,6 @@ const layerTools = Layer.mergeAll(
       list: () => Effect.succeed([]),
     }),
   ),
-  Layer.provide(Layer.mock(ScheduledTaskService.ScheduledTaskService)({})),
   Layer.provide(
     Layer.mock(ProjectService.ProjectService)({
       getById: () => Effect.succeedNone,
@@ -370,12 +368,6 @@ it.layer(Layer.provideMerge(layerTools, layerOrchestration))("work a link starts
         });
         assert.equal(failureCode(result), "capability_denied", name);
       }
-
-      // Nor scheduled tasks, which belong to no thread.
-      assert.equal(
-        failureCode(yield* call(laptop, "delete_scheduled_task", { scheduledTaskId: "any" })),
-        "capability_denied",
-      );
 
       // Reads are not fenced.
       const read = yield* call(laptop, "t3_thread_read", { threadId: users });

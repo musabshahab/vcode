@@ -37,7 +37,6 @@ import {
   type ProviderSessionId,
   resolveProjectProviderInstanceEnabled,
   RunId,
-  type ScheduledTaskId,
   ThreadId,
   type TurnItemId,
 } from "@t3tools/contracts";
@@ -140,7 +139,6 @@ export interface ThreadManagementSendInput {
   readonly commandId: CommandId;
   readonly threadId: ThreadId;
   readonly messageId: MessageId;
-  readonly scheduledTaskId?: ScheduledTaskId;
   readonly senderThreadId?: ThreadId;
   readonly text: string;
   readonly attachments: ReadonlyArray<ChatAttachment>;
@@ -856,7 +854,6 @@ const make = Effect.gen(function* () {
       commandId: input.commandId,
       threadId: input.threadId,
       messageId: input.messageId,
-      ...(input.scheduledTaskId === undefined ? {} : { scheduledTaskId: input.scheduledTaskId }),
       ...(input.senderThreadId === undefined ? {} : { senderThreadId: input.senderThreadId }),
       text: input.text,
       attachments: input.attachments,

@@ -11,9 +11,8 @@ agent can use this endpoint to:
 - create one or more ordinary top-level T3 threads;
 - list a project's threads and incrementally read any thread;
 - rename threads, regenerate titles, and link or unlink pull requests;
-- send or steer follow-up messages;
-- wait for or interrupt ordinary thread runs; and
-- schedule recurring work that runs without an active turn.
+- send or steer follow-up messages; and
+- wait for or interrupt ordinary thread runs.
 
 These are T3 orchestration operations, not provider-native sub-agent APIs.
 Delegated tasks always create a T3 child thread and run. The child receives
@@ -464,22 +463,6 @@ Interrupts a selected active run through the normal V2 `run.interrupt` command.
 Without `runId`, it selects the newest interruptible run. A terminal run is
 returned unchanged, and a thread with no active provider turn returns
 `no_active_run`.
-
-### Scheduled tasks
-
-`schedule_task`, `list_scheduled_tasks`, and `delete_scheduled_task` manage
-recurring work in the app scheduler; `schedule_task` with a `scheduledTaskId`
-updates an existing task. A schedule
-runs its prompt on an interval, at a fixed time in the server's local time
-zone, or on each qualifying webhook request, even when no turn is active.
-Without a signature, anyone with the webhook URL can trigger a run.
-Signature checks, filters, and dedupe can skip a webhook request.
-`bindToCurrentThread` defaults to `true` only when the caller has a thread in
-the task's project; otherwise it defaults to `false`. Bound runs post into
-that thread; unbound runs each launch a fresh thread in the task's project.
-Explicit `bindToCurrentThread: true` without a caller thread in that project
-is rejected. Pausing uses `schedule_task` with `scheduledTaskId` and `enabled: false`;
-deletion is permanent.
 
 ## Delegated Task Lifecycle
 

@@ -1,7 +1,7 @@
 # Effect services
 
 Server features are Effect services. Transports call them: WebSocket RPC handlers in
-[`ws.ts`](../../apps/server/src/ws.ts), HTTP routes, MCP tools, scheduled tasks, and the CLI. This
+[`ws.ts`](../../apps/server/src/ws.ts), HTTP routes, MCP tools, and the CLI. This
 page holds the rules for writing them. The
 [Effect Service Conventions](../../.macroscope/check-run-agents/effect-service-conventions.md)
 review check enforces the same rules; keep the two in step.
@@ -17,7 +17,7 @@ service's typed errors to the transport's error. Nothing else. Filesystem, Git, 
 persistence work, folder naming, multi-step dispatch, retries, and rollback belong in the service.
 
 The reason is reach. Users trigger a capability from the WebSocket, agents reach it through MCP
-tools, and scheduled tasks and the CLI run it too. Logic written into one handler is missing from
+tools, and the CLI runs it too. Logic written into one handler is missing from
 the others, and testing it needs a socket. Plain functions for pure work (a slug, an SVG, a
 message) are fine next to the service; the capability itself is the method.
 
@@ -153,7 +153,7 @@ optional-service layer. Don't route around the layer with an imperative runtime.
 ## Before you push
 
 - Does any handler you touched do more than decode, call, and map errors?
-- Could an agent (MCP) or a scheduled task use this capability? If not, is that deliberate?
+- Could an agent (MCP) use this capability? If not, is that deliberate?
 - Did you extend the domain's existing service before adding a new one?
 - Did you run knip? A new export with no importer fails it.
 - Does every directive you added that disables a lint, type-checker, or LSP diagnostic say why, in

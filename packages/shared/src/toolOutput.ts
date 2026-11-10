@@ -31,7 +31,6 @@ interface CompactToolOutput {
   threadId?: string;
   messageId?: string;
   taskId?: string;
-  scheduledTaskId?: string;
   status?: "rolled_back";
   thread?: { threadId: string };
   threads?: Array<{ threadId?: string; status?: "rolled_back" }>;
@@ -112,7 +111,7 @@ export function compactDynamicToolOutput(value: unknown): CompactToolOutput | un
   const output: CompactToolOutput = result.failed ? { isError: true } : {};
   const data = budget.exceeded ? undefined : result.data;
   if (data !== undefined) {
-    for (const key of ["threadId", "messageId", "taskId", "scheduledTaskId"] as const) {
+    for (const key of ["threadId", "messageId", "taskId"] as const) {
       const id = boundedId(data[key]);
       if (id !== undefined) output[key] = id;
     }

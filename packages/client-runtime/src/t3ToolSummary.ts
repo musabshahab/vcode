@@ -205,33 +205,6 @@ export function summarizeT3ToolCalls(
         quantity(countEntities(entityIds("taskId")), "task"),
       );
       break;
-    case "schedule-create":
-      label = phrase(
-        "Scheduled",
-        "schedule",
-        quantity(countEntities(entityIds("scheduledTaskId")), "task"),
-      );
-      break;
-    case "schedule-list":
-      label = phrase("Listed", "list", `scheduled tasks ${times}`);
-      break;
-    case "schedule-update":
-      label = phrase(
-        "Updated",
-        "update",
-        quantity(countEntities(entityIds("scheduledTaskId")), "scheduled task"),
-      );
-      break;
-    case "schedule-delete":
-      label = phrase(
-        "Requested deletion of",
-        "delete",
-        quantity(countEntities(entityIds("scheduledTaskId")), "scheduled task"),
-      );
-      break;
-    case "schedule-run":
-      label = phrase("Requested", "request", quantity(selected.length, "scheduled task run"));
-      break;
     case "thread-configuration":
       label = phrase("Checked", "check", `thread configuration ${times}`);
       break;

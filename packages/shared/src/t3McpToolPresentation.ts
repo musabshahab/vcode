@@ -10,11 +10,6 @@ export type T3McpToolSummaryAction =
   | "delegate"
   | "task-status"
   | "task-cancel"
-  | "schedule-run"
-  | "schedule-create"
-  | "schedule-list"
-  | "schedule-update"
-  | "schedule-delete"
   | "thread-create"
   | "thread-list"
   | "thread-read"
@@ -148,16 +143,6 @@ const T3_MCP_TOOLS: Readonly<Record<string, T3McpToolDefinition>> = {
     ["Cancel", "Canceling", "Requested cancellation of", "a delegated task"],
     "task-cancel",
   ),
-  schedule_task: tool(["Schedule", "Scheduling", "Scheduled", "a task"], "schedule-create"),
-  list_scheduled_tasks: tool(["List", "Listing", "Listed", "scheduled tasks"], "schedule-list"),
-  update_scheduled_task: tool(
-    ["Update", "Updating", "Updated", "a scheduled task"],
-    "schedule-update",
-  ),
-  delete_scheduled_task: tool(
-    ["Delete", "Deleting", "Requested deletion of", "a scheduled task"],
-    "schedule-delete",
-  ),
   request_secret: tool(["Ask for", "Asking for", "Asked for", "a secret"], "secret-request"),
   create_threads: tool(["Create", "Creating", "Created", "T3 threads"], "thread-create"),
   t3_thread_start: tool(["Start", "Starting", "Started", "a T3 thread"], "thread-create"),
@@ -270,10 +255,6 @@ const T3_MCP_TOOLS: Readonly<Record<string, T3McpToolDefinition>> = {
     ["Stop", "Stopping", "Stopped", "recording the preview browser"],
     "browser",
     "browser",
-  ),
-  run_scheduled_task_now: tool(
-    ["Run", "Running", "Requested a run of", "a scheduled task"],
-    "schedule-run",
   ),
   t3_queue: tool(["Manage", "Managing", "Managed", "queued messages"], "queue-edit"),
   t3_pending_request: tool(
@@ -453,8 +434,6 @@ const ACTION_SUMMARIES: Readonly<
 > = {
   t3_thread_configure: ({ modelSelection }) =>
     modelSelection === undefined ? "thread-configuration" : "thread-configure",
-  schedule_task: ({ scheduledTaskId }) =>
-    scheduledTaskId === undefined ? "schedule-create" : "schedule-update",
 };
 
 export function resolveT3McpSummaryAction(

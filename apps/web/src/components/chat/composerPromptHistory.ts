@@ -123,7 +123,7 @@ export function buildComposerPromptHistoryEntries(
   const entries: ComposerPromptHistoryEntry[] = [];
   for (const message of messages) {
     if (message.role !== "user") continue;
-    // Automations and other agents send user-role messages; recall only what the user typed.
+    // Agents send user-role messages too; recall only what the user typed.
     if (resolveUserMessagePresentation(message).attribution !== null) continue;
     const prompt = recallableComposerPrompt(message.text);
     if (prompt.length === 0) continue;

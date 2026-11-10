@@ -1574,13 +1574,13 @@ it.effect("ingests new member threads of an owned child after the root turn term
     const recorded = yield* Ref.get(origins);
     assert.deepEqual(recorded[0]?.slice(0, 2), [
       "app_thread.created",
-      { createdBy: "user", creationSource: "web", scheduled: false, subagent: false },
+      { createdBy: "user", creationSource: "web", subagent: false },
     ]);
     assert.deepEqual(
       recorded.find(([type]) => type === "provider_turn.updated"),
       [
         "provider_turn.updated",
-        { createdBy: "agent", creationSource: "provider", scheduled: false, subagent: true },
+        { createdBy: "agent", creationSource: "provider", subagent: true },
         "native_child",
       ],
     );

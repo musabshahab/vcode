@@ -39,7 +39,6 @@ const REPORT_VERSION = 2;
 export interface ProviderTurnOrigin {
   readonly createdBy: OrchestrationV2Actor;
   readonly creationSource: OrchestrationV2CreationSource;
-  readonly scheduled: boolean;
   readonly subagent: boolean;
 }
 
@@ -207,7 +206,6 @@ export function providerTurnProperties(
 /** How the request reached the provider; only `user` counts as a person asking. */
 function requestKind(origin: ProviderTurnOrigin | undefined) {
   if (origin === undefined) return "unknown";
-  if (origin.scheduled) return "scheduled";
   if (origin.subagent) return "t3_child";
   if (origin.createdBy === "user") return "user";
   if (origin.creationSource === "provider") return "provider_continuation";

@@ -275,7 +275,6 @@ it.effect.each([
   ["writes_with_capability", previewOnly, {}, "ran"],
   ["writes_with_capability", readOnlyClient, {}, "capability_denied"],
   ["writes_with_capability", ended, {}, "parent_not_active"],
-  ["writes", linkedClient, {}, "capability_denied"],
   ["writes_with_capability", linkedClient, {}, "capability_denied"],
   ["writes", fullAccessLinkedClient, {}, "ran"],
   ["writes_with_capability", fullAccessLinkedClient, {}, "ran"],

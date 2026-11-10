@@ -12,8 +12,6 @@ import {
   OrchestratorMcpThreadReadResult,
   ProviderDriverKind,
   ProviderInstanceId,
-  ScheduledTaskError,
-  ScheduledTask,
   RuntimeRequestId,
   ThreadId,
   TurnItemId,
@@ -44,7 +42,6 @@ import * as ProjectService from "../../project/ProjectService.ts";
 import * as ProviderRegistry from "../../provider/ProviderRegistry.ts";
 import * as SecretRequests from "../../secrets/SecretRequests.ts";
 import * as RemoteDelegation from "../../peer/RemoteDelegation.ts";
-import * as ScheduledTaskService from "../../scheduledTasks/ScheduledTaskService.ts";
 import * as ServerSettings from "../../serverSettings.ts";
 import * as McpHttpServer from "../McpHttpServer.ts";
 import * as McpInvocationContext from "../McpInvocationContext.ts";
@@ -72,7 +69,6 @@ const decodeThreadReadResult = Schema.decodeUnknownEffect(OrchestratorMcpThreadR
 
 const layerThreadToolkit = McpHttpServer.layerThreadToolkit.pipe(
   Layer.provide(Layer.mock(ThreadSearch.ThreadSearch)({})),
-  Layer.provide(Layer.mock(ScheduledTaskService.ScheduledTaskService)({})),
   Layer.provide(Layer.mock(PeerForwarding.PeerForwarding)({})),
   Layer.provide(Layer.mock(PeerLinkRequests.PeerLinkRequests)({})),
   Layer.provide(Layer.mock(PeerLinks.PeerLinks)({})),
@@ -597,7 +593,6 @@ it.effect("refuses act-as-caller tools to a client caller", () =>
         Layer.provide(ServerSettings.layerTest()),
         Layer.provide(Layer.mock(ProviderRegistry.ProviderRegistry)({})),
         Layer.provide(Layer.mock(ProviderAdapterRegistry.ProviderAdapterRegistryV2)({})),
-        Layer.provide(Layer.mock(ScheduledTaskService.ScheduledTaskService)({})),
         Layer.provide(Layer.mock(PeerForwarding.PeerForwarding)({})),
         Layer.provide(Layer.mock(PeerLinkRequests.PeerLinkRequests)({})),
         Layer.provide(Layer.mock(PeerLinks.PeerLinks)({})),
@@ -608,151 +603,6 @@ it.effect("refuses act-as-caller tools to a client caller", () =>
     ),
   ),
 );
-
-it.effect("a caller cannot rewrite a scheduled task that runs above its own modes", () =>
-  Effect.gen(function* () {
-    const server = yield* McpServer.McpServer;
-    const call = (name: string, args: Record<string, unknown>) =>
-      server
-        .callTool({ name, arguments: args })
-        .pipe(
-          Effect.provideService(McpInvocationContext.McpInvocationContext, clientScope("auto")),
-          Effect.provideService(McpSchema.McpServerClient, client),
-        );
-    const update = yield* call("schedule_task", {
-      scheduledTaskId: "task-full-access",
-      prompt: "Run something else",
-    });
-    expect(declaredFailure(update)).toMatchObject({ code: "runtime_mode_escalation_denied" });
-    const remove = yield* call("delete_scheduled_task", { scheduledTaskId: "task-full-access" });
-    expect(declaredFailure(remove)).toMatchObject({ code: "runtime_mode_escalation_denied" });
-    const allowed = yield* call("schedule_task", {
-      scheduledTaskId: "task-auto",
-      enabled: false,
-    });
-    expect(allowed.isError).toBe(false);
-    const incomplete = yield* call("schedule_task", { prompt: "Run nightly" });
-    expect(declaredFailure(incomplete)).toMatchObject({ code: "invalid_request" });
-  }).pipe(
-    Effect.provide(
-      layerOrchestratorToolkit.pipe(
-        Layer.provideMerge(McpHttpServer.layerInProcessMcpServer),
-        Layer.provide(NodeCrypto.layer),
-        Layer.provide(Layer.mock(ThreadManagement.ThreadManagementService)({})),
-        Layer.provide(ServerSettings.layerTest()),
-        Layer.provide(Layer.mock(ProviderRegistry.ProviderRegistry)({})),
-        Layer.provide(Layer.mock(ProviderAdapterRegistry.ProviderAdapterRegistryV2)({})),
-        Layer.provide(
-          Layer.mock(ScheduledTaskService.ScheduledTaskService)({
-            list: () =>
-              Effect.succeed({
-                tasks: [
-                  scheduledTask("task-full-access", "full-access"),
-                  scheduledTask("task-auto", "auto"),
-                ],
-              }),
-            upsert: (input) =>
-              Effect.succeed({
-                task: { ...(scheduledTask(input.id ?? "task-auto", "auto") as object), ...input },
-              } as never),
-          }),
-        ),
-        Layer.provide(Layer.mock(ProjectService.ProjectService)({})),
-        Layer.provide(Layer.mock(SecretRequests.SecretRequests)({})),
-        Layer.provide(Layer.mock(PeerForwarding.PeerForwarding)({})),
-        Layer.provide(Layer.mock(PeerLinkRequests.PeerLinkRequests)({})),
-        Layer.provide(Layer.mock(PeerLinks.PeerLinks)({})),
-        Layer.provide(Layer.mock(RemoteDelegation.RemoteDelegation)({})),
-      ),
-    ),
-  ),
-);
-
-it.effect.each([
-  {
-    scenario: "explains why a webhook task cannot run manually",
-    tasks: [
-      {
-        ...Schema.decodeSync(ScheduledTask)(scheduledTask("task-webhook", "full-access")),
-        schedule: { type: "webhook" as const, signature: null },
-      },
-    ],
-    error: new ScheduledTaskError({
-      message: "Webhook tasks run when their URL receives a request.",
-      cause: new Error("private-webhook-cause"),
-    }),
-    code: "orchestration_error",
-    message: "Webhook tasks run when their URL receives a request.",
-  },
-  {
-    scenario: "reports a missing task before trying to run it",
-    tasks: [],
-    error: new ScheduledTaskError({ message: "must not run a missing task" }),
-    code: "invalid_request",
-    message: "The scheduled task was not found.",
-  },
-])("run_scheduled_task_now $scenario", ({ tasks, error, code, message }) =>
-  Effect.gen(function* () {
-    const server = yield* McpServer.McpServer;
-    const result = yield* server
-      .callTool({ name: "run_scheduled_task_now", arguments: { taskId: "task-webhook" } })
-      .pipe(
-        Effect.provideService(
-          McpInvocationContext.McpInvocationContext,
-          clientScope("full-access"),
-        ),
-        Effect.provideService(McpSchema.McpServerClient, client),
-      );
-    expect(result.isError).toBe(true);
-    expect(result.structuredContent).toBeUndefined();
-    expect(declaredFailure(result)).toEqual({ _tag: "OrchestratorMcpFailure", code, message });
-    expect(JSON.stringify(result)).not.toContain("private-");
-  }).pipe(
-    Effect.provide(
-      McpHttpServer.layerThreadToolkit.pipe(
-        Layer.provideMerge(McpHttpServer.layerInProcessMcpServer),
-        Layer.provide(NodeCrypto.layer),
-        Layer.provide(Layer.mock(ThreadManagement.ThreadManagementService)({})),
-        Layer.provide(Layer.mock(ThreadSearch.ThreadSearch)({})),
-        Layer.provide(Layer.mock(PeerForwarding.PeerForwarding)({})),
-        Layer.provide(Layer.mock(PeerLinkRequests.PeerLinkRequests)({})),
-        Layer.provide(Layer.mock(PeerLinks.PeerLinks)({})),
-        Layer.provide(
-          Layer.mock(ScheduledTaskService.ScheduledTaskService)({
-            list: () => Effect.succeed({ tasks }),
-            runNow: () => Effect.fail(error),
-          }),
-        ),
-      ),
-    ),
-  ),
-);
-
-function scheduledTask(id: string, runtimeMode: "auto" | "full-access"): never {
-  return {
-    id,
-    title: id,
-    prompt: "Check the build",
-    enabled: true,
-    projectId: "project-a",
-    threadId: null,
-    schedule: { type: "interval", everyMs: 3_600_000 },
-    workspaceStrategy: { type: "worktree", baseRef: "main", startFromOrigin: true },
-    modelSelection: { instanceId: "codex", model: "gpt-5" },
-    runtimeMode,
-    interactionMode: "default",
-    createdBy: "user",
-    creationSource: "web",
-    nextRunAt: null,
-    lastRunStatus: "never",
-    lastRunAt: null,
-    lastRunThreadId: null,
-    lastRunError: null,
-    runCount: 0,
-    createdAt: "2026-10-01T00:00:00.000Z",
-    updatedAt: "2026-10-01T00:00:00.000Z",
-  } as never;
-}
 
 it.effect.each(["t3_thread_interrupt", "t3_workflow_stop"])(
   "a caller cannot use %s on a thread that runs above its own modes",
@@ -804,7 +654,6 @@ it.effect.each(["t3_thread_interrupt", "t3_workflow_stop"])(
           Layer.provide(ServerSettings.layerTest()),
           Layer.provide(Layer.mock(ProviderRegistry.ProviderRegistry)({})),
           Layer.provide(Layer.mock(ProviderAdapterRegistry.ProviderAdapterRegistryV2)({})),
-          Layer.provide(Layer.mock(ScheduledTaskService.ScheduledTaskService)({})),
           Layer.provide(Layer.mock(ProjectService.ProjectService)({})),
           Layer.provide(Layer.mock(SecretRequests.SecretRequests)({})),
           Layer.provide(Layer.mock(RemoteDelegation.RemoteDelegation)({})),
@@ -900,7 +749,6 @@ it.effect("discovers workflow stop targets and requires orchestration capability
         Layer.provide(ServerSettings.layerTest()),
         Layer.provide(Layer.mock(ProviderRegistry.ProviderRegistry)({})),
         Layer.provide(Layer.mock(ProviderAdapterRegistry.ProviderAdapterRegistryV2)({})),
-        Layer.provide(Layer.mock(ScheduledTaskService.ScheduledTaskService)({})),
         Layer.provide(Layer.mock(PeerForwarding.PeerForwarding)({})),
         Layer.provide(Layer.mock(PeerLinkRequests.PeerLinkRequests)({})),
         Layer.provide(Layer.mock(PeerLinks.PeerLinks)({})),
@@ -1012,7 +860,6 @@ it.effect(
           Layer.provide(ServerSettings.layerTest()),
           Layer.provide(Layer.mock(ProviderRegistry.ProviderRegistry)({})),
           Layer.provide(Layer.mock(ProviderAdapterRegistry.ProviderAdapterRegistryV2)({})),
-          Layer.provide(Layer.mock(ScheduledTaskService.ScheduledTaskService)({})),
           Layer.provide(Layer.mock(ProjectService.ProjectService)({})),
           Layer.provide(Layer.mock(SecretRequests.SecretRequests)({})),
           Layer.provide(Layer.mock(PeerForwarding.PeerForwarding)({})),

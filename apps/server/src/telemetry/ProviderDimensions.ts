@@ -114,15 +114,8 @@ const defined = (entries: Readonly<Record<string, unknown>>) =>
  */
 export const MAX_REPORTED_DEPTH = 5;
 
-/**
- * Who started the work that made this call. Scheduled runs keep the task
- * creator's provenance, so the run's message marks them instead.
- */
-function callerOrigin(input: {
-  readonly thread: Pick<AgentThread, "createdBy">;
-  readonly scheduledRun: boolean;
-}) {
-  if (input.scheduledRun) return "scheduler";
+/** Who started the work that made this call. */
+function callerOrigin(input: { readonly thread: Pick<AgentThread, "createdBy"> }) {
   if (input.thread.createdBy === "agent") return "agent";
   return input.thread.createdBy === "system" ? "system" : "user";
 }
@@ -166,8 +159,6 @@ export function handoffSettings(tool: string, args: unknown, result: unknown): F
       return defined({ delivery: stringField(output, "delivery") });
     case "t3_thread_send_attachments":
       return { delivery: "auto" };
-    case "schedule_task":
-      return { bindToCurrentThread: input.bindToCurrentThread !== false };
     default:
       return {};
   }
@@ -201,7 +192,6 @@ export function agentToolProperties(input: {
   readonly caller: AgentThread | undefined;
   readonly callerProviderInstanceId?: ModelSelection["instanceId"];
   readonly callerDepth?: number;
-  readonly callerScheduledRun?: boolean;
   readonly targets: ReadonlyArray<AgentThread>;
   readonly outcome: Fields;
   readonly settings?: Fields;
@@ -222,13 +212,7 @@ export function agentToolProperties(input: {
     tool: input.tool,
     callerProvider: caller.provider,
     callerModel: caller.model,
-    callerOrigin:
-      input.caller === undefined
-        ? undefined
-        : callerOrigin({
-            thread: input.caller,
-            scheduledRun: input.callerScheduledRun === true,
-          }),
+    callerOrigin: input.caller === undefined ? undefined : callerOrigin({ thread: input.caller }),
     callerDepth:
       input.callerDepth === undefined ? undefined : Math.min(input.callerDepth, MAX_REPORTED_DEPTH),
     durationMs: input.durationMs,

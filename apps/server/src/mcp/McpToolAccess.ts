@@ -137,28 +137,10 @@ export const actsAsCaller = <P, A, E, R>(handle: (params: P) => Effect.Effect<A,
     undefined,
   );
 
-/**
- * Changes something that belongs to no thread, such as a pending upload or a
- * scheduled task. Work a linked environment started may not: none of it
- * carries the link's origin, so none of it is that link's.
- */
-export const writes = <P, A, E, R>(
-  handle: (params: P) => Effect.Effect<A, E, R>,
-  options?: {
-    /** Whether a linked caller may make it, as for uploads its own sends need. */
-    readonly linkedCallers?: "allowed";
-  },
-) =>
+/** Changes something that belongs to no thread, such as a pending upload. */
+export const writes = <P, A, E, R>(handle: (params: P) => Effect.Effect<A, E, R>) =>
   declare(
-    (params: P) =>
-      orchestratingCaller.pipe(
-        Effect.tap((caller) =>
-          options?.linkedCallers === "allowed"
-            ? Effect.void
-            : assertNotLinked(caller, "change this environment's scheduled tasks"),
-        ),
-        Effect.flatMap(() => handle(params)),
-      ),
+    (params: P) => orchestratingCaller.pipe(Effect.flatMap(() => handle(params))),
     () => orchestratingCaller,
   );
 

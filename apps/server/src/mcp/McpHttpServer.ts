@@ -16,7 +16,6 @@ import { HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/http";
 import {
   PreviewAutomationError,
   ProviderInteractionMode,
-  type RunId,
   RuntimeMode,
   ThreadId,
 } from "@t3tools/contracts";
@@ -630,8 +629,6 @@ const HANDOFF_TOOLS: ReadonlySet<string> = new Set([
   "t3_thread_launch",
   "t3_thread_send",
   "t3_thread_send_attachments",
-  "schedule_task",
-  "run_scheduled_task_now",
 ]);
 
 /** Tool actions that hand work over with only a `{ sequence }` result; the input names the thread. */
@@ -714,25 +711,6 @@ const withToolAnalytics =
         }
         return depth;
       });
-    // Whether the caller's active run was started by a scheduled task.
-    const scheduledRunOf = (threadId: string, runId: RunId | null) =>
-      Option.isNone(threads) || runId === null
-        ? Effect.succeed(false)
-        : threads.value
-            .getThreadRecords(ThreadId.make(threadId), ["runs", "messages"], {
-              runIds: [runId],
-              messageRoles: ["user"],
-            })
-            .pipe(
-              Effect.map((records) => {
-                const run = records.runs.find((candidate) => candidate.id === runId);
-                return records.messages.some(
-                  (message) =>
-                    message.id === run?.userMessageId && message.scheduledTaskId !== undefined,
-                );
-              }),
-              Effect.orElseSucceed(() => false),
-            );
     const record =
       /* Request instrumentation already owns the span; keep this helper in that context. */
       Effect.fnUntraced(
@@ -778,10 +756,6 @@ const withToolAnalytics =
               ? {}
               : {
                   callerDepth: yield* depthOf(caller),
-                  callerScheduledRun: yield* scheduledRunOf(
-                    invocation.threadId,
-                    caller.activeRunId,
-                  ),
                 }),
             targets: targets.filter((thread) => thread !== null),
             outcome,

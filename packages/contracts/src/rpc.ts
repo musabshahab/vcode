@@ -306,23 +306,6 @@ import {
   ListTextGeneratorModelsResult,
   TextGeneratorError,
 } from "./settings.ts";
-import {
-  ScheduledTaskDeleteInput,
-  ScheduledTaskDeleteResult,
-  ScheduledTaskError,
-  ScheduledTaskListInput,
-  ScheduledTaskListResult,
-  ScheduledTaskRunNowInput,
-  ScheduledTaskRotateWebhookTokenInput,
-  ScheduledTaskListWebhookDeliveriesInput,
-  ScheduledTaskListWebhookDeliveriesResult,
-  ScheduledTaskGetWebhookDeliveryInput,
-  ScheduledTaskGetWebhookDeliveryResult,
-  ScheduledTaskRunNowResult,
-  ScheduledTaskSetEnabledInput,
-  ScheduledTaskUpsertInput,
-  ScheduledTaskMutationResult,
-} from "./scheduledTask.ts";
 import { SecretRequestAnswerInput, SecretRequestError } from "./secretRequest.ts";
 import {
   ProjectCloneActionInput,
@@ -460,16 +443,8 @@ export const WS_METHODS = {
   serverGetUsageSummary: "server.getUsageSummary",
   serverRefreshUsageRates: "server.refreshUsageRates",
 
-  scheduledTasksSubscribe: "scheduledTasks.subscribe",
-  scheduledTasksUpsert: "scheduledTasks.upsert",
-  scheduledTasksSetEnabled: "scheduledTasks.setEnabled",
-  scheduledTasksDelete: "scheduledTasks.delete",
-  scheduledTasksRunNow: "scheduledTasks.runNow",
-  scheduledTasksRotateWebhookToken: "scheduledTasks.rotateWebhookToken",
   secretsAnswerRequest: "secrets.answerRequest",
   guestShareCreate: "guestShare.create",
-  scheduledTasksListWebhookDeliveries: "scheduledTasks.listWebhookDeliveries",
-  scheduledTasksGetWebhookDelivery: "scheduledTasks.getWebhookDelivery",
 
   cloudGetRelayClientStatus: "cloud.getRelayClientStatus",
   cloudInstallRelayClient: "cloud.installRelayClient",
@@ -1712,46 +1687,6 @@ const WsSubscribeServerLifecycleRpc = Rpc.make(WS_METHODS.subscribeServerLifecyc
   stream: true,
 });
 
-const WsScheduledTasksSubscribeRpc = Rpc.make(WS_METHODS.scheduledTasksSubscribe, {
-  payload: ScheduledTaskListInput,
-  success: ScheduledTaskListResult,
-  error: Schema.Union([ScheduledTaskError, EnvironmentAuthorizationError]),
-  stream: true,
-});
-
-const WsScheduledTasksUpsertRpc = Rpc.make(WS_METHODS.scheduledTasksUpsert, {
-  payload: ScheduledTaskUpsertInput,
-  success: ScheduledTaskMutationResult,
-  error: Schema.Union([ScheduledTaskError, EnvironmentAuthorizationError]),
-});
-
-const WsScheduledTasksSetEnabledRpc = Rpc.make(WS_METHODS.scheduledTasksSetEnabled, {
-  payload: ScheduledTaskSetEnabledInput,
-  success: ScheduledTaskMutationResult,
-  error: Schema.Union([ScheduledTaskError, EnvironmentAuthorizationError]),
-});
-
-const WsScheduledTasksDeleteRpc = Rpc.make(WS_METHODS.scheduledTasksDelete, {
-  payload: ScheduledTaskDeleteInput,
-  success: ScheduledTaskDeleteResult,
-  error: Schema.Union([ScheduledTaskError, EnvironmentAuthorizationError]),
-});
-
-const WsScheduledTasksRunNowRpc = Rpc.make(WS_METHODS.scheduledTasksRunNow, {
-  payload: ScheduledTaskRunNowInput,
-  success: ScheduledTaskRunNowResult,
-  error: Schema.Union([ScheduledTaskError, EnvironmentAuthorizationError]),
-});
-
-const WsScheduledTasksRotateWebhookTokenRpc = Rpc.make(
-  WS_METHODS.scheduledTasksRotateWebhookToken,
-  {
-    payload: ScheduledTaskRotateWebhookTokenInput,
-    success: ScheduledTaskMutationResult,
-    error: Schema.Union([ScheduledTaskError, EnvironmentAuthorizationError]),
-  },
-);
-
 const WsGuestShareCreateRpc = Rpc.make(WS_METHODS.guestShareCreate, {
   payload: GuestShareCreateInput,
   success: GuestShareCreateResult,
@@ -1762,24 +1697,6 @@ const WsSecretsAnswerRequestRpc = Rpc.make(WS_METHODS.secretsAnswerRequest, {
   payload: SecretRequestAnswerInput,
   error: Schema.Union([SecretRequestError, EnvironmentAuthorizationError]),
 });
-
-const WsScheduledTasksListWebhookDeliveriesRpc = Rpc.make(
-  WS_METHODS.scheduledTasksListWebhookDeliveries,
-  {
-    payload: ScheduledTaskListWebhookDeliveriesInput,
-    success: ScheduledTaskListWebhookDeliveriesResult,
-    error: Schema.Union([ScheduledTaskError, EnvironmentAuthorizationError]),
-  },
-);
-
-const WsScheduledTasksGetWebhookDeliveryRpc = Rpc.make(
-  WS_METHODS.scheduledTasksGetWebhookDelivery,
-  {
-    payload: ScheduledTaskGetWebhookDeliveryInput,
-    success: ScheduledTaskGetWebhookDeliveryResult,
-    error: Schema.Union([ScheduledTaskError, EnvironmentAuthorizationError]),
-  },
-);
 
 const WsSubscribeAuthAccessRpc = Rpc.make(WS_METHODS.subscribeAuthAccess, {
   payload: Schema.Struct({}),
@@ -1848,15 +1765,7 @@ export const WsRpcGroup = RpcGroup.make(
   WsServerGetUsageSummaryRpc,
   WsServerRefreshUsageRatesRpc,
   WsServerSignalProcessRpc,
-  WsScheduledTasksSubscribeRpc,
-  WsScheduledTasksUpsertRpc,
-  WsScheduledTasksSetEnabledRpc,
-  WsScheduledTasksDeleteRpc,
-  WsScheduledTasksRunNowRpc,
-  WsScheduledTasksRotateWebhookTokenRpc,
   WsSecretsAnswerRequestRpc,
-  WsScheduledTasksListWebhookDeliveriesRpc,
-  WsScheduledTasksGetWebhookDeliveryRpc,
   WsServerReportClientActivityRpc,
   WsCloudGetRelayClientStatusRpc,
   WsCloudInstallRelayClientRpc,

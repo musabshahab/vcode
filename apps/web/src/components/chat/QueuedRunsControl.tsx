@@ -13,10 +13,8 @@ import type {
   ThreadId,
 } from "@t3tools/contracts";
 import { resolveUserMessagePresentation } from "@t3tools/client-runtime/user-message";
-import { Link } from "@tanstack/react-router";
 import {
   ArrowUpIcon,
-  CalendarClockIcon,
   ChevronDownIcon,
   Clock3Icon,
   MessagesSquareIcon,
@@ -37,7 +35,7 @@ import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import type { TimestampFormat } from "@t3tools/contracts/settings";
 import { GuestMessageName } from "./guestMessageStyle";
 import { TimelineRowTimestamp } from "./TimelineRowParts";
-import { FoldedMessageHeader, useScheduledTaskTitle } from "./TimelineUserMessageRow";
+import { FoldedMessageHeader } from "./TimelineUserMessageRow";
 
 export interface EditQueuedRunRequest {
   readonly runId: RunId;
@@ -416,29 +414,21 @@ function QueuedMessage(props: {
 }) {
   const presentation = props.message ? resolveUserMessagePresentation(props.message) : null;
   const attribution = presentation?.attribution ?? null;
-  const scheduledTaskId = presentation?.scheduledTaskId;
   const senderThreadId = props.message?.senderThreadId;
   const [expanded, setExpanded] = useState(false);
-  const taskTitle = useScheduledTaskTitle(props.environmentId, scheduledTaskId);
   const senderShell = useQuietThreadShell(
     attribution === "agent" && senderThreadId
       ? { environmentId: props.environmentId, threadId: senderThreadId }
       : null,
   );
   const fold =
-    attribution === "automation"
+    attribution === "agent"
       ? {
-          icon: CalendarClockIcon,
-          label: "Automation",
-          summary: taskTitle ?? props.previewText.split(/\r?\n/, 1)[0] ?? "",
+          icon: MessagesSquareIcon,
+          label: senderShell?.title.trim() || "Agent",
+          summary: props.previewText.split(/\r?\n/).find((line) => line.trim()) ?? "",
         }
-      : attribution === "agent"
-        ? {
-            icon: MessagesSquareIcon,
-            label: senderShell?.title.trim() || "Agent",
-            summary: props.previewText.split(/\r?\n/).find((line) => line.trim()) ?? "",
-          }
-        : null;
+      : null;
   const bodyVisible = fold === null || expanded;
 
   return (
@@ -511,19 +501,6 @@ function QueuedMessage(props: {
             {attribution === "agent" && senderThreadId ? (
               <InlineButton tone="muted" onClick={() => props.onOpenThread(senderThreadId)}>
                 Open thread
-              </InlineButton>
-            ) : null}
-            {scheduledTaskId ? (
-              <InlineButton
-                tone="muted"
-                render={
-                  <Link
-                    to="/settings/scheduled-tasks"
-                    search={{ environmentId: props.environmentId, taskId: scheduledTaskId }}
-                  />
-                }
-              >
-                Open automation
               </InlineButton>
             ) : null}
             <TimelineRowTimestamp

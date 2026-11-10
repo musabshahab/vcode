@@ -387,7 +387,6 @@ it.effect("records accepted billed turn usage once without billing the context w
         origin: {
           createdBy: "agent" as const,
           creationSource: "provider" as const,
-          scheduled: false,
           subagent: true,
         },
       },

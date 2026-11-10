@@ -320,7 +320,7 @@ threads on an environment through its MCP server. See
 
 Link two machines, such as your laptop and a VPS, and agents on one can work on
 the other: launch, message, wait on and stop its threads, answer their
-questions, and manage its queues, projects and scheduled tasks.
+questions, and manage its queues and projects.
 
 Linked environments is a beta. Turn it on for both machines in **Settings →
 Labs**; on mobile, **Settings → Labs** lists each connected machine. While it is

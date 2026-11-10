@@ -369,7 +369,6 @@ export const make = Effect.gen(function* () {
           .filter(
             (message) =>
               message.createdBy === "user" &&
-              message.scheduledTaskId === undefined &&
               message.notification === undefined &&
               message.delegatedCompletion === undefined,
           )

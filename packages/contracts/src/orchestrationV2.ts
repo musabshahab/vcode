@@ -36,7 +36,6 @@ import {
   RunAttemptId,
   RunId,
   RuntimeRequestId,
-  ScheduledTaskId,
   ThreadId,
   TrimmedNonEmptyString,
   TurnItemId,
@@ -1310,7 +1309,6 @@ export type OrchestrationV2IdleCompaction = typeof OrchestrationV2IdleCompaction
 export const OrchestrationV2ConversationMessage = Schema.Struct({
   notification: Schema.optional(OrchestrationV2Notification),
   ...OrchestrationV2CreationFields,
-  scheduledTaskId: Schema.optional(ScheduledTaskId),
   senderThreadId: Schema.optional(ThreadId),
   idleCompaction: Schema.optional(OrchestrationV2IdleCompaction),
   /**
@@ -1626,7 +1624,6 @@ export const OrchestrationV2TurnItem = Schema.Union([
     ...OrchestrationV2CreationFields,
     type: Schema.Literal("user_message"),
     messageId: MessageId,
-    scheduledTaskId: Schema.optional(ScheduledTaskId),
     senderThreadId: Schema.optional(ThreadId),
     idleCompaction: Schema.optional(OrchestrationV2IdleCompaction),
     workflowScript: OrchestrationV2ConversationMessage.fields.workflowScript,
@@ -2470,7 +2467,6 @@ export const OrchestrationV2TurnItemJson = Schema.Union([
     ...OrchestrationV2CreationFields,
     type: Schema.Literal("user_message"),
     messageId: MessageId,
-    scheduledTaskId: Schema.optional(ScheduledTaskId),
     senderThreadId: Schema.optional(ThreadId),
     idleCompaction: Schema.optional(OrchestrationV2IdleCompaction),
     workflowScript: OrchestrationV2ConversationMessage.fields.workflowScript,
@@ -3182,7 +3178,6 @@ export const OrchestrationV2Command = Schema.Union([
     /** Sends this pending guest message; the server uses the guest's text, not `text`. */
     guestMessageId: Schema.optional(GuestMessageId),
     ...OrchestrationV2CreationFields,
-    scheduledTaskId: Schema.optional(ScheduledTaskId),
     senderThreadId: Schema.optional(ThreadId),
     idleCompaction: Schema.optional(OrchestrationV2IdleCompaction),
     /** Start a new provider session without the thread's earlier context. Never steers. */

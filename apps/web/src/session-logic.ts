@@ -566,9 +566,6 @@ export function deriveTimelineEntriesFromVisibleTurnItems(
               creationSource: item.creationSource,
               ...(item.senderThreadId !== undefined ? { senderThreadId: item.senderThreadId } : {}),
               ...(item.idleCompaction !== undefined ? { idleCompaction: item.idleCompaction } : {}),
-              ...(item.scheduledTaskId !== undefined
-                ? { scheduledTaskId: item.scheduledTaskId }
-                : {}),
             }
           : {}),
         createdAt,

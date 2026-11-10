@@ -519,10 +519,6 @@ function summaryActionPriority(action: ToolGroupAction | T3McpToolSummaryAction)
     case "thread-interrupt":
     case "workflow-stop":
     case "background-wait":
-    case "schedule-create":
-    case "schedule-update":
-    case "schedule-delete":
-    case "schedule-run":
     case "thread-configure":
     case "thread-fork":
     case "thread-merge":

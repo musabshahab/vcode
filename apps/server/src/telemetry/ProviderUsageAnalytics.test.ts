@@ -84,7 +84,7 @@ const context = (
   },
   runtimeMode: "full-access",
   interactionMode: "default",
-  origin: { createdBy: "user", creationSource: "web", scheduled: false, subagent: false },
+  origin: { createdBy: "user", creationSource: "web", subagent: false },
   segment,
 });
 
@@ -162,7 +162,7 @@ describe("provider usage reporting", () => {
           interactionMode: "default",
           createdBy: "user",
           creationSource: "web",
-          scheduled: false,
+
           subagent: false,
           providerTurns: 2,
           continuations: 1,
