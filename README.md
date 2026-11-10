@@ -143,23 +143,14 @@ With both signed in, a preset puts the implementation on one and the review on t
 it by hand, set **Implementation subagents** to a Claude model and **Review subagents** to a Codex
 model, or the reverse.
 
-Codex can also run on an API key through a custom model provider, for example OpenRouter. Put the
-provider in a `config.toml` in a folder of its own:
+### Add OpenRouter
 
-```toml
-model = "openai/gpt-6.1-terra"
-model_provider = "openrouter"
+OpenRouter is a provider of its own, paid per use with an OpenRouter key. In setup's **Connect
+providers** step, or in **Settings → Providers**, paste the key into **OpenRouter**, list the
+model ids you want, and choose **Connect OpenRouter**. Its models then appear in the model picker
+and can fill team roles.
 
-[model_providers.openrouter]
-name = "OpenRouter"
-base_url = "https://openrouter.ai/api/v1"
-env_key = "OPENROUTER_API_KEY"
-wire_api = "responses"
-```
-
-Then in **Settings → Providers**, add a Codex instance, choose **Configure manually**, set
-**CODEX_HOME path** to that folder, add `OPENROUTER_API_KEY` under **Environment variables**, and
-add the model ID under **Custom models**.
+It runs through the Codex program, so Codex must be installed, but it needs no ChatGPT sign-in.
 
 ## Use the team
 

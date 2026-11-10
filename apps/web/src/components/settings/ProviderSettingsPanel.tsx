@@ -91,6 +91,7 @@ import { Toggle, ToggleGroup } from "../ui/toggle-group";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { stackedThreadToast, toastManager } from "../ui/toast";
 import { AddProviderInstanceDialog } from "./AddProviderInstanceDialog";
+import { OpenRouterSetup } from "./OpenRouterSetup";
 import { useManagedPolicy } from "~/state/managedPolicy";
 import { ExpandableText } from "./ExpandableText";
 import { IntervalSecondsField } from "./IntervalSecondsField";
@@ -1103,6 +1104,10 @@ export function EnvironmentProviderSettings({
           readOnly={readOnly}
         />
       ) : null}
+
+      {environmentId === null || readOnly ? null : (
+        <OpenRouterSetup key={`openrouter:${environmentId}`} environmentId={environmentId} />
+      )}
 
       <SettingsSection title="Advanced">
         <SettingsRow

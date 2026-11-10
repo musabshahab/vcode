@@ -33,6 +33,7 @@ import { useEnvironmentQuery } from "../../state/query";
 import { serverEnvironment } from "../../state/server";
 import { sourceControlEnvironment } from "../../state/sourceControl";
 import { useAtomCommand } from "../../state/use-atom-command";
+import { OpenRouterSetup } from "../settings/OpenRouterSetup";
 import { SettingsScopeProvider } from "../settings/SettingsScopeContext";
 import { SUBAGENT_MODEL_PRESETS, SubagentModelsSettings } from "../settings/SubagentModelsSettings";
 import { Button } from "../ui/button";
@@ -380,6 +381,9 @@ export function SetupWizard({
               isPrimary={isPrimary}
               onImportSourceEnabled={() => {}}
             />
+            <div className="pt-4">
+              <OpenRouterSetup environmentId={environmentId} />
+            </div>
           </div>
         );
       case "team":
