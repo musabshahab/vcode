@@ -19,7 +19,6 @@ import {
   type OrchestrationV2ProviderTurn,
   type OrchestrationV2RuntimeRequest,
   type OrchestrationV2Subagent,
-  type OrchestrationV2TurnItem,
   ProjectId,
   type ProviderApprovalDecision,
   ProviderInstanceId,
@@ -43,9 +42,7 @@ import * as Digest from "effect/crypto/Digest";
 import * as Effect from "effect/Effect";
 import * as Predicate from "effect/Predicate";
 import * as FileSystem from "effect/FileSystem";
-import { MCP_APP_OUTPUT_KEY, readMcpAppReference } from "@t3tools/shared/mcpApp";
 import { toolOutputImages } from "@t3tools/shared/toolOutput";
-import { resolveAttachmentPathById } from "../../attachmentStore.ts";
 import * as Fiber from "effect/Fiber";
 import * as Layer from "effect/Layer";
 import * as PubSub from "effect/PubSub";
@@ -222,37 +219,6 @@ describe("CodexAdapterV2 runtime policy", () => {
       assert.equal(fullAccess.approvalPolicy, "never");
       assert.equal(fullAccess.approvalsReviewer, "user");
       assert.equal(fullAccess.sandboxPolicy?.type, "dangerFullAccess");
-    }),
-  );
-
-  it.effect("sends MCP app model context as untrusted Codex context", () =>
-    Effect.gen(function* () {
-      const policy = { runtimeMode: "full-access", interactionMode: "default", cwd: null } as const;
-      const modelSelection = { instanceId: ProviderInstanceId.make("codex"), model: "gpt-5.4" };
-      const appContext = [{ key: "mcp_app_todos_list_todos_item-1", text: "Filtered to overdue" }];
-      const alone = yield* CodexAdapterV2.buildCodexTurnStartParams({
-        nativeThreadId: "native-app-context",
-        codexInput: [{ type: "text", text: "what's on my list?" }],
-        runtimePolicy: policy,
-        modelSelection,
-        appContext,
-      });
-      assert.deepEqual(alone.additionalContext, {
-        "mcp_app_todos_list_todos_item-1": { kind: "untrusted", value: "Filtered to overdue" },
-      });
-      const withT3 = yield* CodexAdapterV2.buildCodexTurnStartParams({
-        nativeThreadId: "native-app-context",
-        codexInput: [{ type: "text", text: "what's on my list?" }],
-        runtimePolicy: policy,
-        modelSelection,
-        hasT3Mcp: true,
-        appContext,
-      });
-      assert.deepEqual(withT3.additionalContext?.["mcp_app_todos_list_todos_item-1"], {
-        kind: "untrusted",
-        value: "Filtered to overdue",
-      });
-      assert.isDefined(withT3.additionalContext?.["t3_code_runtime"]);
     }),
   );
 });
@@ -596,9 +562,6 @@ function codexReplayPreamble(input: {
           capabilities: {
             experimentalApi: true,
             optOutNotificationMethods: ["turn/diff/updated"],
-            extensions: {
-              "io.modelcontextprotocol/ui": { mimeTypes: ["text/html;profile=mcp-app"] },
-            },
           },
         },
       },
@@ -6409,246 +6372,6 @@ describe("CodexAdapterV2 post-settle continuation", () => {
         );
         assert.isFalse(yield* harness.hasPendingBackgroundWork);
         assert.lengthOf(harness.continuationRequests, 0);
-      }).pipe(
-        Effect.provide(
-          Layer.mergeAll(
-            IdAllocator.layer,
-            McpProviderSessions.layer,
-            NodeServices.layer,
-            NodeCrypto.layer,
-          ),
-        ),
-      ),
-    ),
-  );
-
-  const MCP_APP_SCENARIO = "codex-mcp-app-capture";
-  const MCP_APP_NATIVE_THREAD = "native-codex-mcp-app-thread";
-  const MCP_APP_NATIVE_TURN = "native-codex-mcp-app-turn";
-  const MCP_APP_ITEM = "mcp-weather-call";
-  const MCP_APP_PROMPT = "Show the weather in Oslo.";
-  const MCP_APP_RESOURCE = "ui://weather/dashboard";
-  const MCP_APP_HTML = "<!doctype html><html><body><p>Weather</p><script>1</script></body></html>";
-  const mcpAppToolItem = (status: "inProgress" | "completed") => ({
-    type: "mcpToolCall",
-    id: MCP_APP_ITEM,
-    server: "weather",
-    tool: "get_weather",
-    status,
-    arguments: { city: "Oslo" },
-    mcpAppResourceUri: MCP_APP_RESOURCE,
-    ...(status === "completed"
-      ? { result: { content: [{ type: "text", text: "Sunny" }], structuredContent: { temp: 21 } } }
-      : {}),
-  });
-
-  const mcpAppTranscript = makeCodexReplayTranscript({
-    scenario: MCP_APP_SCENARIO,
-    entries: [
-      ...codexReplayPreamble({
-        nativeThreadId: MCP_APP_NATIVE_THREAD,
-        nativeTurnId: MCP_APP_NATIVE_TURN,
-        prompt: MCP_APP_PROMPT,
-      }),
-      {
-        type: "emit_inbound",
-        label: "item/started/app-tool",
-        frame: {
-          method: "item/started",
-          params: {
-            item: mcpAppToolItem("inProgress"),
-            threadId: MCP_APP_NATIVE_THREAD,
-            turnId: MCP_APP_NATIVE_TURN,
-            startedAtMs: 1782622440500,
-          },
-        },
-      },
-      {
-        type: "emit_inbound",
-        label: "item/completed/app-tool",
-        frame: {
-          method: "item/completed",
-          params: {
-            item: mcpAppToolItem("completed"),
-            threadId: MCP_APP_NATIVE_THREAD,
-            turnId: MCP_APP_NATIVE_TURN,
-            completedAtMs: 1782622441500,
-          },
-        },
-      },
-      {
-        type: "emit_inbound",
-        label: "turn/completed",
-        frame: {
-          method: "turn/completed",
-          params: {
-            threadId: MCP_APP_NATIVE_THREAD,
-            turn: makeCodexReplayTurn({ id: MCP_APP_NATIVE_TURN, status: "completed" }),
-          },
-        },
-      },
-      {
-        type: "expect_outbound",
-        label: "mcpServer/resource/read",
-        frame: {
-          id: 4,
-          method: "mcpServer/resource/read",
-          params: { threadId: MCP_APP_NATIVE_THREAD, server: "weather", uri: MCP_APP_RESOURCE },
-        },
-      },
-      {
-        type: "emit_inbound",
-        label: "mcpServer/resource/read",
-        frame: {
-          id: 4,
-          result: {
-            contents: [
-              {
-                uri: MCP_APP_RESOURCE,
-                mimeType: "text/html;profile=mcp-app",
-                text: MCP_APP_HTML,
-                _meta: { ui: { csp: { connectDomains: ["https://api.weather.test"] } } },
-              },
-            ],
-          },
-        },
-      },
-    ],
-  });
-
-  it.effect("captures an MCP app's resource and holds the turn open until it lands", () =>
-    Effect.scoped(
-      Effect.gen(function* () {
-        const appCaptured = yield* Deferred.make<OrchestrationV2TurnItem>();
-        const harness = yield* makeCodexReplayHarness(mcpAppTranscript, (event) =>
-          event.type === "turn_item.updated" &&
-          event.turnItem.type === "dynamic_tool" &&
-          event.turnItem.status === "completed"
-            ? Deferred.succeed(appCaptured, event.turnItem)
-            : Effect.void,
-        );
-        const now = yield* DateTime.now;
-
-        yield* harness.runtime.startTurn(
-          makeCodexTestTurnInput({
-            threadId: harness.threadId,
-            providerThread: harness.providerThread,
-            now,
-            attemptId: RunAttemptId.make("attempt-codex-mcp-app"),
-            text: MCP_APP_PROMPT,
-          }),
-        );
-        const item = yield* Deferred.await(appCaptured);
-        assert.equal(harness.terminalEvents()[0]?.status, "completed");
-
-        const completedRows = harness.events.filter(
-          (event) =>
-            event.type === "turn_item.updated" &&
-            event.turnItem.type === "dynamic_tool" &&
-            event.turnItem.status === "completed",
-        );
-        assert.lengthOf(completedRows, 1);
-
-        assert.equal(item.type, "dynamic_tool");
-        const output = item.type === "dynamic_tool" ? (item.output as Record<string, unknown>) : {};
-        const reference = readMcpAppReference(output[MCP_APP_OUTPUT_KEY]);
-        assert.deepEqual(
-          { ...reference, attachmentId: undefined },
-          {
-            attachmentId: undefined,
-            server: "weather",
-            tool: "get_weather",
-            resourceUri: MCP_APP_RESOURCE,
-            csp: { connectDomains: ["https://api.weather.test"] },
-          },
-        );
-        assert.deepEqual(output.result, {
-          content: [{ type: "text", text: "Sunny" }],
-          structuredContent: { temp: 21 },
-        });
-
-        const fileSystem = yield* FileSystem.FileSystem;
-        const stored = yield* fileSystem.readFileString(
-          resolveAttachmentPathById({
-            attachmentsDir: harness.serverConfig.attachmentsDir,
-            attachmentId: reference!.attachmentId,
-          })!,
-        );
-        assert.include(stored, "connect-src https://api.weather.test");
-        assert.isBelow(stored.indexOf("Content-Security-Policy"), stored.indexOf("<script>"));
-        assert.isFalse(yield* harness.hasPendingBackgroundWork);
-      }).pipe(
-        Effect.provide(
-          Layer.mergeAll(
-            IdAllocator.layer,
-            McpProviderSessions.layer,
-            NodeServices.layer,
-            NodeCrypto.layer,
-          ),
-        ),
-      ),
-    ),
-  );
-
-  const MCP_APP_DEFERRED_RESULT = {
-    content: [{ type: "text", text: "An interactive form is being shown to the user." }],
-    structuredContent: { status: "awaiting_user_submission" },
-  };
-  const mcpAppDeferredTranscript = makeCodexReplayTranscript({
-    scenario: MCP_APP_SCENARIO,
-    entries: mcpAppTranscript.entries.map((entry) =>
-      entry.type === "emit_inbound" && entry.label === "item/completed/app-tool"
-        ? {
-            ...entry,
-            frame: {
-              method: "item/completed",
-              params: {
-                item: {
-                  ...mcpAppToolItem("inProgress"),
-                  status: "failed",
-                  result: MCP_APP_DEFERRED_RESULT,
-                },
-                threadId: MCP_APP_NATIVE_THREAD,
-                turnId: MCP_APP_NATIVE_TURN,
-                completedAtMs: 1782622441500,
-              },
-            },
-          }
-        : entry,
-    ),
-  });
-
-  it.effect("captures the app of a tool call that defers to its form", () =>
-    Effect.scoped(
-      Effect.gen(function* () {
-        const appCaptured = yield* Deferred.make<OrchestrationV2TurnItem>();
-        const harness = yield* makeCodexReplayHarness(mcpAppDeferredTranscript, (event) =>
-          event.type === "turn_item.updated" &&
-          event.turnItem.type === "dynamic_tool" &&
-          event.turnItem.status === "failed"
-            ? Deferred.succeed(appCaptured, event.turnItem)
-            : Effect.void,
-        );
-        const now = yield* DateTime.now;
-
-        yield* harness.runtime.startTurn(
-          makeCodexTestTurnInput({
-            threadId: harness.threadId,
-            providerThread: harness.providerThread,
-            now,
-            attemptId: RunAttemptId.make("attempt-codex-mcp-app-deferred"),
-            text: MCP_APP_PROMPT,
-          }),
-        );
-        const item = yield* Deferred.await(appCaptured);
-
-        const output = item.type === "dynamic_tool" ? (item.output as Record<string, unknown>) : {};
-        assert.equal(
-          readMcpAppReference(output[MCP_APP_OUTPUT_KEY])?.resourceUri,
-          MCP_APP_RESOURCE,
-        );
-        assert.deepEqual(output.result, { ...MCP_APP_DEFERRED_RESULT, isError: true });
-        assert.isFalse(yield* harness.hasPendingBackgroundWork);
       }).pipe(
         Effect.provide(
           Layer.mergeAll(

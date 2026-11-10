@@ -48,7 +48,6 @@ export interface ChatImageAttachment extends ContractChatImageAttachment {
 export interface ChatFileAttachment extends ContractChatFileAttachment {
   readonly previewUrl?: string;
   readonly downloadable?: boolean;
-  readonly htmlRender?: boolean;
 }
 
 // Render unknown attachment contracts as inert rows so newer servers cannot crash older clients.

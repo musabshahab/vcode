@@ -1,4 +1,3 @@
-import type { EnvironmentId, ProjectId } from "@t3tools/contracts";
 import { MessageCircle, Trash2 } from "lucide-react";
 import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 
@@ -7,11 +6,6 @@ import {
   PullRequestMarkdownTextarea,
   type PullRequestCompletionScope,
 } from "~/components/pullRequest/PullRequestMarkdownTextarea";
-import {
-  SpeechTextField,
-  TextFieldSpeechControls,
-  type TextFieldSpeech,
-} from "~/speech/useTextFieldSpeech";
 import { textDirection } from "~/textDirection";
 
 import { isCommentSubmitShortcut } from "./commentSubmitShortcut";
@@ -24,10 +18,6 @@ interface DiffCommentSecondaryAction {
 }
 
 interface DiffCommentAnnotationProps {
-  /** With an environment, the draft can be dictated; its project supplies vocabulary. */
-  environmentId?: EnvironmentId | undefined;
-  projectId?: ProjectId | null | undefined;
-  ownerKey?: string;
   kind: "draft" | "comment";
   rangeLabel: string;
   text: string;
@@ -45,9 +35,6 @@ interface DiffCommentAnnotationProps {
 }
 
 export function DiffCommentAnnotation({
-  environmentId,
-  projectId,
-  ownerKey,
   kind,
   rangeLabel,
   text,
@@ -107,20 +94,12 @@ export function DiffCommentAnnotation({
     );
   }
 
-  const submit = (
-    speech: TextFieldSpeech | undefined,
-    action: (text: string) => void,
-    allowEmpty = false,
-  ) => {
-    const finish = (value: string) => {
-      if (!pending && (allowEmpty || value.trim())) action(value.trim());
-    };
-    if (speech) speech.submitAfterDictation(finish);
-    else finish(displayedText);
+  const submit = (action: (text: string) => void, allowEmpty = false) => {
+    if (!pending && (allowEmpty || trimmedText)) action(trimmedText);
   };
 
   // Pierre hides native carets and selection; textarea comments need their own visible feedback.
-  const renderDraft = (speech?: TextFieldSpeech) => (
+  return (
     <div
       data-diff-comment-annotation
       className="px-3 py-2 font-sans text-foreground caret-foreground selection:bg-primary selection:text-primary-foreground"
@@ -130,7 +109,6 @@ export function DiffCommentAnnotation({
       <PullRequestMarkdownTextarea
         ref={textareaRef}
         completionScope={completionScope}
-        readOnly={speech?.freezesEditor}
         autoFocus={focusOnMount}
         size="sm"
         value={displayedText}
@@ -145,18 +123,16 @@ export function DiffCommentAnnotation({
         onKeyDown={(event) => {
           if (event.key === "Escape") {
             event.preventDefault();
-            if (speech && speech.state.phase !== "idle") speech.cancel();
-            else onCancel();
+            onCancel();
           }
-          if (isCommentSubmitShortcut(event, trimmedText, pending, speech?.blocksSubmission)) {
+          if (isCommentSubmitShortcut(event, trimmedText, pending)) {
             event.preventDefault();
-            submit(speech, onComment);
+            submit(onComment);
           }
         }}
       />
       <div className="mt-1.5 flex flex-wrap items-center gap-1">
         <span className="mr-auto text-3xs text-muted-foreground/70">⌘/Ctrl Enter to send</span>
-        {speech ? <TextFieldSpeechControls speech={speech} disabled={pending} /> : null}
         <Button variant="ghost-muted" size="xs" onClick={onCancel}>
           Cancel
         </Button>
@@ -164,41 +140,17 @@ export function DiffCommentAnnotation({
           <Button
             size="xs"
             variant="outline"
-            disabled={
-              speech?.preparing ||
-              pending ||
-              (!speech?.blocksSubmission && !secondaryAction.allowEmpty && !trimmedText)
-            }
-            onClick={() => submit(speech, secondaryAction.onAction, secondaryAction.allowEmpty)}
+            disabled={pending || (!secondaryAction.allowEmpty && !trimmedText)}
+            onClick={() => submit(secondaryAction.onAction, secondaryAction.allowEmpty)}
           >
             {secondaryAction.icon}
             {secondaryAction.label}
           </Button>
         ) : null}
-        <Button
-          size="xs"
-          disabled={speech?.preparing || pending || (!speech?.blocksSubmission && !trimmedText)}
-          onClick={() => submit(speech, onComment)}
-        >
+        <Button size="xs" disabled={pending || !trimmedText} onClick={() => submit(onComment)}>
           {submitLabel}
         </Button>
       </div>
     </div>
-  );
-
-  return environmentId ? (
-    <SpeechTextField
-      environmentId={environmentId}
-      projectId={projectId}
-      ownerKey={ownerKey ?? rangeLabel}
-      text={displayedText}
-      textareaRef={textareaRef}
-      onTextChange={onTextChange ?? setLocalDraftText}
-      disabled={pending}
-    >
-      {renderDraft}
-    </SpeechTextField>
-  ) : (
-    renderDraft()
   );
 }

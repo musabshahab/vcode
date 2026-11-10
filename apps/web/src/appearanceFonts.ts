@@ -53,11 +53,6 @@ function cssFontFamilies(input: string): string | null {
   return families.length > 0 ? families.join(", ") : null;
 }
 
-export function appearanceFontStack(custom: string, defaultStack: string): string {
-  const families = cssFontFamilies(custom);
-  return families === null ? defaultStack : `${families}, ${defaultStack}`;
-}
-
 export interface AppearanceFontPreferences {
   readonly sans: string;
   readonly code: string;

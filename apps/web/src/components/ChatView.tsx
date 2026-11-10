@@ -142,7 +142,7 @@ import {
 } from "../session-logic";
 import { type LegendListRef } from "@legendapp/list/react";
 import { useWorkspaceMutationRefresh } from "../hooks/useWorkspaceMutationRefresh";
-import { DEFAULT_INTERACTION_MODE, type ChatMessage } from "../types";
+import { type ChatMessage } from "../types";
 import { buildThreadRouteParams } from "../threadRoutes";
 import { useTheme } from "../hooks/useTheme";
 import { copyThreadReference } from "../lib/copyThreadReference";
@@ -176,7 +176,6 @@ import {
 import { threadPullRequestPanelTarget } from "./pullRequest/pullRequestDetail.logic";
 import { LinkPullRequestDialogHost } from "./pullRequest/LinkPullRequestDialog";
 import { GuestPendingMessages } from "./chat/GuestShareControls";
-import { useDeviceState } from "~/state/device";
 import { BranchToolbar, type BranchToolbarHandle } from "./BranchToolbar";
 import { ComposerContextPermissions } from "./ComposerContextPermissions";
 import { makeWorkspaceFileDropHandlers } from "./chat/workspaceFileDrop";
@@ -188,7 +187,6 @@ import { isModelPickerOpen } from "../modelPickerVisibility";
 import { COLLAPSED_SIDEBAR_TITLEBAR_INSET_CLASS } from "~/workspaceTitlebar";
 import { toastManager } from "./ui/toast";
 import { projectScriptIdFromCommand } from "~/projectScripts";
-import { newMessageId } from "~/lib/utils";
 import { isInSideChatPane, type SideChatParentPanel } from "~/lib/sideChatPane";
 import {
   NO_PROVIDER_MODEL_SELECTION,
@@ -263,7 +261,6 @@ import { DraftHeroHeadline } from "./chat/DraftHeroHeadline";
 import { ExpandedImageDialogHost, openExpandedImagePreview } from "./chat/ExpandedImageDialog";
 import {
   BranchRestoreConfirmHost,
-  DeviceSetupDialogHost,
   openBranchRestoreConfirm,
   PullRequestThreadDialogHost,
   RevertConfirmHost,
@@ -442,9 +439,6 @@ export default function ChatView(props: ChatViewProps) {
     reportFailure: false,
   });
   const setThreadInteractionMode = useOrchestrationCommand(threadEnvironment.setInteractionMode, {
-    reportFailure: false,
-  });
-  const startThreadTurn = useOrchestrationCommand(threadEnvironment.startTurn, {
     reportFailure: false,
   });
   const createAttachmentAssetUrl = useAtomQueryRunner(assetEnvironment.createUrl, {
@@ -1840,26 +1834,6 @@ export default function ChatView(props: ChatViewProps) {
     scheduleComposerFocus();
   };
   const insertArtifactTemplateStable = useStableCallback(insertArtifactTemplate);
-  const sendAppMessage = async (text: string) => {
-    if (!isServerThread || activeThreadId === null) {
-      throw new Error("Messages from apps need a started thread.");
-    }
-    const result = await startThreadTurn({
-      environmentId,
-      input: {
-        threadId: activeThreadId,
-        message: { messageId: newMessageId(), role: "user", text, attachments: [] },
-        runtimeMode,
-        interactionMode: DEFAULT_INTERACTION_MODE,
-        dispatchMode: "queue",
-      },
-    });
-    if (result._tag === "Failure") {
-      const error = squashAtomCommandFailure(result);
-      throw error instanceof Error ? error : new Error("Could not send the app's message.");
-    }
-  };
-  const sendAppMessageStable = useStableCallback(sendAppMessage);
   const queuedRunsControlRef = useRef<QueuedRunsControlHandle>(null);
 
   const {
@@ -1907,10 +1881,7 @@ export default function ChatView(props: ChatViewProps) {
     AuthPreviewOperateScope,
   );
   const shownPreviewMiniPlayer =
-    activeThreadRef &&
-    activePreviewMiniPlayer &&
-    previewMiniPlayerVisible &&
-    (activePreviewMiniPlayer.source.kind === "device" || canOperatePreview)
+    activeThreadRef && activePreviewMiniPlayer && previewMiniPlayerVisible && canOperatePreview
       ? activePreviewMiniPlayer
       : null;
   const canvasPreview = useThreadPreviewCanvasSource(activeThreadRef, shownPreviewMiniPlayer);
@@ -1944,9 +1915,6 @@ export default function ChatView(props: ChatViewProps) {
   const visiblePullRequestCount = visiblePullRequests.length;
   const pullRequestsSurfaceAvailable =
     isServerThread && supportsThreadPullRequests && visiblePullRequestCount > 0;
-  const { state: deviceState, loaded: deviceStateLoaded } = useDeviceState(
-    activeThreadRef?.environmentId ?? null,
-  );
   // The thread's own change request, placed against the project it belongs to. Without a
   // project there is nothing to resolve it against, so the caller falls back to the browser.
   const activeProjectRepository = sourceControlClients.repositorySelector(
@@ -2324,7 +2292,6 @@ export default function ChatView(props: ChatViewProps) {
     : null;
   const {
     activateRightPanelSurfaceStable,
-    addDeviceSurfaceStable,
     addDiffSurfaceStable,
     addFilesSurfaceStable,
     addPullRequestSurfaceStable,
@@ -2347,8 +2314,6 @@ export default function ChatView(props: ChatViewProps) {
     activeProject,
     activeRightPanelSurface,
     activePreviewState,
-    deviceState,
-    deviceStateLoaded,
     pullRequestPanelTarget,
     threadPanelPresentation,
     isServerThread,
@@ -3206,7 +3171,6 @@ export default function ChatView(props: ChatViewProps) {
             : undefined,
       }}
       files={{
-        projectId: activeProject?.id,
         projectName: activeProject?.title ?? null,
         workspaceRoot: activeWorkspaceRoot,
         availableEditors,
@@ -3260,13 +3224,6 @@ export default function ChatView(props: ChatViewProps) {
       ref={setWorkspaceLayoutElement}
       className="relative flex min-h-0 min-w-0 flex-1 overflow-hidden bg-background"
     >
-      {embedded ? null : (
-        <DeviceSetupDialogHost
-          threadKey={activeThreadKey}
-          threadRef={activeThreadRef}
-          state={deviceState}
-        />
-      )}
       {rightPanelControlsAtRoot && !embedded ? panelLayoutControls : null}
       <div
         className={cn(
@@ -3438,7 +3395,6 @@ export default function ChatView(props: ChatViewProps) {
                   availableRevertTurnCounts={availableRevertTurnCounts}
                   onRevertToTurnCount={onRevertTimelineTurnStable}
                   onUseArtifactTemplate={insertArtifactTemplateStable}
-                  onSendAppMessage={sendAppMessageStable}
                   isRevertingCheckpoint={isRevertingCheckpoint}
                   onImageExpand={onExpandTimelineImageStable}
                   onFileOpen={openFileAttachmentStable}
@@ -3642,7 +3598,6 @@ export default function ChatView(props: ChatViewProps) {
                                 }
                                 activeThreadModelSelection={activeThread?.modelSelection}
                                 activeProjectId={activeProject?.id ?? null}
-                                projectName={activeProject?.title}
                                 compactThreadUnavailable={compactThreadUnavailable}
                                 compactDisabled={compactDisabled}
                                 resolvedTheme={resolvedTheme}
@@ -3938,10 +3893,6 @@ export default function ChatView(props: ChatViewProps) {
           terminalLabelsById={activeTerminalLabelsById}
           onActivate={activateRightPanelSurfaceStable}
           onCloseSurface={closeRightPanelSurfaceStable}
-          onRenameDevice={(surfaceId, title) => {
-            if (activeThreadRef)
-              useRightPanelStore.getState().renameDevice(activeThreadRef, surfaceId, title);
-          }}
           onCloseOtherSurfaces={closeOtherRightPanelSurfacesStable}
           onCloseSurfacesToRight={closeRightPanelSurfacesToRightStable}
           onCloseAllSurfaces={closeAllRightPanelSurfacesStable}
@@ -3954,7 +3905,6 @@ export default function ChatView(props: ChatViewProps) {
           onAddFiles={addFilesSurfaceStable}
           onAddPullRequest={addPullRequestSurfaceStable}
           onAddPullRequests={addPullRequestsSurfaceStable}
-          onAddDevice={addDeviceSurfaceStable}
           onAddSideChat={sideChatsOffered ? openSideChatStable : undefined}
           browserAvailable={canOperatePreview && browserAvailable}
           terminalAvailable={activeProject !== null && canOperateTerminal}
@@ -3962,7 +3912,6 @@ export default function ChatView(props: ChatViewProps) {
           filesAvailable={activeProject !== null}
           pullRequestAvailable={pullRequestSurfaceAvailable}
           pullRequestsAvailable={pullRequestsSurfaceAvailable}
-          deviceAvailable={activeThreadRef !== null}
           sideChatAvailable={sideChat.available}
           sideChatDisabledReason={sideChatDisabledReason}
         >

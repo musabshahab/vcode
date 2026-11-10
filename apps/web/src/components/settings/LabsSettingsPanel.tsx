@@ -23,7 +23,6 @@ export function LabsSettingsPanel() {
         {hasCloudPublicConfig() ? <GuestLinksRowWithSignIn /> : <GuestLinksRow />}
         <LinkedEnvironmentsRow />
         <PromptSuggestionsRow />
-        <SimlockHostsRow />
         <FastWorktreeCheckoutRow />
       </SettingsSection>
     </SettingsPageContainer>
@@ -184,46 +183,6 @@ function PromptSuggestionsRow() {
             updateSettings({ promptSuggestionsEnabled: Boolean(checked) })
           }
           aria-label="Suggest next prompt"
-        />
-      }
-    />
-  );
-}
-
-function SimlockHostsRow() {
-  const settings = useScopedSettings();
-  const updateSettings = useUpdateScopedSettings();
-  return (
-    <SettingsRow
-      serverScoped
-      {...searchableSetting("simlock-hosts")}
-      settingKeys={["simlockDeviceHostsEnabled"]}
-      description={
-        <>
-          Let the Device panel lease simulators and emulators from your own{" "}
-          <a
-            href="https://incubator.callstack.com/simlock/"
-            target="_blank"
-            rel="noreferrer"
-            className="underline underline-offset-2"
-          >
-            Simlock
-          </a>{" "}
-          pool, added in{" "}
-          <Link to="/settings/devices" className="underline underline-offset-2">
-            Devices
-          </Link>
-          . An alpha that may change or break. T3 Code never installs Simlock.
-        </>
-      }
-      control={
-        <ScopedSwitch
-          settingKeys={["simlockDeviceHostsEnabled"]}
-          checked={settings.simlockDeviceHostsEnabled}
-          onCheckedChange={(checked) =>
-            updateSettings({ simlockDeviceHostsEnabled: Boolean(checked) })
-          }
-          aria-label="Simlock device hosts"
         />
       }
     />

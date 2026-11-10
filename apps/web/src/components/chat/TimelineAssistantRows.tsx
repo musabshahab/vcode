@@ -7,8 +7,6 @@ import ChatMarkdown from "../ChatMarkdown";
 import { GitForkIcon } from "lucide-react";
 import { Button } from "../ui/button";
 import { ProposedPlanCard } from "./ProposedPlanCard";
-import { HtmlRenderFrame } from "./HtmlRenderFrame";
-import { McpAppFrame } from "./McpAppFrame";
 import { checkpointFileTotals } from "@t3tools/client-runtime/state/thread-checkpoints";
 import { ChangedFilesCard } from "./ChangedFilesTree";
 import { useFileContextMenuHandler } from "../../fileContextMenu";
@@ -21,7 +19,7 @@ import { cn } from "~/lib/utils";
 import { useUiStateStore } from "~/uiStateStore";
 import { formatChatTimestampTooltip, formatDayAwareTimestamp } from "../../timestampFormat";
 import { useV2ItemSupport } from "../../state/v2ItemSupport";
-import { TimelineRowCtx, TimelineRowActivityCtx, type TimelineRow } from "./timelineRowContext";
+import { TimelineRowCtx, type TimelineRow } from "./timelineRowContext";
 import { MESSAGE_HEADING_LEVEL, MessageAuthorHeading } from "./TimelineRowParts";
 
 export function AssistantTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "message" }> }) {
@@ -240,53 +238,6 @@ export function ProposedPlanTimelineRow({
         cwd={ctx.markdownCwd}
         workspaceRoot={ctx.workspaceRoot}
         findActive={ctx.findActive}
-      />
-    </div>
-  );
-}
-
-export function HtmlRenderTimelineRow({
-  row,
-}: {
-  row: Extract<TimelineRow, { kind: "html-render" }>;
-}) {
-  const ctx = use(TimelineRowCtx);
-  const { onAppFullscreenChange } = ctx;
-  const onFullscreenChange = (fullscreen: boolean) => onAppFullscreenChange(row.id, fullscreen);
-
-  if (ctx.renderHtmlRender) {
-    return <div className="min-w-0 px-1">{ctx.renderHtmlRender(row)}</div>;
-  }
-  return (
-    <div className="min-w-0 px-1">
-      <HtmlRenderFrame
-        key={row.htmlRender.attachmentId}
-        environmentId={ctx.activeThreadEnvironmentId}
-        htmlRender={row.htmlRender}
-        threadRef={ctx.threadRef ?? undefined}
-        onFullscreenChange={onFullscreenChange}
-      />
-    </div>
-  );
-}
-
-export function McpAppTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "mcp-app" }> }) {
-  const ctx = use(TimelineRowCtx);
-  const { awaitingUser } = use(TimelineRowActivityCtx);
-
-  return (
-    <div className="min-w-0 px-1">
-      <McpAppFrame
-        key={row.mcpApp.attachmentId}
-        environmentId={ctx.activeThreadEnvironmentId}
-        threadId={row.sourceThreadId}
-        conversationThreadId={ctx.threadRef?.threadId ?? row.sourceThreadId}
-        itemId={row.itemId}
-        revision={row.revision}
-        app={row.mcpApp}
-        onSendMessage={ctx.onSendAppMessage}
-        awaitingUser={awaitingUser}
-        onFullscreenChange={(fullscreen) => ctx.onAppFullscreenChange(row.id, fullscreen)}
       />
     </div>
   );

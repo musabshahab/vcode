@@ -12,16 +12,13 @@ import {
   OrchestratorMcpThreadReadResult,
   ProviderDriverKind,
   ProviderInstanceId,
-  RunId,
   ScheduledTaskError,
   ScheduledTask,
   RuntimeRequestId,
   ThreadId,
   TurnItemId,
   type OrchestrationV2ProjectedTurnItem,
-  type OrchestrationV2ThreadShell,
 } from "@t3tools/contracts";
-import * as McpProviderSessions from "@t3tools/provider-core/server/McpProviderSessions";
 import * as Deferred from "effect/Deferred";
 import * as Effect from "effect/Effect";
 import * as TestClock from "effect/testing/TestClock";
@@ -29,7 +26,6 @@ import * as Layer from "effect/Layer";
 import * as Schema from "effect/Schema";
 import { McpAttachmentInput } from "./attachment/input.ts";
 import { McpSchema, McpServer } from "effect/ai";
-import { FetchHttpClient } from "effect/http";
 
 import {
   OrchestratorCommandRejectedError,
@@ -44,7 +40,6 @@ import * as ThreadLaunchService from "../../orchestration-v2/ThreadLaunchService
 import * as GitVcsDriver from "../../vcs/GitVcsDriver.ts";
 import * as ThreadManagement from "../../orchestration-v2/ThreadManagementService.ts";
 import * as ThreadSearch from "../../orchestration-v2/ThreadSearch.ts";
-import * as PreviewBrowser from "../../preview/PreviewBrowser.ts";
 import * as ProjectService from "../../project/ProjectService.ts";
 import * as ProviderRegistry from "../../provider/ProviderRegistry.ts";
 import * as SecretRequests from "../../secrets/SecretRequests.ts";
@@ -71,7 +66,6 @@ const declaredFailure = (result: McpSchema.CallToolResult) => {
   const text = result.content[0];
   return result.isError === true && text?.type === "text" ? JSON.parse(text.text) : undefined;
 };
-import { htmlRenderFromToolItem } from "@t3tools/shared/toolOutput";
 
 const decodeMcpAttachmentInput = Schema.decodeUnknownEffect(McpAttachmentInput);
 const decodeThreadReadResult = Schema.decodeUnknownEffect(OrchestratorMcpThreadReadResult);
@@ -251,78 +245,6 @@ it("bounds public command rejections and redacts internal dispatch causes", () =
     message: "The operation could not be completed.",
   });
 });
-
-const fullAccessThreadId = ThreadId.make("mcp-core-full-access-thread");
-
-it.effect("returns an HTML render reference that Codex and Claude tool rows both carry", () =>
-  Effect.gen(function* () {
-    const server = yield* McpServer.McpServer;
-    const result = yield* server
-      .callTool({
-        name: "html_render",
-        arguments: { html: "<p>Revenue</p>", title: "Revenue", height: 240 },
-      })
-      .pipe(
-        Effect.provideService(McpInvocationContext.McpInvocationContext, scope),
-        Effect.provideService(McpSchema.McpServerClient, client),
-      );
-    const reference = htmlRenderFromToolItem({
-      toolName: "t3-code.html_render",
-      output: result.structuredContent,
-    });
-    expect(reference).toMatchObject({ title: "Revenue", height: 240 });
-    expect(
-      htmlRenderFromToolItem({ toolName: "mcp__t3-code__html_render", output: result.content }),
-    ).toEqual(reference);
-    // Only a full-access thread may have the server read a file for it.
-    const byPath = (name: string, caller: McpInvocationContext.McpInvocationScope) =>
-      server
-        .callTool({
-          name,
-          arguments: { path: "/t3-missing-dir/revenue.html", title: "Revenue", height: 240 },
-        })
-        .pipe(
-          Effect.provideService(McpInvocationContext.McpInvocationContext, caller),
-          Effect.provideService(McpSchema.McpServerClient, client),
-          // html_preview reports failures as plain text, html_render as a declared failure.
-          Effect.map((result) => (result.isError ? JSON.stringify(result.content) : undefined)),
-        );
-    const fullAccess = { ...scope, thread: { ...scope.thread!, threadId: fullAccessThreadId } };
-    for (const name of ["html_preview", "html_render"]) {
-      expect(yield* byPath(name, scope), name).toContain("only full-access threads");
-      expect(yield* byPath(name, fullAccess), name).toContain("not a readable HTML document");
-    }
-  }).pipe(
-    Effect.provide(
-      McpHttpServer.layerHtmlToolkit.pipe(
-        Layer.provideMerge(McpHttpServer.layerInProcessMcpServer),
-        Layer.provide(McpProviderSessions.layer),
-        Layer.provide(PreviewBrowser.layer),
-        Layer.provide(ServerConfig.layerTest(process.cwd(), { prefix: "t3-mcp-html-render-" })),
-        Layer.provide(
-          DocumentText.layer.pipe(
-            Layer.provideMerge(Layer.mergeAll(NodeServices.layer, NodeCrypto.layer)),
-          ),
-        ),
-        Layer.provide(FetchHttpClient.layer),
-        Layer.provide(
-          Layer.mock(ThreadManagement.ThreadManagementService)({
-            getThreadShell: (id) =>
-              Effect.succeed({
-                id,
-                deletedAt: null,
-                archivedAt: null,
-                activeRunId: RunId.make("mcp-core-run"),
-                providerInstanceId: ProviderInstanceId.make("codex"),
-                runtimeMode: id === fullAccessThreadId ? "full-access" : "approval-required",
-                interactionMode: "default",
-              } as OrchestrationV2ThreadShell),
-          }),
-        ),
-      ),
-    ),
-  ),
-);
 
 it.effect("records only failed calls of tools that hand off no work", () => {
   // Recording runs detached from the tool response, so the first event is awaited.

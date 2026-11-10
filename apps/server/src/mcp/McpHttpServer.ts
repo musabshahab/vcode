@@ -11,11 +11,9 @@ import * as Schema from "effect/Schema";
 import * as Sink from "effect/Sink";
 import * as Stream from "effect/Stream";
 import type * as Types from "effect/Types";
-import { AiError, McpProtocol, McpSchema, McpServer, Tool, Toolkit } from "effect/ai";
+import { McpProtocol, McpSchema, McpServer, Tool, Toolkit } from "effect/ai";
 import { HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/http";
 import {
-  DeviceToolError,
-  OrchestratorMcpFailure,
   PreviewAutomationError,
   ProviderInteractionMode,
   type RunId,
@@ -27,8 +25,6 @@ import packageJson from "../../package.json" with { type: "json" };
 import { parseBearerToken } from "../auth/EnvironmentAuth.ts";
 import * as ServerConfig from "../config.ts";
 import * as ServerSettings from "../serverSettings.ts";
-import * as DeviceService from "../device/DeviceService.ts";
-import * as HtmlRender from "../htmlRender/HtmlRender.ts";
 import * as ThreadCommandExecutor from "../orchestration-v2/ThreadCommandExecutor.ts";
 import * as ThreadManagementService from "../orchestration-v2/ThreadManagementService.ts";
 import * as ProviderRegistry from "../provider/ProviderRegistry.ts";
@@ -70,14 +66,6 @@ import { WorktreeToolkit } from "./toolkits/worktree/tools.ts";
 import * as WorktreeMcpService from "./WorktreeMcpService.ts";
 import * as PullRequestsHandlers from "./toolkits/pullRequests/handlers.ts";
 import { PullRequestsToolkit } from "./toolkits/pullRequests/tools.ts";
-import * as DeviceHandlers from "./toolkits/device/handlers.ts";
-import {
-  DeviceScreenshotTool,
-  DeviceScreenshotToolkit,
-  DeviceStandardToolkit,
-} from "./toolkits/device/tools.ts";
-import * as HtmlHandlers from "./toolkits/html/handlers.ts";
-import { HtmlPreviewTool, HtmlPreviewToolkit, HtmlRenderToolkit } from "./toolkits/html/tools.ts";
 import { requestUrl } from "../requestUrl.ts";
 
 const mcpResourceMetadataUrl = (request: HttpServerRequest.HttpServerRequest) =>
@@ -632,202 +620,6 @@ const registerPreviewSnapshot = Effect.fn("McpHttpServer.registerPreviewSnapshot
   });
 });
 
-interface ImageToolResult {
-  readonly screenshot: {
-    readonly mimeType: "image/png";
-    readonly data: string;
-    readonly width: number;
-    readonly height: number;
-  };
-  readonly [key: string]: unknown;
-}
-
-/** Expose only undescribed failures' tags; remote messages may contain renderer or device output. */
-const imageToolFailure =
-  <E>(toolName: string, operation: string, failureText: string | ((error: E) => string)) =>
-  (cause: Cause.Cause<E>) => {
-    if (Cause.hasInterrupts(cause) || cause.reasons.some(Cause.isDieReason)) {
-      return Effect.failCause(cause).pipe(Effect.orDie);
-    }
-    const failures = cause.reasons.filter(Cause.isFailReason);
-    const firstFailure = failures[0]?.error;
-    const errorTag =
-      typeof firstFailure === "object" &&
-      firstFailure !== null &&
-      "_tag" in firstFailure &&
-      typeof firstFailure._tag === "string"
-        ? firstFailure._tag
-        : `${toolName}Error`;
-    const message =
-      typeof failureText === "string" || failures[0] === undefined
-        ? undefined
-        : failureText(failures[0].error);
-    const result = new McpSchema.CallToolResult({
-      isError: true,
-      structuredContent: {
-        error: {
-          _tag: errorTag,
-          operation,
-          failureCount: failures.length,
-          ...(message === undefined ? {} : { message }),
-        },
-      },
-      // Some clients show only the text content and others only structuredContent, so both carry it.
-      content: [
-        {
-          type: "text",
-          text: typeof failureText === "string" ? failureText : (message ?? `${toolName} failed.`),
-        },
-      ],
-    });
-    return Effect.logWarning(`${toolName} failed`, {
-      operation,
-      errorTag,
-      failureCount: failures.length,
-    }).pipe(Effect.as(result));
-  };
-
-/**
- * `McpServer.toolkit` serializes every result as JSON text, which is the wrong
- * shape for a screenshot: the model needs image content.
- */
-const registerImageTool = Effect.fn("McpHttpServer.registerImageTool")(function* <
-  T extends Tool.Any,
-  E,
-  R,
->(
-  tool: T,
-  handle: (payload: Tool.Parameters<T>) => Effect.Effect<{ readonly encodedResult: unknown }, E, R>,
-  provide: (
-    effect: Effect.Effect<{ readonly encodedResult: unknown }, E, R>,
-  ) => Effect.Effect<
-    { readonly encodedResult: unknown },
-    E,
-    McpInvocationContext.McpInvocationContext
-  >,
-  operation: string,
-  failureText: string | ((error: E) => string),
-) {
-  const server = yield* McpServer.McpServer;
-  yield* server.addTool({
-    tool: new McpSchema.Tool({
-      name: tool.name,
-      description: Tool.getDescription(tool),
-      inputSchema: advertisedJsonSchema(tool),
-      annotations: {
-        ...Context.getOption(tool.annotations, Tool.Title).pipe(
-          Option.map((title) => ({ title })),
-          Option.getOrUndefined,
-        ),
-        readOnlyHint: Context.get(tool.annotations, Tool.Readonly),
-        destructiveHint: Context.get(tool.annotations, Tool.Destructive),
-        idempotentHint: Context.get(tool.annotations, Tool.Idempotent),
-        openWorldHint: Context.get(tool.annotations, Tool.OpenWorld),
-      },
-    }),
-    annotations: tool.annotations,
-    handle: (payload) =>
-      Effect.withFiber((fiber) => {
-        const invocation = Context.getUnsafe(
-          fiber.context,
-          McpInvocationContext.McpInvocationContext,
-        );
-        return provide(handle(payload as Tool.Parameters<T>)).pipe(
-          Effect.provideService(McpInvocationContext.McpInvocationContext, invocation),
-          Effect.matchCauseEffect({
-            onFailure: imageToolFailure(tool.name, operation, failureText),
-            onSuccess: ({ encodedResult }) => {
-              const { screenshot, ...rest } = encodedResult as ImageToolResult;
-              const includeImage =
-                (payload as { readonly includeImage?: boolean } | undefined)?.includeImage !==
-                false;
-              const metadata = {
-                ...rest,
-                screenshot: {
-                  mimeType: screenshot.mimeType,
-                  width: screenshot.width,
-                  height: screenshot.height,
-                },
-              };
-              return Effect.succeed(
-                new McpSchema.CallToolResult({
-                  isError: false,
-                  structuredContent: metadata,
-                  content: [
-                    { type: "text", text: JSON.stringify(metadata) },
-                    ...(includeImage
-                      ? [
-                          {
-                            type: "image" as const,
-                            data: new Uint8Array(Buffer.from(screenshot.data, "base64")),
-                            mimeType: screenshot.mimeType,
-                          },
-                        ]
-                      : []),
-                  ],
-                }),
-              );
-            },
-          }),
-        );
-      }),
-  });
-});
-
-const registerDeviceScreenshot = Effect.fn("McpHttpServer.registerDeviceScreenshot")(function* () {
-  const devices = yield* DeviceService.DeviceService;
-  const threads = yield* ThreadManagementService.ThreadManagementService;
-  const built = yield* decodeAsAdvertised(DeviceScreenshotToolkit);
-  yield* registerImageTool(
-    DeviceScreenshotTool,
-    (payload) =>
-      built
-        .handle("device_screenshot", payload)
-        .pipe(Stream.unwrap, Stream.run(Sink.last()), Effect.flatMap(Effect.fromOption)),
-    (effect) =>
-      effect.pipe(
-        Effect.provideService(DeviceService.DeviceService, devices),
-        Effect.provideService(ThreadManagementService.ThreadManagementService, threads),
-      ),
-    "screenshot",
-    (error) => {
-      if (!isDeviceToolError(error)) {
-        return isOrchestratorMcpFailure(error) ? error.message : "Device screenshot failed.";
-      }
-      return error._tag === "DeviceOperationError" && error.reason === "hub_rejected"
-        ? `${error.message} Call device_list to check the device state, and device_open if it needs to be reopened.`
-        : error.message;
-    },
-  );
-});
-
-const isOrchestratorMcpFailure = Schema.is(OrchestratorMcpFailure);
-const isDeviceToolError = Schema.is(DeviceToolError);
-
-const registerHtmlPreview = Effect.fn("McpHttpServer.registerHtmlPreview")(function* () {
-  const htmlRender = yield* HtmlRender.HtmlRender;
-  const threads = yield* ThreadManagementService.ThreadManagementService;
-  const built = yield* decodeAsAdvertised(HtmlPreviewToolkit);
-  yield* registerImageTool(
-    HtmlPreviewTool,
-    (payload) =>
-      built
-        .handle("html_preview", payload)
-        .pipe(Stream.unwrap, Stream.run(Sink.last()), Effect.flatMap(Effect.fromOption)),
-    (effect) =>
-      effect.pipe(
-        Effect.provideService(HtmlRender.HtmlRender, htmlRender),
-        Effect.provideService(ThreadManagementService.ThreadManagementService, threads),
-      ),
-    "preview",
-
-    (error) =>
-      isOrchestratorMcpFailure(error) || AiError.isAiError(error)
-        ? error.message
-        : "HTML preview failed.",
-  );
-});
-
 /**
  * Tools that hand work to another thread's agent: they create it, message it,
  * steer it, or move context into it. Their events name the receiving agent too.
@@ -1138,11 +930,6 @@ const imageToolRegistration = <Tools extends Record<string, Tool.Any>, A, E, R, 
     Layer.provide(McpToolAccess.HandlersLayer.layer(handlers)),
   );
 
-export const layerHtmlToolkit = Layer.mergeAll(
-  toolkitRegistration(HtmlRenderToolkit, HtmlHandlers.layerRender),
-  imageToolRegistration(registerHtmlPreview(), HtmlHandlers.layerPreview),
-).pipe(Layer.provide(HtmlRender.layer));
-
 const layerPreviewStandardToolkitRegistration = toolkitRegistration(
   PreviewStandardToolkit,
   PreviewHandlers.layerStandard,
@@ -1192,21 +979,6 @@ export const layerPullRequestsToolkit = toolkitRegistration(
   PullRequestsHandlers.layer,
 );
 
-const layerDeviceStandardToolkitRegistration = toolkitRegistration(
-  DeviceStandardToolkit,
-  DeviceHandlers.layerStandard,
-);
-
-const layerDeviceScreenshotRegistration = imageToolRegistration(
-  registerDeviceScreenshot(),
-  DeviceHandlers.layerScreenshot,
-);
-
-export const layerDeviceToolkit = Layer.mergeAll(
-  layerDeviceStandardToolkitRegistration,
-  layerDeviceScreenshotRegistration,
-);
-
 /**
  * `McpServer` for in-process calls, which provide `McpInvocationContext`
  * around `callTool` as the auth middleware does for each /mcp request.
@@ -1247,8 +1019,6 @@ export const layerTools = Layer.mergeAll(
   layerPreviewControlsRegistration,
   layerWorktreeToolkitRegistration,
   layerPullRequestsToolkit,
-  layerDeviceToolkit,
-  layerHtmlToolkit,
 );
 
 export const layer = layerMcpTransport(layerTools);

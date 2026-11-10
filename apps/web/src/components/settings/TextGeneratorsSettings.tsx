@@ -237,7 +237,6 @@ const TASKS = [
     key: "sourceControlWriterModelSelection",
     label: "Commit messages, pull requests, and branch names",
   },
-  { key: "speechPostProcessingModelSelection", label: "Voice transcript cleanup" },
 ] as const;
 
 /**

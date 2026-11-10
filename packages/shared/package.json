@@ -135,10 +135,6 @@
       "types": "./src/toolOutput.ts",
       "import": "./src/toolOutput.ts"
     },
-    "./htmlRender": {
-      "types": "./src/htmlRender.ts",
-      "import": "./src/htmlRender.ts"
-    },
     "./favicon": {
       "types": "./src/favicon.ts",
       "import": "./src/favicon.ts"
@@ -515,10 +511,6 @@
       "types": "./src/inlineSkills.ts",
       "import": "./src/inlineSkills.ts"
     },
-    "./mcpApp": {
-      "types": "./src/mcpApp.ts",
-      "import": "./src/mcpApp.ts"
-    },
     "./atomicWrite": {
       "types": "./src/atomicWrite.ts",
       "import": "./src/atomicWrite.ts"
@@ -538,10 +530,6 @@
     "./cloneUrl": {
       "types": "./src/cloneUrl.ts",
       "import": "./src/cloneUrl.ts"
-    },
-    "./speech": {
-      "types": "./src/speech.ts",
-      "import": "./src/speech.ts"
     }
   },
   "scripts": {

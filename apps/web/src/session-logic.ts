@@ -12,8 +12,6 @@ import {
   type ToolActivitySurface,
   type ToolActivityIcon,
   type ToolActivitySource,
-  type ThreadId,
-  type TurnItemId,
 } from "@t3tools/contracts";
 import { extractToolActivityPresentation } from "@t3tools/client-runtime/work-log/tool-presentation";
 import {
@@ -22,10 +20,6 @@ import {
   formatReadToolLabel,
   formatSearchToolLabel,
 } from "@t3tools/shared/toolActivity";
-import type { HtmlRenderReference } from "@t3tools/shared/htmlRender";
-import { turnItemDetailRevision } from "@t3tools/client-runtime/work-log/item-detail";
-import type { McpAppReference } from "@t3tools/shared/mcpApp";
-import { htmlRenderFromToolItem, mcpAppFromToolItem } from "@t3tools/shared/toolOutput";
 import {
   contextCompactionLabel,
   workEntryIndicatesToolFailure,
@@ -115,23 +109,6 @@ export type TimelineEntry = (
       readonly kind: "proposed-plan";
       readonly createdAt: string;
       readonly proposedPlan: ProposedPlan;
-    }
-  | {
-      readonly id: string;
-      readonly kind: "html-render";
-      readonly createdAt: string;
-      readonly runId: RunId | null;
-      readonly htmlRender: HtmlRenderReference;
-    }
-  | {
-      readonly id: string;
-      readonly kind: "mcp-app";
-      readonly createdAt: string;
-      readonly runId: RunId | null;
-      readonly sourceThreadId: ThreadId;
-      readonly itemId: TurnItemId;
-      readonly revision: string;
-      readonly mcpApp: McpAppReference;
     }
   | {
       readonly id: string;
@@ -625,38 +602,6 @@ export function deriveTimelineEntriesFromVisibleTurnItems(
         kind: "proposed-plan",
         createdAt,
         proposedPlan,
-        ...attemptMetadata,
-      });
-      continue;
-    }
-
-    const htmlRender =
-      item.type === "dynamic_tool" && item.status === "completed"
-        ? htmlRenderFromToolItem(item)
-        : undefined;
-    if (htmlRender !== undefined) {
-      entries.push({
-        id: item.id,
-        kind: "html-render",
-        createdAt,
-        runId: item.runId,
-        htmlRender,
-        ...attemptMetadata,
-      });
-      continue;
-    }
-
-    const mcpApp = item.type === "dynamic_tool" ? mcpAppFromToolItem(item) : undefined;
-    if (mcpApp !== undefined) {
-      entries.push({
-        id: item.id,
-        kind: "mcp-app",
-        createdAt,
-        runId: item.runId,
-        sourceThreadId: row.sourceThreadId,
-        itemId: row.sourceItemId,
-        revision: turnItemDetailRevision(item),
-        mcpApp,
         ...attemptMetadata,
       });
       continue;

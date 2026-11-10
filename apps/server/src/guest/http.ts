@@ -4,7 +4,6 @@ import {
   GUEST_HISTORY_ROUTE,
   GUEST_ITEM_ROUTE,
   GUEST_MEDIA_ROUTE,
-  GUEST_RENDER_ROUTE,
   GUEST_ROUTE_PREFIX,
   GUEST_SHARE_PARAM,
   GUEST_MESSAGE_MAX_ATTACHMENT_BYTES,
@@ -28,9 +27,7 @@ import * as Stream from "effect/Stream";
 import { HttpRouter, HttpServerRequest, HttpServerResponse, Multipart } from "effect/http";
 import * as HttpIncomingMessage from "effect/http/HttpIncomingMessage";
 
-import { htmlRenderFileName } from "@t3tools/shared/htmlRender";
-
-import { assetFileResponse, downloadContentDisposition } from "../http.ts";
+import { downloadContentDisposition } from "../http.ts";
 import type { GuestUpload } from "./guestAttachments.ts";
 import { GuestShareAccessError, GuestShareService } from "./GuestShareService.ts";
 
@@ -256,26 +253,6 @@ const sessionRoute = HttpRouter.add(
   }),
 );
 
-// The response carries the asset route's sandbox CSP: the page gets an opaque origin, so its
-// scripts cannot send the guest cookie or call these routes as the guest.
-const renderRoute = HttpRouter.add(
-  "GET",
-  GUEST_RENDER_ROUTE,
-  Effect.gen(function* () {
-    const itemId = yield* itemParam;
-    if (!itemId) return yield* badRequest;
-    const guestShares = yield* GuestShareService;
-    return yield* guestShares.render(yield* sessionToken, itemId).pipe(
-      Effect.flatMap(({ path, title }) =>
-        assetFileResponse({ path, mimeType: "text/html", fileName: htmlRenderFileName(title) }),
-      ),
-      // Each load re-checks the share, so a closed, replaced, or expired link stops it at once.
-      Effect.map((response) => HttpServerResponse.setHeaders(response, NO_STORE)),
-      Effect.catchTags({ GuestShareAccessError: errorResponse }),
-    );
-  }),
-);
-
 const itemRoute = HttpRouter.add(
   "GET",
   GUEST_ITEM_ROUTE,
@@ -386,7 +363,6 @@ export const layer = Layer.mergeAll(
   sessionRoute,
   submitRoute,
   streamRoute,
-  renderRoute,
   itemRoute,
   historyRoute,
   commandOutputRoute,

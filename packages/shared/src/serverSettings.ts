@@ -151,19 +151,6 @@ export function resolveReviewGuideModelSelection(
     : resolveSourceControlWriterModelSelection(settings, providers, projectId);
 }
 
-/** Transcript cleanup follows the text generation model unless its own usable model is set. */
-export function resolveSpeechPostProcessingModelSelection(
-  settings: ServerSettings,
-  providers?: ReadonlyArray<ServerProvider>,
-): ModelSelection {
-  const selection = settings.speechPostProcessingModelSelection;
-  return selection &&
-    isModelSelectionProviderEnabled(settings, selection) &&
-    isTextGenerationTargetUsable(settings, providers, selection.instanceId)
-    ? selection
-    : settings.textGenerationModelSelection;
-}
-
 export interface PersistedServerObservabilitySettings {
   readonly otlpTracesUrl: string | undefined;
   readonly otlpMetricsUrl: string | undefined;
@@ -595,9 +582,6 @@ export function applyServerSettingsPatch(
       : {}),
     ...(patch.fallbackModelSelection !== undefined
       ? { fallbackModelSelection: patch.fallbackModelSelection }
-      : {}),
-    ...(patch.speechPostProcessingModelSelection !== undefined
-      ? { speechPostProcessingModelSelection: patch.speechPostProcessingModelSelection }
       : {}),
     ...(patch.defaultProjectScripts !== undefined
       ? { defaultProjectScripts: patch.defaultProjectScripts }

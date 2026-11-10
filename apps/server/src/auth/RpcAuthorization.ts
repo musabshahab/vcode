@@ -1,6 +1,5 @@
 import {
   CLIENT_GUARDED_RPC_SCOPES,
-  type DeviceListInput,
   clientRpcRequiredScopes,
   authScopeRequiredResponse,
   AssetCreateUrlInput,
@@ -154,10 +153,6 @@ export const RPC_REQUIRED_SCOPES = {
   [WS_METHODS.attachmentsCreateUploadUrl]: AuthOrchestrationOperateScope,
   [WS_METHODS.attachmentsDelete]: AuthOrchestrationOperateScope,
   [WS_METHODS.providerUploadFeedback]: AuthOrchestrationOperateScope,
-  [WS_METHODS.mcpAppsCallTool]: AuthOrchestrationOperateScope,
-  [WS_METHODS.mcpAppsToolInfo]: AuthOrchestrationReadScope,
-  [WS_METHODS.mcpAppsReadResource]: AuthOrchestrationReadScope,
-  [WS_METHODS.mcpAppsUpdateModelContext]: AuthOrchestrationOperateScope,
   [WS_METHODS.subscribeVcsStatus]: AuthOrchestrationReadScope,
   [WS_METHODS.subscribeVcsBranch]: AuthOrchestrationReadScope,
   [WS_METHODS.vcsRefreshBranch]: AuthOrchestrationReadScope,
@@ -189,17 +184,6 @@ export const RPC_REQUIRED_SCOPES = {
   [WS_METHODS.previewStopLocalServer]: AuthTerminalOperateScope,
   [WS_METHODS.subscribePreviewEvents]: AuthOrchestrationReadScope,
   [WS_METHODS.subscribeDiscoveredLocalServers]: AuthOrchestrationReadScope,
-  [WS_METHODS.deviceConfigure]: AuthSettingsWriteScope,
-  [WS_METHODS.deviceTestHost]: AuthSettingsWriteScope,
-  [WS_METHODS.deviceEasAccount]: AuthSettingsWriteScope,
-  [WS_METHODS.deviceSimlockIdentity]: AuthSettingsWriteScope,
-  [WS_METHODS.deviceList]: AuthOrchestrationReadScope,
-  [WS_METHODS.deviceOpen]: AuthOrchestrationOperateScope,
-  [WS_METHODS.deviceClose]: AuthOrchestrationOperateScope,
-  [WS_METHODS.deviceShutdown]: AuthOrchestrationOperateScope,
-  [WS_METHODS.deviceDetail]: AuthOrchestrationReadScope,
-  [WS_METHODS.deviceAction]: AuthOrchestrationOperateScope,
-  [WS_METHODS.subscribeDeviceState]: AuthOrchestrationReadScope,
   [WS_METHODS.subscribeServerConfig]: AuthOrchestrationReadScope,
   [WS_METHODS.subscribeServerLifecycle]: AuthOrchestrationReadScope,
   [WS_METHODS.subscribeAuthAccess]: AuthAccessReadScope,
@@ -216,7 +200,7 @@ export function requiredScopeForRpcMethod(method: string): AuthEnvironmentScope 
   return requiredScope;
 }
 
-export const rpcAuthorizationError = (requiredScope: AuthEnvironmentScope) =>
+const rpcAuthorizationError = (requiredScope: AuthEnvironmentScope) =>
   new EnvironmentAuthorizationError({
     message: `The authenticated token is missing required scope: ${requiredScope}.`,
     ...authScopeRequiredResponse(requiredScope),
@@ -284,9 +268,3 @@ export const layer = (
       ? effect
       : Effect.tap(effect, () => onAuthorized(rpc._tag, payload));
   });
-
-/** Retrying can install or restart tools even though ordinary listing is readable. */
-export const requiredScopeForDeviceList = (input: DeviceListInput): AuthEnvironmentScope =>
-  input.retryHostId || input.updateTool
-    ? AuthOrchestrationOperateScope
-    : AuthOrchestrationReadScope;

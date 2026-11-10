@@ -18,7 +18,7 @@ import {
 import type { AsyncResult, Atom } from "effect/reactivity";
 import type { CommandOutputView } from "@t3tools/client-runtime/state/command-output";
 import type { WorkflowOpening } from "@t3tools/client-runtime/state/subagentRuntime";
-import { createContext, type MouseEvent, type ReactNode } from "react";
+import { createContext, type MouseEvent } from "react";
 import { type LegendListRef } from "@legendapp/list/react";
 import type { CodexArtifactTemplate } from "@t3tools/shared/codexArtifactTemplates";
 import type { PendingApproval } from "../../session-logic";
@@ -62,8 +62,6 @@ export interface TimelineRowSharedState {
   activeThreadEnvironmentId: EnvironmentId;
   onRevertToTurnCount: (targetTurnCount: number, messageId: MessageId) => void;
   onUseArtifactTemplate: (template: CodexArtifactTemplate) => void;
-  onSendAppMessage: ((text: string) => Promise<void>) | undefined;
-  onAppFullscreenChange: (rowId: string, fullscreen: boolean) => void;
   onRunShellCommand: ((command: string) => void) | undefined;
   findActive: boolean;
   onImageExpand: (preview: ExpandedImagePreview) => void;
@@ -71,11 +69,6 @@ export interface TimelineRowSharedState {
   onOpenToolDiff: ((target: ToolCallDiffTarget) => void) | undefined;
   /** Unset where there is no diff to open, so the timeline shows no "Open diff" button. */
   onOpenTurnDiff: ((runId: RunId, filePath?: string) => void) | undefined;
-  /**
-   * Draws a published HTML visual. Unset, the row loads it from the environment; the guest page
-   * loads it through its own route.
-   */
-  renderHtmlRender: ((row: Extract<TimelineRow, { kind: "html-render" }>) => ReactNode) | undefined;
   /** Unset, expanded rows read detail and command output from the environment. */
   turnItemSource: TurnItemSource | undefined;
   onOpenThread: (threadId: OrchestrationV2TurnItem["threadId"]) => void;

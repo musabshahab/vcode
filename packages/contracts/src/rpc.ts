@@ -7,16 +7,6 @@ import {
 } from "./orchestrationV2.ts";
 import { OrchestrationDispatchCommandError } from "./orchestrationDispatch.ts";
 import {
-  McpAppCallToolInput,
-  McpAppCallToolResult,
-  McpAppReadResourceInput,
-  McpAppReadResourceResult,
-  McpAppRequestError,
-  McpAppToolInfo,
-  McpAppToolInfoInput,
-  McpAppUpdateModelContextInput,
-} from "./mcpApps.ts";
-import {
   PeerLink,
   PeerLinkCreateInput,
   PeerLinkError,
@@ -265,33 +255,9 @@ import {
   PreviewSessionSnapshot,
 } from "./preview.ts";
 import {
-  DeviceActionInput,
-  DeviceCloseInput,
-  DeviceConfigureInput,
-  DeviceDetail,
-  DeviceDetailInput,
-  DeviceError,
-  DeviceListInput,
-  SshDeviceHostConfig,
-  DeviceEasAccount,
-  DeviceEasAccountError,
-  DeviceEasAccountInput,
-  DeviceSimlockIdentity,
-  DeviceSimlockIdentityError,
-  DeviceSimlockIdentityInput,
-  DeviceHostSummary,
-  DeviceOpenInput,
-  DeviceServiceState,
-  DeviceSession,
-  DeviceShutdownInput,
-} from "./device.ts";
-import {
   ServerConfigStreamEvent,
   DesktopUpdateCommitInput,
   OtlpEndpointCheckInput,
-  ServerPrepareTriageError,
-  ServerPrepareTriageInput,
-  ServerPrepareTriageResult,
   OtlpEndpointCheckResult,
   ServerConfig,
   ServerProviderUpdateError,
@@ -409,11 +375,6 @@ export const WS_METHODS = {
   attachmentsCreateUploadUrl: "attachments.createUploadUrl",
   attachmentsDelete: "attachments.delete",
 
-  mcpAppsCallTool: "mcpApps.callTool",
-  mcpAppsToolInfo: "mcpApps.toolInfo",
-  mcpAppsReadResource: "mcpApps.readResource",
-  mcpAppsUpdateModelContext: "mcpApps.updateModelContext",
-
   providerUploadFeedback: "provider.uploadFeedback",
   providerAuthStart: "provider.auth.start",
   providerConsumeResetCredit: "provider.consumeResetCredit",
@@ -466,17 +427,6 @@ export const WS_METHODS = {
   previewReportStatus: "preview.reportStatus",
   previewStopLocalServer: "preview.stopLocalServer",
 
-  deviceConfigure: "device.configure",
-  deviceList: "device.list",
-  deviceTestHost: "device.testHost",
-  deviceEasAccount: "device.easAccount",
-  deviceSimlockIdentity: "device.simlockIdentity",
-  deviceOpen: "device.open",
-  deviceClose: "device.close",
-  deviceShutdown: "device.shutdown",
-  deviceDetail: "device.detail",
-  deviceAction: "device.action",
-
   serverProbe: "server.probe",
   serverGetConfig: "server.getConfig",
   serverGetNpmRelease: "server.getNpmRelease",
@@ -505,7 +455,6 @@ export const WS_METHODS = {
   serverRetryResourceTelemetry: "server.retryResourceTelemetry",
   serverCheckOtlpEndpoint: "server.checkOtlpEndpoint",
   serverListTextGeneratorModels: "server.listTextGeneratorModels",
-  serverPrepareTriage: "server.prepareTriage",
   serverSignalProcess: "server.signalProcess",
   serverReportClientActivity: "server.reportClientActivity",
   serverGetUsageSummary: "server.getUsageSummary",
@@ -582,7 +531,6 @@ export const WS_METHODS = {
   subscribeTerminalMetadata: "subscribeTerminalMetadata",
   subscribePreviewEvents: "subscribePreviewEvents",
   subscribeDiscoveredLocalServers: "subscribeDiscoveredLocalServers",
-  subscribeDeviceState: "subscribeDeviceState",
   subscribeServerConfig: "subscribeServerConfig",
   subscribeServerLifecycle: "subscribeServerLifecycle",
   subscribeAuthAccess: "subscribeAuthAccess",
@@ -877,12 +825,6 @@ const WsServerListTextGeneratorModelsRpc = Rpc.make(WS_METHODS.serverListTextGen
   payload: ListTextGeneratorModelsInput,
   success: ListTextGeneratorModelsResult,
   error: Schema.Union([TextGeneratorError, EnvironmentAuthorizationError]),
-});
-
-const WsServerPrepareTriageRpc = Rpc.make(WS_METHODS.serverPrepareTriage, {
-  payload: ServerPrepareTriageInput,
-  success: ServerPrepareTriageResult,
-  error: Schema.Union([ServerPrepareTriageError, EnvironmentAuthorizationError]),
 });
 
 const WsServerGetUsageSummaryRpc = Rpc.make(WS_METHODS.serverGetUsageSummary, {
@@ -1341,29 +1283,6 @@ const WsAttachmentsDeleteRpc = Rpc.make(WS_METHODS.attachmentsDelete, {
   error: EnvironmentAuthorizationError,
 });
 
-const WsMcpAppsCallToolRpc = Rpc.make(WS_METHODS.mcpAppsCallTool, {
-  payload: McpAppCallToolInput,
-  success: McpAppCallToolResult,
-  error: Schema.Union([McpAppRequestError, EnvironmentAuthorizationError]),
-});
-
-const WsMcpAppsToolInfoRpc = Rpc.make(WS_METHODS.mcpAppsToolInfo, {
-  payload: McpAppToolInfoInput,
-  success: McpAppToolInfo,
-  error: Schema.Union([McpAppRequestError, EnvironmentAuthorizationError]),
-});
-
-const WsMcpAppsUpdateModelContextRpc = Rpc.make(WS_METHODS.mcpAppsUpdateModelContext, {
-  payload: McpAppUpdateModelContextInput,
-  error: Schema.Union([McpAppRequestError, EnvironmentAuthorizationError]),
-});
-
-const WsMcpAppsReadResourceRpc = Rpc.make(WS_METHODS.mcpAppsReadResource, {
-  payload: McpAppReadResourceInput,
-  success: McpAppReadResourceResult,
-  error: Schema.Union([McpAppRequestError, EnvironmentAuthorizationError]),
-});
-
 const WsProviderUploadFeedbackRpc = Rpc.make(WS_METHODS.providerUploadFeedback, {
   payload: ProviderUploadFeedbackInput,
   success: ProviderUploadFeedbackResult,
@@ -1591,71 +1510,6 @@ const WsSubscribeDiscoveredLocalServersRpc = Rpc.make(WS_METHODS.subscribeDiscov
     configuredUrls: Schema.optional(ConfiguredLocalServerUrls),
   }),
   success: DiscoveredLocalServerList,
-  error: EnvironmentAuthorizationError,
-  stream: true,
-});
-
-const WsDeviceTestHostRpc = Rpc.make(WS_METHODS.deviceTestHost, {
-  payload: SshDeviceHostConfig,
-  success: DeviceHostSummary,
-  error: Schema.Union([DeviceError, EnvironmentAuthorizationError]),
-});
-
-const WsDeviceEasAccountRpc = Rpc.make(WS_METHODS.deviceEasAccount, {
-  payload: DeviceEasAccountInput,
-  success: DeviceEasAccount,
-  error: Schema.Union([DeviceEasAccountError, EnvironmentAuthorizationError]),
-});
-
-const WsDeviceSimlockIdentityRpc = Rpc.make(WS_METHODS.deviceSimlockIdentity, {
-  payload: DeviceSimlockIdentityInput,
-  success: DeviceSimlockIdentity,
-  error: Schema.Union([DeviceSimlockIdentityError, EnvironmentAuthorizationError]),
-});
-
-const WsDeviceListRpc = Rpc.make(WS_METHODS.deviceList, {
-  payload: DeviceListInput,
-  success: DeviceServiceState,
-  error: Schema.Union([DeviceError, EnvironmentAuthorizationError]),
-});
-
-const WsDeviceConfigureRpc = Rpc.make(WS_METHODS.deviceConfigure, {
-  payload: DeviceConfigureInput,
-  success: DeviceServiceState,
-  error: Schema.Union([DeviceError, EnvironmentAuthorizationError]),
-});
-
-const WsDeviceOpenRpc = Rpc.make(WS_METHODS.deviceOpen, {
-  payload: DeviceOpenInput,
-  success: DeviceSession,
-  error: Schema.Union([DeviceError, EnvironmentAuthorizationError]),
-});
-
-const WsDeviceCloseRpc = Rpc.make(WS_METHODS.deviceClose, {
-  payload: DeviceCloseInput,
-  error: Schema.Union([DeviceError, EnvironmentAuthorizationError]),
-});
-
-const WsDeviceShutdownRpc = Rpc.make(WS_METHODS.deviceShutdown, {
-  payload: DeviceShutdownInput,
-  error: Schema.Union([DeviceError, EnvironmentAuthorizationError]),
-});
-
-const WsDeviceDetailRpc = Rpc.make(WS_METHODS.deviceDetail, {
-  payload: DeviceDetailInput,
-  success: DeviceDetail,
-  error: Schema.Union([DeviceError, EnvironmentAuthorizationError]),
-});
-
-const WsDeviceActionRpc = Rpc.make(WS_METHODS.deviceAction, {
-  payload: DeviceActionInput,
-  success: DeviceDetail,
-  error: Schema.Union([DeviceError, EnvironmentAuthorizationError]),
-});
-
-const WsSubscribeDeviceStateRpc = Rpc.make(WS_METHODS.subscribeDeviceState, {
-  payload: Schema.Struct({}),
-  success: DeviceServiceState,
   error: EnvironmentAuthorizationError,
   stream: true,
 });
@@ -1991,7 +1845,6 @@ export const WsRpcGroup = RpcGroup.make(
   WsServerRetryResourceTelemetryRpc,
   WsServerCheckOtlpEndpointRpc,
   WsServerListTextGeneratorModelsRpc,
-  WsServerPrepareTriageRpc,
   WsServerGetUsageSummaryRpc,
   WsServerRefreshUsageRatesRpc,
   WsServerSignalProcessRpc,
@@ -2073,10 +1926,6 @@ export const WsRpcGroup = RpcGroup.make(
   WsAssetsPersistChatAttachmentsRpc,
   WsAttachmentsCreateUploadUrlRpc,
   WsAttachmentsDeleteRpc,
-  WsMcpAppsCallToolRpc,
-  WsMcpAppsToolInfoRpc,
-  WsMcpAppsReadResourceRpc,
-  WsMcpAppsUpdateModelContextRpc,
   WsProviderUploadFeedbackRpc,
   WsSubscribeVcsStatusRpc,
   WsSubscribeVcsBranchRpc,
@@ -2116,17 +1965,6 @@ export const WsRpcGroup = RpcGroup.make(
   WsSubscribePreviewEventsRpc,
   WsPreviewStopLocalServerRpc,
   WsSubscribeDiscoveredLocalServersRpc,
-  WsDeviceConfigureRpc,
-  WsDeviceListRpc,
-  WsDeviceTestHostRpc,
-  WsDeviceEasAccountRpc,
-  WsDeviceSimlockIdentityRpc,
-  WsDeviceOpenRpc,
-  WsDeviceCloseRpc,
-  WsDeviceShutdownRpc,
-  WsDeviceDetailRpc,
-  WsDeviceActionRpc,
-  WsSubscribeDeviceStateRpc,
   WsSubscribeServerConfigRpc,
   WsSubscribeServerLifecycleRpc,
   WsSubscribeAuthAccessRpc,

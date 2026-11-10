@@ -55,7 +55,6 @@ export function AssistantCitationChip({
   const commentInputRef = useRef<HTMLTextAreaElement>(null);
   const commentPopupRef = useRef<HTMLDivElement>(null);
   const draftCommentRef = useRef<string | null>(null);
-  const [voiceSetupOpen, setVoiceSetupOpen] = useState(false);
   const [unavailableSourceAnchor, setUnavailableSourceAnchor] =
     useState<AssistantCitationSourceAnchor | null>(null);
   const commentOpen = commentEditor?.open ?? false;
@@ -168,7 +167,7 @@ export function AssistantCitationChip({
       {composerSourceLink}
       {commentEditor ? (
         <Popover
-          open={commentEditor.open && !voiceSetupOpen}
+          open={commentEditor.open}
           onOpenChange={(open, eventDetails) => {
             if (!open && !settleDraftOnClose(eventDetails.reason)) {
               eventDetails.cancel();
@@ -226,7 +225,6 @@ export function AssistantCitationChip({
                 key={serializeAssistantCitation(citation)}
                 citation={citation}
                 inputRef={commentInputRef}
-                onVoiceSetupOpenChange={setVoiceSetupOpen}
                 onDraftChange={(comment) => {
                   draftCommentRef.current = comment;
                   commentEditor.onDraftChange?.(comment);

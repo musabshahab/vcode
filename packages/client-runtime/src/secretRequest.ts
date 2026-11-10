@@ -152,7 +152,7 @@ export function secretRequestSources(
   return configuredSecretSources(providers);
 }
 
-export function configuredSecretSources(
+function configuredSecretSources(
   providers: ServerSettings["secretProviders"],
 ): ReadonlyArray<SecretRequestSource> {
   return (Object.keys(providers) as Array<SecretProviderId>).flatMap((id) => {

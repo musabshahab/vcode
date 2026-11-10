@@ -30,7 +30,6 @@ import {
   readImageDimensions,
   type ImageDimensions,
 } from "@t3tools/shared/imageDimensions";
-import { MCP_APP_MAX_HTML_BYTES } from "@t3tools/shared/mcpApp";
 import {
   isProjectFaviconPath,
   PROJECT_FAVICON_FALLBACK_MARKER,
@@ -45,7 +44,6 @@ import * as FileSystem from "effect/FileSystem";
 import * as Option from "effect/Option";
 import * as Path from "effect/Path";
 import * as Schema from "effect/Schema";
-import * as Stream from "effect/Stream";
 
 import { base64UrlDecodeUtf8, base64UrlEncode } from "../auth/utils.ts";
 import * as AssetSigner from "./AssetSigner.ts";
@@ -133,7 +131,6 @@ const AssetClaimsSchema = Schema.Union([
     download: Schema.optionalKey(Schema.Boolean),
     fileName: Schema.optionalKey(Schema.String),
     mimeType: Schema.optionalKey(Schema.String),
-    renderIntent: Schema.optionalKey(Schema.Literal("mcp-app")),
     expiresAt: Schema.Number,
   }),
   Schema.Struct({
@@ -187,7 +184,6 @@ export type ResolvedAsset =
       readonly fileName?: string;
       readonly mimeType?: string;
       readonly file?: OpenMediaFile;
-      readonly renderIntent?: "mcp-app";
     }
   | {
       readonly kind: "bytes";
@@ -217,22 +213,6 @@ function decodeRelativePath(value: string): string | null {
     return null;
   }
 }
-
-export const readMcpAppHtml = Effect.fn("AssetAccess.readMcpAppHtml")(function* (filePath: string) {
-  const fileSystem = yield* FileSystem.FileSystem;
-  // Allow space for stored CSP tags, but bound reads if the attachment grows after minting.
-  const limit = MCP_APP_MAX_HTML_BYTES + 128 * 1024;
-  const chunks = yield* Stream.runCollect(fileSystem.stream(filePath, { bytesToRead: limit + 1 }));
-  const size = chunks.reduce((total, chunk) => total + chunk.byteLength, 0);
-  if (size > limit) return null;
-  const bytes = new Uint8Array(size);
-  let position = 0;
-  for (const chunk of chunks) {
-    bytes.set(chunk, position);
-    position += chunk.byteLength;
-  }
-  return bytes;
-});
 
 const readToolOutputImage = Effect.fn("AssetAccess.readToolOutputImage")(function* (input: {
   readonly threadId: ThreadId;
@@ -678,9 +658,6 @@ export const issueAssetUrl = Effect.fn("AssetAccess.issueAssetUrl")(function* (i
           : input.resource.mimeType !== undefined
             ? { mimeType: isVideo ? videoMimeType : input.resource.mimeType }
             : {}),
-        ...(input.resource.renderIntent === "mcp-app" && inlinePreviewMimeType === "text/html"
-          ? { renderIntent: "mcp-app" as const }
-          : {}),
         expiresAt,
       };
       fileName = input.resource.fileName ?? path.basename(attachmentPath);
@@ -919,7 +896,6 @@ export const resolveAsset = Effect.fn("AssetAccess.resolveAsset")(function* (
           ...(claims.download ? { download: true } : {}),
           ...(claims.fileName !== undefined ? { fileName: claims.fileName } : {}),
           ...(claims.mimeType !== undefined ? { mimeType: claims.mimeType } : {}),
-          ...(claims.renderIntent === "mcp-app" ? { renderIntent: "mcp-app" as const } : {}),
         } satisfies ResolvedAsset)
       : null;
   }

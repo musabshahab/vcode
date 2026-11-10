@@ -122,8 +122,6 @@ import {
   AssistantTimelineRow,
   AssistantMetaTimelineRow,
   ProposedPlanTimelineRow,
-  HtmlRenderTimelineRow,
-  McpAppTimelineRow,
 } from "./TimelineAssistantRows";
 import { V2EventTimelineRow } from "./TimelineV2EventRow";
 import { startTimelinePositionRestore } from "./useTimelinePositionRestore";
@@ -257,7 +255,6 @@ interface MessagesTimelineProps {
   onOpenToolDiff?: (target: ToolCallDiffTarget) => void;
   onOpenTurnDiff?: (runId: RunId, filePath?: string) => void;
   onOpenThread: (threadId: OrchestrationV2TurnItem["threadId"]) => void;
-  renderHtmlRender?: TimelineRowSharedState["renderHtmlRender"];
   turnItemSource?: TimelineRowSharedState["turnItemSource"];
   /**
    * The thread this one is a subagent or side chat of; `open` is absent when it cannot be
@@ -281,7 +278,6 @@ interface MessagesTimelineProps {
   availableRevertTurnCounts?: ReadonlySet<number> | undefined;
   onRevertToTurnCount: (targetTurnCount: number, messageId: MessageId) => void;
   onUseArtifactTemplate?: (template: CodexArtifactTemplate) => void;
-  onSendAppMessage?: (text: string) => Promise<void>;
   onRunShellCommand?: (command: string) => void;
   isRevertingCheckpoint: boolean;
   onImageExpand: (preview: ExpandedImagePreview) => void;
@@ -370,7 +366,6 @@ const ConversationTimeline = memo(function ConversationTimeline({
   onOpenToolDiff,
   onOpenTurnDiff,
   onOpenThread,
-  renderHtmlRender,
   turnItemSource,
   parentThreadLink = null,
   workflowOpening = null,
@@ -380,7 +375,6 @@ const ConversationTimeline = memo(function ConversationTimeline({
   availableRevertTurnCounts,
   onRevertToTurnCount,
   onUseArtifactTemplate = NOOP_USE_ARTIFACT_TEMPLATE,
-  onSendAppMessage,
   onRunShellCommand,
   isRevertingCheckpoint,
   onImageExpand,
@@ -434,7 +428,6 @@ const ConversationTimeline = memo(function ConversationTimeline({
   const [playingAudioRows, setPlayingAudioRows] = useState<ReadonlyMap<HTMLAudioElement, string>>(
     () => new Map(),
   );
-  const [fullscreenAppRowId, setFullscreenAppRowId] = useState<string | null>(null);
   let paintedExpandedRunIds = expandedRunIds;
   let paintedExpandedWorkGroupIds = expandedWorkGroupIds;
   let paintedExpandedAttemptIds = expandedAttemptIds;
@@ -452,9 +445,6 @@ const ConversationTimeline = memo(function ConversationTimeline({
     });
     setPositionedThreadKey(null);
     setSettlingListIdentity(listIdentityKey);
-    // A viewer pinned in another thread must not keep live follow off here,
-    // nor when that thread comes back.
-    setFullscreenAppRowId(null);
     paintedExpandedRunIds = rememberedPosition?.disclosures?.runs ?? new Set();
     paintedExpandedWorkGroupIds = rememberedPosition?.disclosures?.workGroups ?? new Set();
     paintedExpandedAttemptIds = rememberedPosition?.disclosures?.attempts ?? new Set();
@@ -766,11 +756,6 @@ const ConversationTimeline = memo(function ConversationTimeline({
     setFindListReady(true);
   };
   const [minimapHasPersistentGutter, setMinimapHasPersistentGutter] = useState(false);
-  // Every full-screen viewer reports false when it unmounts, so a row that leaves the list
-  // while full screen releases its pin too.
-  const onAppFullscreenChange = (rowId: string, fullscreen: boolean) => {
-    setFullscreenAppRowId((current) => (fullscreen ? rowId : current === rowId ? null : current));
-  };
   const alwaysRenderIndices = restoringAlwaysRender?.indices ?? [];
   // Screen readers can only reach headings in the DOM. Keeping the first and
   // last messages mounted lets heading navigation wrap to either end.
@@ -780,7 +765,6 @@ const ConversationTimeline = memo(function ConversationTimeline({
     ...(firstMessageRow ? [firstMessageRow.id] : []),
     ...(lastMessageRow && lastMessageRow !== firstMessageRow ? [lastMessageRow.id] : []),
     ...(citationAlwaysRender?.keys ?? []),
-    ...(fullscreenAppRowId === null ? [] : [fullscreenAppRowId]),
     ...new Set(
       [...playingAudioRows].filter(([audio]) => audio.isConnected).map(([, rowId]) => rowId),
     ),
@@ -1008,14 +992,11 @@ const ConversationTimeline = memo(function ConversationTimeline({
     onImageExpand,
     onFileOpen,
     onUseArtifactTemplate,
-    onSendAppMessage,
-    onAppFullscreenChange,
     onFileDownload,
     openPullRequest,
     onOpenToolDiff,
     onOpenTurnDiff,
     onOpenThread,
-    renderHtmlRender,
     turnItemSource,
     workflowOpening,
     onForkFromRun,
@@ -1306,8 +1287,7 @@ const ConversationTimeline = memo(function ConversationTimeline({
                 citationPositioning ||
                 (restoringThreadPosition && rememberedPosition?.atEnd === false) ||
                 anchoredEndSpace ||
-                !liveFollowEnabled ||
-                fullscreenAppRowId !== null
+                !liveFollowEnabled
                   ? false
                   : isWorking && !prefersReducedMotion && settlingListIdentity === null
                     ? TIMELINE_MAINTAIN_SCROLL_AT_END_SMOOTH
@@ -1429,9 +1409,7 @@ const TimelineRowContent = memo(function TimelineRowContent({ row }: { row: Time
                     !row.showAssistantMeta) ||
                   row.kind === "worktree-setup" ||
                   row.kind === "event" ||
-                  row.kind === "attempt-fold" ||
-                  row.kind === "html-render" ||
-                  row.kind === "mcp-app"
+                  row.kind === "attempt-fold"
                 ? "pb-2"
                 : "pb-4",
         (row.kind === "message" && row.message.role === "assistant") ||
@@ -1479,8 +1457,6 @@ const TimelineRowContent = memo(function TimelineRowContent({ row }: { row: Time
       ) : null}
       {row.kind === "assistant-meta" ? <AssistantMetaTimelineRow row={row} /> : null}
       {row.kind === "proposed-plan" ? <ProposedPlanTimelineRow row={row} /> : null}
-      {row.kind === "html-render" ? <HtmlRenderTimelineRow row={row} /> : null}
-      {row.kind === "mcp-app" ? <McpAppTimelineRow row={row} /> : null}
       {row.kind === "working" ? <WorkingTimelineRow row={row} /> : null}
       {row.kind === "worktree-setup" ? <WorktreeSetupTimelineRow row={row} /> : null}
       {row.kind === "event" ? <V2EventTimelineRow row={row} /> : null}

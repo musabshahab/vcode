@@ -51,9 +51,7 @@ import { MessagesTimeline, type MessagesTimelineHistoryControls } from "../chat/
 import { ProviderInstanceIcon } from "../chat/ProviderInstanceIcon";
 import { getDisplayModelName, getTriggerDisplayModelName } from "../chat/providerIconUtils";
 import { ScrollToEndButton } from "../chat/TimelineOverlays";
-import type { TimelineRow } from "../chat/timelineRowContext";
 import { useTimelineFollow } from "../chat/useTimelineFollow";
-import { GuestHtmlRender } from "./GuestHtmlRender";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import {
@@ -465,11 +463,6 @@ function GuestThread({
     timelineAnchorMessageId: null,
     setTimelineAnchor: ignore,
   });
-  const renderHtmlRender = useStableCallback(
-    (row: Extract<TimelineRow, { kind: "html-render" }>) => (
-      <GuestHtmlRender itemId={row.id} reference={row.htmlRender} shareId={shareId} />
-    ),
-  );
   const unplaced = unplacedGuestMessages(messages, items, awaitingRowIds);
   return (
     <>
@@ -496,7 +489,6 @@ function GuestThread({
             onImageExpand={openExpandedImage}
             onFileOpen={openFile}
             onFileDownload={openFile}
-            renderHtmlRender={renderHtmlRender}
             turnItemSource={turnItemSource}
             historyControls={historyControls}
             activeThreadEnvironmentId={GUEST_ENVIRONMENT_ID}

@@ -104,27 +104,11 @@ const collectUsageLimitSecretReferences = (
     isSecretReference(managementKey) ? [managementKey] : [],
   );
 
-const collectDeviceHostSecretReferences = (
-  settings: Pick<ServerSettings, "easDeviceHosts" | "simlockDeviceHosts">,
-): ReadonlyArray<SecretReference> =>
-  [
-    ...settings.easDeviceHosts.map(({ accessToken }) => accessToken),
-    ...settings.simlockDeviceHosts.map(({ agentToken }) => agentToken),
-  ].filter(isSecretReference);
-
 /** Settings that cannot be read clear every cached secret, so a refresh never keeps a stale one. */
 export const invalidateSettingsSecrets = Effect.fn("SettingsSecrets.invalidate")(function* <E>(
   resolver: SecretResolver.SecretResolver["Service"],
   settings: Effect.Effect<
-    Pick<
-      ServerSettings,
-      | "sourceControlHosts"
-      | "usageLimitSources"
-      | "textGenerators"
-      | "easDeviceHosts"
-      | "simlockDeviceHosts"
-      | "cloudSpeechCredentials"
-    >,
+    Pick<ServerSettings, "sourceControlHosts" | "usageLimitSources" | "textGenerators">,
     E
   >,
 ) {
@@ -135,8 +119,6 @@ export const invalidateSettingsSecrets = Effect.fn("SettingsSecrets.invalidate")
       ...Object.values(current.textGenerators).flatMap(({ apiKey }) =>
         isSecretReference(apiKey) ? [apiKey] : [],
       ),
-      ...collectDeviceHostSecretReferences(current),
-      ...Object.values(current.cloudSpeechCredentials).filter(isSecretReference),
     ]),
     Effect.orElseSucceed(() => undefined),
   );

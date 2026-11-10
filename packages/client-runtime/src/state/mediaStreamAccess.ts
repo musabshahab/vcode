@@ -14,17 +14,28 @@ import { environmentEndpointUrl } from "../environment/endpoint.ts";
 import * as ManagedRelay from "../relay/managedRelay.ts";
 import type { RemoteEnvironmentRequestError } from "../rpc/http.ts";
 import { executeAuthenticatedEnvironmentHttpRequest } from "./environmentHttpAuth.ts";
-import type { DeviceHubAccess } from "../device/hubAccess.ts";
 
-export { type DeviceHubAccess, withDeviceHubQuery } from "../device/hubAccess.ts";
+export interface MediaStreamAccess {
+  readonly httpBase: string;
+  readonly wsBase: string;
+  readonly query: Readonly<Record<string, string>>;
+  readonly credentials: boolean;
+}
+
+export const withMediaStreamQuery = (url: string, access: MediaStreamAccess): string => {
+  const entries = Object.entries(access.query);
+  if (entries.length === 0) return url;
+  const separator = url.includes("?") ? "&" : "?";
+  return `${url}${separator}${new URLSearchParams(entries).toString()}`;
+};
 
 const TICKET_TIMEOUT_MS = 8_000;
 
-export const resolveDeviceHubAccess = Effect.fn("clientRuntime.state.resolveDeviceHubAccess")(
+export const resolveMediaStreamAccess = Effect.fn("clientRuntime.state.resolveMediaStreamAccess")(
   function* (input: {
     readonly prepared: PreparedConnection;
     readonly hubBasePath: string;
-  }): Effect.fn.Return<DeviceHubAccess, RemoteEnvironmentRequestError, HttpClient.HttpClient> {
+  }): Effect.fn.Return<MediaStreamAccess, RemoteEnvironmentRequestError, HttpClient.HttpClient> {
     const httpBase = environmentEndpointUrl(input.prepared.httpBaseUrl, input.hubBasePath);
     const wsBase = httpBase.replace(/^http/, "ws");
     if (input.prepared.httpAuthorization === null) {

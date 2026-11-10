@@ -6,9 +6,7 @@ import * as Layer from "effect/Layer";
 import * as GitVcsDriver from "../vcs/GitVcsDriver.ts";
 import * as OrchestrationCommandReceipts from "../persistence/OrchestrationCommandReceipts.ts";
 import * as OrchestrationEventStore from "../persistence/OrchestrationEventStore.ts";
-import * as McpAppModelContext from "../mcpApps/McpAppModelContext.ts";
 import * as PreviewAgentActivity from "../preview/PreviewAgentActivity.ts";
-import * as McpAppRequests from "../mcpApps/McpAppRequests.ts";
 import * as ProviderSessionRuntime from "../persistence/ProviderSessionRuntime.ts";
 import * as TextGeneration from "../textGeneration/TextGeneration.ts";
 import * as ProviderAuthService from "../provider/ProviderAuthService.ts";
@@ -151,7 +149,6 @@ const layerProviderAuthServiceProvided = ProviderAuthService.layer.pipe(
 const layerRunExecutionServiceProvided = RunExecutionService.layer.pipe(
   Layer.provide(
     Layer.mergeAll(
-      McpAppModelContext.layer,
       PreviewAgentActivity.layer,
       layerCheckpointServiceProvided,
       layerEventSink,
@@ -344,21 +341,9 @@ const layerProviderRuntimeRecoveryProvided = ProviderRuntimeRecoveryService.laye
   ),
 );
 
-const layerMcpAppRequestsProvided = McpAppRequests.layer.pipe(
-  Layer.provide(
-    Layer.mergeAll(
-      McpAppModelContext.layer,
-      layerOrchestratorProvided,
-      layerThreadManagementProvided,
-      layerProviderSessionManagerProvided,
-    ),
-  ),
-);
-
 export const layer = Layer.mergeAll(
   layerCommandOutputHubProvided,
   layerOrchestratorProvided,
-  layerMcpAppRequestsProvided,
   layerThreadManagementProvided,
   layerEffectWorkerProvided,
   layerProviderSessionManagerProvided,

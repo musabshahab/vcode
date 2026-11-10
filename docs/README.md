@@ -11,13 +11,10 @@
 - [Project settings](./user/project-settings.md)
 - [Appearance and themes](./user/appearance.md)
 - [Keyboard shortcuts](./user/keybindings.md)
-- [Voice input](./user/voice-input.md)
 - [Text generation models](./user/text-generation.md)
 - [SnapShots](./user/snap-shot.md)
-- [Visual replies](./user/html-renders.md)
 - [Import browser sessions](./user/browser-import.md)
 - [Use T3 Code as your default browser](./user/default-browser.md)
-- [Devices](./user/devices.md)
 - [Usage and limits](./user/usage.md)
 - [Secrets](./user/secrets.md)
 - [Product usage data](./user/telemetry.md)
@@ -27,7 +24,6 @@
 - [Outside agents (MCP)](./user/outside-agents.md)
 - [Running in the background](./user/background-service.md)
 - [Updating T3 Code](./user/updating.md)
-- [Triage an issue](./user/triage.md)
 - Provider guides: [Codex](./user/providers-codex.md) · [Claude](./user/providers-claude.md) · [OpenCode](./user/providers-opencode.md) · [Antigravity](./user/providers-antigravity.md) · [Kiro](./user/providers-kiro.md) · [Pi](./user/providers-pi.md) · [Muse Code](./user/providers-muse.md) · [fx](./user/providers-fx.md)
 
 ---
@@ -59,8 +55,6 @@ source alone does not explain. Most code changes do not need an internal documen
 - [Mobile navigation](./internals/mobile-navigation.md)
 - [Mobile development lifecycle](./internals/mobile-development.md)
 - [Terminal runtime](./internals/terminal-runtime.md)
-- [Devices](./internals/devices.md)
-- [Voice input](./internals/voice-input.md)
 
 ### Runbooks
 

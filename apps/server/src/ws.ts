@@ -26,7 +26,6 @@ import {
   AuthAccessStreamError,
   type AuthAccessStreamEvent,
   AuthOrchestrationOperateScope,
-  type AuthEnvironmentScope,
   type ScheduledTaskListResult,
   AuthSessionId,
   ClientConnectionMethod,
@@ -85,7 +84,6 @@ import {
   ChatAttachmentId,
   PersistChatAttachmentsError,
   RpcClientId,
-  EnvironmentAuthorizationError,
   ThreadId,
   type TerminalMetadataStreamEvent,
   type PullRequestRef,
@@ -107,7 +105,6 @@ import * as Keybindings from "./keybindings.ts";
 import * as ExternalLauncher from "./process/externalLauncher.ts";
 import * as ThreadManagementService from "./orchestration-v2/ThreadManagementService.ts";
 import * as CommandOutputHub from "./orchestration-v2/CommandOutputHub.ts";
-import * as McpAppRequests from "./mcpApps/McpAppRequests.ts";
 import * as ProviderSessionManager from "./orchestration-v2/ProviderSessionManager.ts";
 import * as ThreadLaunchService from "./orchestration-v2/ThreadLaunchService.ts";
 import * as ThreadMessageIntake from "./orchestration-v2/ThreadMessageIntake.ts";
@@ -177,8 +174,6 @@ import * as StorageCleanup from "./storageCleanup.ts";
 import * as TerminalManager from "./terminal/Manager.ts";
 import { terminalOutputStream, withOutputWindow } from "./terminal/OutputProtocol.ts";
 import * as ServerBrowser from "./preview/ServerBrowser.ts";
-import * as DeviceService from "./device/DeviceService.ts";
-import { remoteSshDeviceHosts } from "./device/localSshDeviceHost.ts";
 import * as PreviewManager from "./preview/Manager.ts";
 import { issueAssetUrl } from "./assets/AssetAccess.ts";
 import {
@@ -202,7 +197,6 @@ import { linkCreatedPullRequest } from "./git/linkCreatedPullRequest.ts";
 import * as ReviewService from "./review/ReviewService.ts";
 import * as ProjectEnrichmentService from "./project/ProjectEnrichmentService.ts";
 import * as ProjectService from "./project/ProjectService.ts";
-import { threadWorkspaceRoot } from "./project/threadWorkspaceRoot.ts";
 import * as ManagedProjectFolders from "./project/ManagedProjectFolders.ts";
 import * as ScratchThreadPromotion from "./project/ScratchThreadPromotion.ts";
 import { mutateProjectWithClone } from "./project/ProjectMutation.ts";
@@ -216,7 +210,6 @@ import * as DefectReporter from "./observability/DefectReporter.ts";
 import * as EventLoopMonitor from "./observability/EventLoopMonitor.ts";
 import * as BackgroundPolicy from "./background/BackgroundPolicy.ts";
 import * as EnvironmentAuth from "./auth/EnvironmentAuth.ts";
-import { requiredScopeForDeviceList, rpcAuthorizationError } from "./auth/RpcAuthorization.ts";
 import * as RpcAuthorization from "./auth/RpcAuthorization.ts";
 import { RpcInstrumentation, rpcInstrumentationLayer } from "./observability/RpcInstrumentation.ts";
 import * as ProcessDiagnostics from "./diagnostics/ProcessDiagnostics.ts";
@@ -228,7 +221,6 @@ import { commandFeatureUsage, featureUsage } from "./telemetry/FeatureUsage.ts";
 import type { TelemetryOwner } from "./telemetry/Identify.ts";
 import * as UsageService from "./usage/UsageService.ts";
 import * as TraceDiagnostics from "./diagnostics/TraceDiagnostics.ts";
-import * as TriageService from "./triage/TriageService.ts";
 import * as PullRequestService from "./pullRequest/PullRequestService.ts";
 import * as PullRequestReviewGuideService from "./pullRequest/PullRequestReviewGuideService.ts";
 import { listLinkedPullRequestThreads } from "./pullRequest/linkedThreads.ts";
@@ -1408,7 +1400,6 @@ export const layerWsRpc = (
       const threadSearch = yield* ThreadSearch.ThreadSearch;
 
       const providerSessionsV2 = yield* ProviderSessionManager.ProviderSessionManagerV2;
-      const mcpAppRequests = yield* McpAppRequests.McpAppRequests;
       const analytics = yield* AnalyticsService.AnalyticsService;
       const originProps = clientAnalyticsProps;
       const recordClientCommandAnalytics = (command: OrchestrationV2Command) => {
@@ -1437,9 +1428,6 @@ export const layerWsRpc = (
       const pullRequests = yield* PullRequestService.PullRequestService;
       const reviewGuides = yield* PullRequestReviewGuideService.PullRequestReviewGuideService;
       const pullRequestSync = yield* PullRequestSyncReactor.PullRequestSyncReactor;
-      const deviceService = yield* DeviceService.DeviceService;
-      const deviceHostContext =
-        yield* Effect.context<Effect.Services<ReturnType<typeof remoteSshDeviceHosts>>>();
       const orchestrationEngine = yield* Orchestrator.OrchestratorV2;
       const random = yield* SecureRandom.SecureRandom;
       // RPC client ids are only unique within one socket; terminals share viewers across sockets.
@@ -1528,7 +1516,6 @@ export const layerWsRpc = (
       const bootstrapCredentials = yield* PairingGrantStore.PairingGrantStore;
       const sessions = yield* SessionStore.SessionStore;
       const processDiagnostics = yield* ProcessDiagnostics.ProcessDiagnostics;
-      const triage = yield* TriageService.TriageService;
       const hostResources = yield* HostResources.HostResources;
       const processResourceMonitor = yield* ProcessResourceMonitor.ProcessResourceMonitor;
       const resourceTelemetry = yield* ResourceTelemetry.ResourceTelemetry;
@@ -1540,14 +1527,6 @@ export const layerWsRpc = (
           : {
               tasks: result.tasks.map(({ webhook: _webhook, ...task }) => task),
             };
-      const authorizeEffect = <A, E, R>(
-        requiredScope: AuthEnvironmentScope,
-        effect: Effect.Effect<A, E, R>,
-      ): Effect.Effect<A, E | EnvironmentAuthorizationError, R> =>
-        currentSession.scopes.includes(requiredScope)
-          ? effect
-          : Effect.fail(rpcAuthorizationError(requiredScope));
-
       const loadAuthAccessSnapshot = () =>
         Effect.all({
           pairingLinks: serverAuth.listPairingLinks(),
@@ -2136,10 +2115,6 @@ export const layerWsRpc = (
                 })),
             };
           }),
-        [WS_METHODS.mcpAppsCallTool]: (input) => mcpAppRequests.callTool(input),
-        [WS_METHODS.mcpAppsToolInfo]: (input) => mcpAppRequests.toolInfo(input),
-        [WS_METHODS.mcpAppsUpdateModelContext]: (input) => mcpAppRequests.updateModelContext(input),
-        [WS_METHODS.mcpAppsReadResource]: (input) => mcpAppRequests.readResource(input),
         [WS_METHODS.providerUploadFeedback]:
           /* Request instrumentation already owns the span; keep this helper in that context. */
           Effect.fnUntraced(
@@ -2274,15 +2249,9 @@ export const layerWsRpc = (
         [WS_METHODS.serverUpdateSettings]:
           /* Request instrumentation already owns the span; keep this helper in that context. */
           Effect.fnUntraced(function* ({ patch, providerInstanceMutation }) {
-            const deviceHosts = patch.deviceHosts
-              ? yield* remoteSshDeviceHosts(patch.deviceHosts).pipe(
-                  Effect.provide(deviceHostContext),
-                )
-              : undefined;
-            const nextPatch = { ...patch, ...(deviceHosts ? { deviceHosts } : {}) };
             const settings = yield* providerInstanceMutation === undefined
-              ? serverSettings.updateSettings(nextPatch)
-              : serverSettings.updateProviderInstance(providerInstanceMutation, nextPatch);
+              ? serverSettings.updateSettings(patch)
+              : serverSettings.updateProviderInstance(providerInstanceMutation, patch);
             return ServerSettings.redactServerSettingsForClient(settings, settingsClient);
           }),
         [WS_METHODS.serverDiscoverSourceControl]: (_input) => sourceControlDiscovery.discover,
@@ -2302,7 +2271,6 @@ export const layerWsRpc = (
         [WS_METHODS.serverRetryResourceTelemetry]: (_input) => resourceTelemetry.retry,
         [WS_METHODS.serverCheckOtlpEndpoint]: (input) => otlpEndpointCheck.check(input),
         [WS_METHODS.serverListTextGeneratorModels]: (input) => textGenerators.listModels(input),
-        [WS_METHODS.serverPrepareTriage]: (input) => triage.prepare(input),
         [WS_METHODS.serverSignalProcess]: (input) => processDiagnostics.signal(input),
         [WS_METHODS.serverReportClientActivity]: (input, metadata) =>
           Ref.update(rpcClientIds, (clientIds) => {
@@ -2811,30 +2779,6 @@ export const layerWsRpc = (
         [WS_METHODS.previewReportProfiles]: (input) => reportProfiles(input),
         [WS_METHODS.previewReportStatus]: (input) => previewManager.reportStatus(input),
         [WS_METHODS.subscribePreviewEvents]: (_input) => previewManager.events,
-        [WS_METHODS.deviceConfigure]: (input) => deviceService.configure(input),
-        [WS_METHODS.deviceTestHost]: (input) => deviceService.testHost(input),
-        [WS_METHODS.deviceEasAccount]: (input) => deviceService.easAccount(input),
-        [WS_METHODS.deviceSimlockIdentity]: (input) => deviceService.simlockIdentity(input),
-        [WS_METHODS.deviceList]: (input) =>
-          input.inspectOnly && !input.updateTool
-            ? deviceService.inspect
-            : authorizeEffect(
-                requiredScopeForDeviceList(input),
-                input.updateTool
-                  ? deviceService.updateTool(input.updateTool)
-                  : input.retryHostId
-                    ? deviceService.retryHost(input.retryHostId)
-                    : deviceService.list,
-              ),
-        [WS_METHODS.deviceOpen]: (input) =>
-          threadWorkspaceRoot(input.threadId).pipe(
-            Effect.flatMap((workspaceRoot) => deviceService.open(input, { workspaceRoot })),
-          ),
-        [WS_METHODS.deviceClose]: (input) => deviceService.close(input),
-        [WS_METHODS.deviceShutdown]: (input) => deviceService.shutdown(input),
-        [WS_METHODS.deviceDetail]: (input) => deviceService.detail(input),
-        [WS_METHODS.deviceAction]: (input) => deviceService.action(input),
-        [WS_METHODS.subscribeDeviceState]: (_input) => DeviceService.stateStream(deviceService),
         [WS_METHODS.previewStopLocalServer]: (input) => portDiscovery.stopServer(input),
         [WS_METHODS.subscribeDiscoveredLocalServers]: (input) =>
           Stream.callback<DiscoveredLocalServerList>((queue) =>

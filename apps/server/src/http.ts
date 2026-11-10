@@ -5,7 +5,6 @@ import {
   EnvironmentHttpApi,
 } from "@t3tools/contracts";
 import { isDevProxiedPath } from "@t3tools/shared/devProxy";
-import { injectMcpAppCookieBootstrap, injectMcpAppThemeBootstrap } from "@t3tools/shared/mcpApp";
 import { decodeOtlpTraceRecords } from "@t3tools/shared/observability";
 import * as ByteSize from "effect/ByteSize";
 import * as Effect from "effect/Effect";
@@ -15,7 +14,7 @@ import * as Option from "effect/Option";
 import * as Path from "effect/Path";
 import * as Schema from "effect/Schema";
 import * as Stream from "effect/Stream";
-import { cast, pipe } from "effect/Function";
+import { cast } from "effect/Function";
 import {
   HttpClient,
   HttpClientResponse,
@@ -29,7 +28,7 @@ import * as HttpApiBuilder from "effect/http-api/HttpApiBuilder";
 import { OtlpTracer, OtlpSerialization } from "effect/observability";
 
 import * as ServerConfig from "./config.ts";
-import { ASSET_ROUTE_PREFIX, readMcpAppHtml, resolveAsset } from "./assets/AssetAccess.ts";
+import { ASSET_ROUTE_PREFIX, resolveAsset } from "./assets/AssetAccess.ts";
 import { sourceControlMediaResponse } from "./assets/sourceControlMediaResponse.ts";
 import { statMediaFile, streamMediaFile, type OpenMediaFile } from "./assets/MediaFile.ts";
 import {
@@ -165,33 +164,12 @@ export const assetFileResponse = Effect.fn("assetFileResponse")(function* (
     readonly fileName?: string;
     readonly mimeType?: string;
     readonly file?: OpenMediaFile;
-    readonly renderIntent?: "mcp-app";
   },
   rangeHeader?: string,
   ifRangeHeader?: string,
   method: "GET" | "HEAD" = "GET",
 ) {
   const headers = assetResponseHeaders(asset.path, asset);
-  if (
-    asset.renderIntent === "mcp-app" &&
-    !asset.download &&
-    headers["Content-Type"] === "text/html; charset=utf-8"
-  ) {
-    const bytes = yield* readMcpAppHtml(asset.path);
-    if (bytes === null) {
-      return HttpServerResponse.text("MCP app is too large to preview.", { status: 413 });
-    }
-    const body = pipe(
-      new TextDecoder().decode(bytes),
-      injectMcpAppThemeBootstrap,
-      injectMcpAppCookieBootstrap,
-      (html) => new TextEncoder().encode(html),
-    );
-    headers["Content-Length"] = String(body.byteLength);
-    return method === "HEAD"
-      ? HttpServerResponse.empty({ status: 200, headers })
-      : HttpServerResponse.uint8Array(body, { headers });
-  }
   const mediaFile = asset.file;
   const mediaInfo = mediaFile ? yield* statMediaFile(asset.path, mediaFile) : undefined;
   const isMedia = /^(?:audio|video)\//i.test(headers["Content-Type"] ?? "");

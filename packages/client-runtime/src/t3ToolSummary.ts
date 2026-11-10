@@ -463,15 +463,6 @@ export function summarizeT3ToolCalls(
     case "browser":
       label = phrase("Used", "use", `browser ${times}`);
       break;
-    case "device":
-      label = phrase("Used", "use", `device controls ${times}`);
-      break;
-    case "html-preview":
-      label = phrase("Previewed", "preview", quantity(selected.length, "HTML page"));
-      break;
-    case "html-render":
-      label = phrase("Rendered", "render", quantity(selected.length, "HTML page"));
-      break;
     case "capabilities":
       label = phrase("Checked", "check", `orchestration capabilities ${times}`);
       break;

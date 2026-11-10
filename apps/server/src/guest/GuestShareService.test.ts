@@ -405,18 +405,6 @@ it.effect("refuses a message a page sends for a share the cookie no longer opens
   }).pipe(Effect.provide(layerTest)),
 );
 
-it.effect("serves no render for an item outside the shared thread", () =>
-  Effect.gen(function* () {
-    const { guestShares, credential } = yield* shareThread;
-    const { token: session } = yield* guestShares.redeem({ credential, name: "Sam" });
-    assert.isTrue(Exit.isFailure(yield* Effect.exit(guestShares.render(session, "item:missing"))));
-    // The invite itself is not a session.
-    assert.isTrue(
-      Exit.isFailure(yield* Effect.exit(guestShares.render(credential, "item:missing"))),
-    );
-  }).pipe(Effect.provide(layerTest)),
-);
-
 const ownerRun = Effect.gen(function* () {
   const orchestrator = yield* Orchestrator.OrchestratorV2;
   yield* orchestrator.dispatch({

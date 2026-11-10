@@ -15,8 +15,6 @@ import * as PlatformNodeCrypto from "@effect/platform-node/NodeCrypto";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import {
   ComposerContextRecord,
-  DeviceOperationError,
-  DeviceSummary,
   OrchestratorMcpTaskRole,
   ProviderInstanceId,
 } from "@t3tools/contracts";
@@ -51,9 +49,7 @@ import { buildCodexAdditionalContext } from "../../apps/server/src/provider/Code
 import { makeSideChatContext } from "../../apps/server/src/orchestration-v2/ContextHandoffService.ts";
 import { withInlineContext } from "../../apps/server/src/orchestration-v2/ContextHandoffDelivery.ts";
 import { AttachmentToolkit } from "../../apps/server/src/mcp/toolkits/attachment/tools.ts";
-import { DeviceToolkit } from "../../apps/server/src/mcp/toolkits/device/tools.ts";
 import { EnvironmentToolkit } from "../../apps/server/src/mcp/toolkits/environment/tools.ts";
-import { HtmlToolkit } from "../../apps/server/src/mcp/toolkits/html/tools.ts";
 import { OrchestratorToolkit } from "../../apps/server/src/mcp/toolkits/orchestrator/tools.ts";
 import { PreviewToolkit } from "../../apps/server/src/mcp/toolkits/preview/tools.ts";
 import { PreviewControlsToolkit } from "../../apps/server/src/mcp/toolkits/previewControls/tools.ts";
@@ -70,20 +66,9 @@ import {
 } from "../../apps/server/src/orchestration-v2/Adapters/ClaudeAdapterV2.ts";
 import { proxyConfig } from "../shared/proxy.ts";
 import { changeRequestsCreatedBy } from "../../apps/server/src/orchestration-v2/PullRequestSyncReactor.ts";
-import { DeviceExpect, gradeDevice } from "./device-grading.ts";
-import {
-  AGENT_DEVICE_SHELL,
-  deviceFailure,
-  type DeviceTools,
-  isDeviceTool,
-  launcherHelp,
-  makeDeviceTools,
-} from "./devices.ts";
 import {
   argvForm,
   gradeSecret,
-  scriptsBefore,
-  UNKNOWN_SCRIPT,
   scriptSources,
   SecretExpect,
   secretDiagnostics,
@@ -154,8 +139,6 @@ export type SampleRun = {
   readonly finalText?: string;
   /** PRs linked to the thread when the sample ends, by the agent or by T3. */
   readonly linked?: ReadonlyArray<string>;
-  /** The `agent-device` commands T3's device_open returned, prior turns included. */
-  readonly launchers?: ReadonlyArray<string>;
 };
 
 const Rest = [Schema.Record(Schema.String, Schema.Unknown)] as const;
@@ -163,7 +146,6 @@ const Rest = [Schema.Record(Schema.String, Schema.Unknown)] as const;
 const PriorToolCall = Schema.Struct({
   tool: Schema.String,
   input: Schema.Unknown,
-  /** For a device tool, `"default"` runs the call on the world's devices for T3's result. */
   result: Schema.Unknown,
   /** Repository-relative file whose current contents supply this tool result. */
   resultFile: Schema.optional(Schema.String),
@@ -215,8 +197,6 @@ const McpToolUseExpect = Schema.Struct({
   linked: Schema.optional(Schema.Array(Schema.String)),
   /** The PR numbers linked at the end, exactly. */
   linkedNumbers: Schema.optional(Schema.Array(Schema.Number)),
-  /** Device manager checks: child briefs, simulator UI over the shell, failures, recordings. */
-  device: Schema.optional(DeviceExpect),
   /**
    * Secret checks: chat asks in text and question tools, where fixture values went, and how the
    * files request_secret returned were read. See `SecretExpect` in secret-grading.ts.
@@ -241,29 +221,6 @@ const McpToolUseWorld = Schema.StructWithRest(
         Schema.StructWithRest(Schema.Struct({ sha: Schema.String, subject: Schema.String }), Rest),
       ),
     ),
-    /** Simulators and emulators. With them, T3's device tools answer from this world. */
-    devices: Schema.optional(Schema.Array(DeviceSummary)),
-    /** Labels of the SSH device hosts in `devices`, by id. The local host always exists. */
-    deviceHosts: Schema.optional(Schema.Record(Schema.String, Schema.String)),
-    /**
-     * agent-device sessions that prior turns started, by device id, with the app `open` put in
-     * each. Otherwise a device's session starts at its launcher's first `open` in the sample.
-     */
-    agentDeviceSessions: Schema.optional(
-      Schema.Record(Schema.String, Schema.Struct({ app: Schema.optional(Schema.String) })),
-    ),
-    /**
-     * Hosts whose hub fails to list devices, by id, with the error, such as F1's
-     * `{"_tag": "DeviceOperationError", "operation": "list", "reason": "request_failed", "cause": null}`.
-     * T3 marks each one failed on every call and lists none of its devices.
-     */
-    deviceDiscoveryFailures: Schema.optional(Schema.Record(Schema.String, DeviceOperationError)),
-    /** false: agent device access is off. T3 denies every device call and drops its device text. */
-    deviceAgentAccess: Schema.optional(Schema.Boolean),
-    /** Every capture reaches T3 with adb screencap's warning ahead of the PNG: T3 reports 0×0. */
-    deviceInvalidCapture: Schema.optional(Schema.Boolean),
-    /** Devices another thread's agent-device session holds, by device id: that thread's id. */
-    deviceOwners: Schema.optional(Schema.Record(Schema.String, Schema.String)),
     /** PRs already linked to the thread, with the state T3 last saw. */
     linkedPullRequests: Schema.optional(
       Schema.Array(
@@ -302,10 +259,7 @@ export const McpToolUseCase = Schema.Struct({
       ),
     ),
     world: Schema.optional(McpToolUseWorld),
-    /**
-     * Canned tool results by bare name, T3 or native. `"default"` uses the runner's result. For a
-     * device tool, a T3 `DeviceError` (`{"_tag": ..., "cause": null}`) fails it inside T3.
-     */
+    /** Canned tool results by bare name, T3 or native. `"default"` uses the runner's result. */
     mocks: Schema.optional(Schema.Record(Schema.String, Schema.Unknown)),
     /** Regexes on one part of a shell command. A match wins over the shell simulator. */
     shellMocks: Schema.optional(
@@ -434,8 +388,6 @@ const t3SourceTools: ReadonlyArray<Tool.Any> = [
   WorktreeToolkit,
   PullRequestsToolkit,
   PreviewToolkit,
-  DeviceToolkit,
-  HtmlToolkit,
 ].flatMap((toolkit): ReadonlyArray<Tool.Any> => Object.values(toolkit.tools));
 // McpHttpServer decodes arguments with each tool's JSON codec, which drops undeclared keys.
 const t3InputDecoders = new Map(
@@ -490,28 +442,19 @@ const visibleT3Tools = (options: { readonly subagent?: boolean; readonly links?:
       !(options.subagent === true && hiddenFromSubagents.has(tool.name)),
   );
 
-/**
- * T3's Claude Code options for an eval thread: its system prompt append and its hooks. `device` says
- * whether the thread holds the `device` capability, as agent device access decides.
- */
-const claudeQueryOptions = (model: Model, device = true) => {
-  // Refs whose device text follows the capability read deviceToolsAvailable; older ones ignore it.
-  const input: Parameters<typeof makeClaudeQueryOptions>[0] & {
-    readonly deviceToolsAvailable?: boolean;
-  } = {
+/** T3's Claude Code options for an eval thread: its system prompt append and its hooks. */
+const claudeQueryOptions = (model: Model) =>
+  makeClaudeQueryOptions({
     modelSelection: { instanceId: ProviderInstanceId.make(CLAUDE_PROVIDER), model },
     nativeThreadId: "mcp-tool-use-eval",
     resume: false,
     cwd: null,
     mcpServers: { "t3-code": { type: "http", url: "http://127.0.0.1/mcp" } },
-    deviceToolsAvailable: device,
-  };
-  return makeClaudeQueryOptions(input);
-};
+  });
 
 /** Text T3 appends to Claude Code's system prompt. Delegated children get the same text. */
-export const t3SystemAppend = (model: Model, device = true) => {
-  const { systemPrompt } = claudeQueryOptions(model, device);
+export const t3SystemAppend = (model: Model) => {
+  const { systemPrompt } = claudeQueryOptions(model);
   if (isRecord(systemPrompt) && systemPrompt.type === "preset" && systemPrompt.append) {
     return systemPrompt.append;
   }
@@ -522,10 +465,8 @@ export const t3SystemAppend = (model: Model, device = true) => {
  * The context T3's SubagentStart hooks give a native subagent, which gets none of the append.
  * Empty when T3 registers no such hook.
  */
-export const t3SubagentContext = async (model: Model, device = true) => {
-  const hooks = (claudeQueryOptions(model, device).hooks?.SubagentStart ?? []).flatMap(
-    (m) => m.hooks,
-  );
+export const t3SubagentContext = async (model: Model) => {
+  const hooks = (claudeQueryOptions(model).hooks?.SubagentStart ?? []).flatMap((m) => m.hooks);
   const input = {
     hook_event_name: "SubagentStart" as const,
     session_id: "mcp-tool-use-eval",
@@ -557,7 +498,7 @@ const t3ContextReport = (model: Model) => {
   const descriptions = t3Tools.reduce((sum, tool) => sum + valueText(tool.description).length, 0);
   const schemas = JSON.stringify(t3Tools).length;
   return [
-    `- T3 context: system text ${size((isCodex(model) ? JSON.stringify(buildCodexAdditionalContext({ model }, { browser: true, device: true })) : t3SystemAppend(model)).length)}`,
+    `- T3 context: system text ${size((isCodex(model) ? JSON.stringify(buildCodexAdditionalContext({ model })) : t3SystemAppend(model)).length)}`,
     `tool descriptions ${size(descriptions)}`,
     `full tool schemas ${size(schemas)} across ${t3Tools.length} tools.`,
   ].join(", ");
@@ -596,8 +537,6 @@ export const buildBase = (
     readonly links?: boolean;
     /** A native subagent starts from its task: T3 appends nothing to its system prompt. */
     readonly nativeSubagent?: boolean;
-    /** false: the thread has no agent device access, so T3's text leaves devices out. */
-    readonly deviceAccess?: boolean;
   },
 ) => {
   const t3 = visibleT3Tools(options);
@@ -621,7 +560,7 @@ export const buildBase = (
     .toSorted()
     .join("\n");
   const { model } = options;
-  const append = options.nativeSubagent ? "" : t3SystemAppend(model, options.deviceAccess);
+  const append = options.nativeSubagent ? "" : t3SystemAppend(model);
   const modelLine = `You are powered by the model named ${MODELS[model]}. The exact model ID is ${model}.`;
   const joined = systemTexts.join("\n");
   // The capture's home directory names its user. Cases use `/home/user` paths instead.
@@ -686,8 +625,6 @@ const buildCodexBase = (
     readonly effort?: string | undefined;
     readonly subagent?: boolean;
     readonly links?: boolean;
-    /** false: the thread has no agent device access, so T3's text leaves devices out. */
-    readonly deviceAccess?: boolean;
   },
 ): Base => {
   const t3 = visibleT3Tools(options);
@@ -721,10 +658,7 @@ const buildCodexBase = (
     if (item.role === "assistant") return [];
     return [JSON.parse(clean(JSON.stringify(item))) as Block];
   });
-  const context = buildCodexAdditionalContext(
-    { model: options.model, reasoningEffort: effort },
-    { browser: true, device: options.deviceAccess ?? true },
-  );
+  const context = buildCodexAdditionalContext({ model: options.model, reasoningEffort: effort });
   input.push(
     ...Object.entries(context).map(([key, entry]) => message(`<${key}>${entry.value}</${key}>`)),
   );
@@ -828,10 +762,6 @@ type Sample = {
   /** Files T3's request_secret saved in this sample, in call order. */
   readonly secretFiles: Array<string>;
   secretRequests: number;
-  /** T3's device tools, once `withDevices` builds them for a world with devices. */
-  devices?: DeviceTools;
-  /** T3's results for prior device calls whose case result is "default". */
-  readonly priorResults: Map<unknown, string>;
 };
 
 const SHELL_TOOLS = new Set(["Bash", "Read", "Edit", "Write", "WebFetch"]);
@@ -875,28 +805,8 @@ export const makeSample = (testCase: McpToolUseCase, base: Base): Sample => {
     threads: new Map(),
     secretFiles: [],
     secretRequests: 0,
-    priorResults: new Map(),
   };
 };
-
-/**
- * Builds T3's device tools for a world with devices. Prior device calls whose result is "default"
- * run first, in order and without the case's mocks, so their results and sessions are T3's. As in
- * the real flow, device_open starts no agent-device session: one starts at a launcher `open` in the
- * sample's shell history, prior turns included, or where `world.agentDeviceSessions` declares it.
- */
-export const withDevices = Effect.fn("evaluateMcpToolUse.withDevices")(function* (sample: Sample) {
-  const world = sample.testCase.setup.world;
-  if (world?.devices === undefined) return;
-  sample.devices = yield* makeDeviceTools(
-    { ...world, devices: world.devices },
-    sample.base.environment,
-  );
-  for (const call of (sample.testCase.setup.priorTurns ?? []).flatMap((t) => t.toolCalls ?? [])) {
-    if (call.result !== "default" || !isDeviceTool(call.tool)) continue;
-    sample.priorResults.set(call, (yield* sample.devices.call(call.tool, call.input)).text);
-  }
-});
 
 // Main's history under every case's world.
 const MAIN_COMMITS = [
@@ -985,10 +895,7 @@ export const buildMessages = (sample: Sample) => {
     const calls = (turn.toolCalls ?? []).map((call) => {
       const tool = findTool(base, call.tool);
       if (tool === undefined) throw new Error(`${testCase.id}: unknown prior tool ${call.tool}.`);
-      if (call.result === "default" && isDeviceTool(call.tool) && !sample.priorResults.has(call)) {
-        throw new Error(`${testCase.id}: prior ${call.tool} needs T3's result; run withDevices.`);
-      }
-      return { ...call, id: `toolu_prior_${nextId++}`, name: tool.name, tool, prior: call };
+      return { ...call, id: `toolu_prior_${nextId++}`, name: tool.name, tool };
     });
     // Prior T3 calls load their schemas first, as in a real deferred session.
     const unloaded = [...new Set(calls.map((call) => call.tool))].filter(
@@ -1002,12 +909,12 @@ export const buildMessages = (sample: Sample) => {
       push("user", loadTools(tools, id, unloaded), text(TOOL_LOADED));
     }
     // One call per step, as most real turns run them.
-    for (const { id, name, input, result, tool, prior } of calls) {
+    for (const { id, name, input, result, tool } of calls) {
       push("assistant", { type: "tool_use", id, name, input });
       const replayed =
         normalizeToolName(tool.name) === "orchestrator_capabilities"
           ? capabilities(sample, result)
-          : (sample.priorResults.get(prior) ?? result);
+          : result;
       push("user", toolResult(id, replayed));
     }
     if (turn.text) push(turn.role, text(turn.text));
@@ -1063,8 +970,6 @@ const DEFAULT_THREAD = {
     },
   ],
 };
-const HTML_RENDERED =
-  "Shown to the reader above your reply. Don't mention or describe the page; reply with only what it doesn't already say.";
 
 const PULL_REQUEST_URL = /\/pull\/\d+\/?$/;
 
@@ -1252,13 +1157,6 @@ export const t3Default = (
       const { title, status, items } = DEFAULT_THREAD;
       return { thread: { threadId, title, status }, items, nextPosition: 3, hasMore: false };
     }
-    case "html_preview":
-      return { width: 728, contentHeight: 560, capturedHeight: 560, consoleMessages: [] };
-    case "html_render":
-      return {
-        htmlRender: { attachmentId: "att-1", title: input.title ?? "Visual", height: 560 },
-        message: HTML_RENDERED,
-      };
     case "preview_status":
       return {
         available: false,
@@ -1418,23 +1316,15 @@ export const namedPathsLine = ({ setup }: McpToolUseCase) => {
 
 /** The simulator's request: the machine, this sample's earlier calls, then the new call. */
 export const shellRequest = (sample: Sample, call: Omit<ShellEntry, "output">, model: string) => {
-  const { testCase, base, repo, shell, devices } = sample;
+  const { testCase, base, repo, shell } = sample;
   const { world, context, shellMocks = [] } = testCase.setup;
   const { cwd, platform, date } = base.environment;
-  const command = call.tool === "Bash" && isRecord(call.input) ? call.input.command : undefined;
   const machine = [
     `Working directory: ${cwd} on ${platform}, a git checkout of github.com/${repo}.${date ? ` Today is ${date}.` : ""}`,
     gitStatus(testCase),
     `World: ${valueText(world ?? {})}`,
     ...(shellMocks.length > 0
       ? [`Commands that match these regexes print exactly this output: ${valueText(shellMocks)}`]
-      : []),
-    // Which device each launcher and session drives, and which of this call's opens are refused.
-    ...(devices?.describe(shell, typeof command === "string" ? command : undefined) ?? []),
-    ...(world?.deviceInvalidCapture
-      ? [
-          "T3's device_screenshot gets each capture with adb screencap's multi-display warning ahead of the PNG, so it reports 0×0. agent-device's own screenshot finds the PNG and is unaffected.",
-        ]
       : []),
     ...(sample.secretFiles.length > 0
       ? [
@@ -1451,8 +1341,7 @@ export const shellRequest = (sample: Sample, call: Omit<ShellEntry, "output">, m
     max_tokens: 8_000,
     // The "facts" field keeps the simulator's reasoning out of the output the agent sees.
     output_config: { effort: "low", format: { type: "json_schema", schema: SHELL_REPLY_SCHEMA } },
-    // A case with devices also gets agent-device's own CLI, so T3's launchers answer as it does.
-    system: devices ? `${SHELL_PROMPT}\n\n${AGENT_DEVICE_SHELL}` : SHELL_PROMPT,
+    system: SHELL_PROMPT,
     messages: [
       {
         role: "user",
@@ -1505,14 +1394,8 @@ type Config = {
   readonly shellModel: ShellModel;
 };
 
-/**
- * Output for a command that needs no simulator: a matching shell mock, else, for a plain command
- * on a launcher T3 returned, agent-device's help or its error for a session not yet started.
- */
-export const cannedOutput = (sample: Sample, command: string) =>
-  mockOutput(sample, command) ??
-  launcherHelp(sample.devices?.launchers ?? [], command) ??
-  sample.devices?.sessionError(sample.shell, command);
+/** Output for a command that needs no simulator: a matching shell mock. */
+export const cannedOutput = (sample: Sample, command: string) => mockOutput(sample, command);
 
 /** Output for a shell, file, or web tool: canned output, else the shell simulator. */
 const simulate = Effect.fn("evaluateMcpToolUse.simulate")(function* (
@@ -1572,24 +1455,7 @@ export const answerToolCall = Effect.fn("evaluateMcpToolUse.answerToolCall")(fun
     if (found.length === 0) return toolResult(call.id, "No matching deferred tools found");
     return loadTools(tools, call.id, found);
   }
-  // T3 refuses a page call without exactly one source before any mocked result.
-  const sources = [input.html, input.path].filter(
-    (source) => source !== undefined && source !== null,
-  );
-  if (isPageTool(name) && (sources.length !== 1 || typeof sources[0] !== "string")) {
-    return failed("Pass exactly one of html or path.");
-  }
-  if (isPageTool(name) && typeof input.path === "string" && !input.path.startsWith("/")) {
-    return failed(`${input.path} is not a readable HTML document. Pass an absolute path.`);
-  }
   const mock = testCase.setup.mocks?.[name];
-  // T3 answers device calls from the world. A mock that is a T3 device error fails inside T3.
-  const failure = deviceFailure(mock);
-  const fromWorld = mock === undefined || mock === "default" || failure !== undefined;
-  if (sample.devices && isT3Name(call.name) && isDeviceTool(name) && fromWorld) {
-    const result = yield* sample.devices.call(name, input, failure);
-    return result.isError ? failed(result.text) : toolResult(call.id, result.text);
-  }
   // A pasted secret is saved without a card, so a mocked card outcome does not apply.
   if (mock !== undefined && mock !== "default" && !pastedSecret(name, input)) {
     if (name === "request_secret") savedSecretFile(sample, mock);
@@ -1704,46 +1570,12 @@ export const pastedText = ({ prompt, setup }: Pick<McpToolUseCase, "prompt" | "s
     prompt,
   ].join("\n");
 
-const isPageTool = (tool: string) => tool === "html_preview" || tool === "html_render";
-
-/** `page` is the HTML a page tool shows: its inline `html`, or the file the agent wrote at `path`. */
-const withPage = (tool: string, input: unknown, files: ReadonlyMap<string, string>) => {
-  if (!isPageTool(tool) || !isRecord(input)) return input;
-  const path = valueText(input.path);
-  // A patch may name the file relative to the agent's working directory. When written files that
-  // could be this one differ, the page is unknown, so page checks fail rather than grade a stale copy.
-  const written = [...files].filter(
-    ([file]) =>
-      file === path ||
-      (!file.startsWith("/") && path.endsWith(`/${file.replace(/^(?:\.\/)+/, "")}`)),
-  );
-  const pages = new Set(written.map(([, page]) => page));
-  const page =
-    typeof input.html === "string"
-      ? input.html
-      : pages.size === 1 && !pages.has(UNKNOWN_SCRIPT)
-        ? written[0]![1]
-        : undefined;
-  // The grader derives `page`; a call cannot supply its own.
-  return { ...input, page };
-};
-
 /** `pasted` is the thread's user text (`pastedText`), for request_secret's `value`. */
 export const gradeSample = (expect: McpToolUseCase["expect"], run: SampleRun, pasted = "") => {
   const checks: Array<{ readonly check: string; readonly pass: boolean }> = [];
   const add = (check: string, pass: boolean) => checks.push({ check, pass });
-  const written = scriptsBefore(run.calls, true);
-  // A refused page call showed nothing, so it neither previews nor renders, and no file stands in
-  // for its page. Inline HTML it sent still counts against callsMustNot.
-  const attempted = run.calls.map((call, index) => ({
-    ...call,
-    input: withPage(
-      call.tool,
-      withOptionsObject(call.input),
-      call.failed ? new Map() : written[index]!,
-    ),
-  }));
-  const calls = attempted.filter((call) => !(call.failed && isPageTool(call.tool)));
+  const attempted = run.calls.map((call) => ({ ...call, input: withOptionsObject(call.input) }));
+  const calls = attempted;
   const count = (tool: string) => calls.filter((call) => call.tool === tool).length;
   // `tool` may list alternatives, as in "link_pull_request|watch_pull_request".
   const found = ({ tool, args = {} }: McpToolUseCall, among = calls) =>
@@ -1763,18 +1595,6 @@ export const gradeSample = (expect: McpToolUseCase["expect"], run: SampleRun, pa
   }
   for (const call of expect.callsMustNot ?? [])
     add(`callsMustNot ${label(call)}`, !found(call, attempted));
-  // A page check must not pass because the grader never saw the file a path call shows.
-  const pageTools = [...(expect.calls ?? []), ...(expect.callsMustNot ?? [])].flatMap((call) =>
-    call.args?.page === undefined ? [] : call.tool.split("|"),
-  );
-  for (const call of calls)
-    if (
-      pageTools.includes(call.tool) &&
-      isRecord(call.input) &&
-      call.input.path !== undefined &&
-      call.input.page === undefined
-    )
-      add(`page known ${call.tool} ${valueText(call.input.path)}`, false);
   for (const tool of expect.notCalls ?? [])
     add(`notCalls ${tool}`, !attempted.some((call) => call.tool === tool));
   if (expect.order !== undefined) {
@@ -1827,7 +1647,6 @@ export const gradeSample = (expect: McpToolUseCase["expect"], run: SampleRun, pa
     const exact = valueText(numbers.toSorted((a, b) => a - b));
     add("linkedNumbers", exact === valueText(expect.linkedNumbers.toSorted((a, b) => a - b)));
   }
-  checks.push(...gradeDevice(expect.device, run));
   checks.push(...gradeSecret(expect.secret, run, pasted));
   return checks;
 };
@@ -1837,15 +1656,7 @@ const SETTLED =
   /^(?:(?:notCalls|callsMustNot|shellMustNot|maxCalls|textMustNot) |secret\.(?:chatAsk|askTools|values|fileUse|noCardDemand|afterDecline) )/;
 /** True once the sample has failed for good, so the rest of it cannot change the result. */
 export const failedEarly = (expect: McpToolUseCase["expect"], run: SampleRun, pasted = "") =>
-  gradeSample(
-    expect,
-    // A page call T3 has not answered yet may still be refused, so it is graded once it settles.
-    {
-      ...run,
-      calls: run.calls.filter((call) => !isPageTool(call.tool) || call.failed !== undefined),
-    },
-    pasted,
-  ).some((check) => !check.pass && SETTLED.test(check.check));
+  gradeSample(expect, run, pasted).some((check) => !check.pass && SETTLED.test(check.check));
 
 const requestBody = ({ base, tools }: Sample, effort: string, messages: unknown) => ({
   model: base.model,
@@ -2073,7 +1884,6 @@ const runSample = Effect.fn("evaluateMcpToolUse.runSample")(function* (
   spent: { readonly usage: Usage; readonly shellUsage: Usage },
 ) {
   const sample = { ...makeSample(testCase, base), shellUsage: spent.shellUsage };
-  yield* withDevices(sample);
   const runPromise = Effect.runPromiseWith(yield* Effect.context<HttpClient.HttpClient>());
   const messages = buildMessages(sample);
   const input = base.codex ? codexMessages(messages) : undefined;
@@ -2199,7 +2009,6 @@ const runSample = Effect.fn("evaluateMcpToolUse.runSample")(function* (
     stopReason,
     finalText,
     linked: [...sample.linked],
-    ...(sample.devices ? { launchers: [...sample.devices.launchers] } : {}),
     usage,
     shellUsage: sample.shellUsage,
     transcript: input ? transcript : messages.slice(start),
@@ -2435,7 +2244,6 @@ const main = Effect.gen(function* () {
   const keepUserInstructions = flags["user-instructions"] === "keep";
   const buildFor = (
     role: McpToolUseCase["setup"]["role"],
-    deviceAccess: boolean,
     links: boolean,
   ): Effect.Effect<Base, Schema.SchemaError> =>
     codex
@@ -2447,7 +2255,6 @@ const main = Effect.gen(function* () {
               effort: flags.effort,
               subagent: role === "delegated-child",
               links,
-              deviceAccess,
             }),
           ),
         )
@@ -2459,10 +2266,9 @@ const main = Effect.gen(function* () {
               subagent: role === "delegated-child",
               nativeSubagent: role === "native-subagent",
               links,
-              deviceAccess,
             });
             return role === "native-subagent"
-              ? Effect.promise(() => t3SubagentContext(flags.model, deviceAccess)).pipe(
+              ? Effect.promise(() => t3SubagentContext(flags.model)).pipe(
                   Effect.map((subagentContext): Base => ({ ...built, subagentContext })),
                 )
               : Effect.succeed(built);
@@ -2470,18 +2276,14 @@ const main = Effect.gen(function* () {
         );
   // Codex has no native subagents; its cases with that role run as top-level threads.
   const baseKey = ({ setup }: McpToolUseCase) =>
-    `${codex && setup.role === "native-subagent" ? "top" : setup.role}:${setup.world?.deviceAgentAccess !== false}:${setup.linkedEnvironments === true}`;
-  const base = yield* buildFor("top", true, false);
-  const bases = new Map<string, Base>([["top:true:false", base]]);
+    `${codex && setup.role === "native-subagent" ? "top" : setup.role}:${setup.linkedEnvironments === true}`;
+  const base = yield* buildFor("top", false);
+  const bases = new Map<string, Base>([["top:false", base]]);
   for (const testCase of selected) {
     const key = baseKey(testCase);
     if (bases.has(key)) continue;
-    const [role = "top", access, links] = key.split(":") as [
-      McpToolUseCase["setup"]["role"],
-      string,
-      string,
-    ];
-    bases.set(key, yield* buildFor(role, access === "true", links === "true"));
+    const [role = "top", links] = key.split(":") as [McpToolUseCase["setup"]["role"], string];
+    bases.set(key, yield* buildFor(role, links === "true"));
   }
   const baseFor = (testCase: McpToolUseCase) => bases.get(baseKey(testCase)) ?? base;
   const effort = flags.effort ?? base.codex?.reasoning.effort ?? "high";
@@ -2489,7 +2291,6 @@ const main = Effect.gen(function* () {
     // One JSON line per case. Without --case this also checks that every case builds.
     for (const testCase of selected) {
       const sample = makeSample(testCase, baseFor(testCase));
-      yield* Effect.scoped(withDevices(sample));
       const messages = buildMessages(sample);
       const body = sample.base.codex
         ? codexRequest(sample.base, codexMessages(messages))

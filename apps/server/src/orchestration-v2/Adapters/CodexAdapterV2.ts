@@ -82,13 +82,11 @@ import type {
 import * as CodexClient from "effect-codex-app-server/client";
 import * as CodexErrors from "effect-codex-app-server/errors";
 import * as CodexSchema from "effect-codex-app-server/schema";
-import * as Cause from "effect/Cause";
 import * as Context from "effect/Context";
 import * as Digest from "effect/crypto/Digest";
 import * as DateTime from "effect/DateTime";
 import * as Deferred from "effect/Deferred";
 import * as Effect from "effect/Effect";
-import * as Fiber from "effect/Fiber";
 import * as FileSystem from "effect/FileSystem";
 import * as Function from "effect/Function";
 import * as Layer from "effect/Layer";
@@ -102,7 +100,7 @@ import * as Semaphore from "effect/Semaphore";
 import * as Stream from "effect/Stream";
 import { ChildProcess, ChildProcessSpawner } from "effect/process";
 
-import { resolveAttachmentPath, resolveAttachmentPathById } from "../../attachmentStore.ts";
+import { resolveAttachmentPath } from "../../attachmentStore.ts";
 import * as PortScanner from "../../preview/PortScanner.ts";
 import { getCodexServiceTierOptionValue } from "../../codexModelOptions.ts";
 import { ServerConfig } from "../../config.ts";
@@ -125,13 +123,6 @@ import { codexAppServerArgs, resolveCodexLaunchArgs } from "../../provider/codex
 import { mergeProviderInstanceEnvironment } from "@t3tools/provider-core/server/instanceEnvironment";
 import * as McpProviderSession from "@t3tools/provider-core/server/mcpSession";
 import * as McpProviderSessions from "@t3tools/provider-core/server/McpProviderSessions";
-import {
-  MCP_APP_EXTENSION_ID,
-  MCP_APP_MIME_TYPE,
-  MCP_APP_OUTPUT_KEY,
-  MCP_APP_RESOURCE_SCHEME,
-} from "@t3tools/shared/mcpApp";
-import { snapshotMcpApp } from "../../mcpApps/McpAppSnapshot.ts";
 import {
   ProviderAdapterDriverCreateError,
   type ProviderAdapterDriverCreateInput,
@@ -239,7 +230,6 @@ export const CODEX_PROMPT_SUGGESTION_PROMPT =
 const CODEX_CLIENT_CAPABILITIES = {
   experimentalApi: true,
   optOutNotificationMethods: ["turn/diff/updated"],
-  extensions: { [MCP_APP_EXTENSION_ID]: { mimeTypes: [MCP_APP_MIME_TYPE] } },
 } as const;
 
 export const CodexProviderCapabilitiesV2 = {
@@ -506,15 +496,6 @@ function codexMcpToolOutput(
     : { error: item.error.message, result: resultOutput };
 }
 
-// A hung MCP resource read must not hold run ingestion open.
-const MCP_APP_CAPTURE_TIMEOUT = "20 seconds";
-
-function codexMcpAppResourceUri(item: CodexDynamicToolItem): string | undefined {
-  if (item.type !== "mcpToolCall") return undefined;
-  const uri = item.mcpAppUi?.resourceUri ?? item.mcpAppResourceUri ?? item.appContext?.resourceUri;
-  return typeof uri === "string" && uri.startsWith(MCP_APP_RESOURCE_SCHEME) ? uri : undefined;
-}
-
 const CODEX_IMAGE_DATA_URL = /^data:(image\/[a-z0-9.+-]+);base64,([A-Za-z0-9+/=]+)$/i;
 
 export function codexDynamicToolOutput(
@@ -768,10 +749,8 @@ export const buildCodexTurnStartParams = Effect.fn("CodexAdapterV2.buildCodexTur
     readonly modelSelection: ModelSelection;
     readonly hasT3Mcp?: boolean;
     readonly browserToolsAvailable?: boolean;
-    readonly deviceToolsAvailable?: boolean;
     /** ChatGPT token sharing does not accept service tiers. */
     readonly omitServiceTier?: boolean;
-    readonly appContext?: ProviderAdapter.ProviderAdapterV2TurnInput["appContext"];
   }) {
     const runtimeModeDefaults = codexRuntimeModeTurnDefaults(input.runtimePolicy.runtimeMode);
     const approvalPolicy =
@@ -791,27 +770,13 @@ export const buildCodexTurnStartParams = Effect.fn("CodexAdapterV2.buildCodexTur
       input.omitServiceTier === true
         ? undefined
         : getCodexServiceTierOptionValue(input.modelSelection);
-    // MCP-written app context must be quoted user input, not developer instructions.
-    const appContext = Object.fromEntries(
-      (input.appContext ?? []).map((entry) => [
-        entry.key,
-        { kind: "untrusted" as const, value: entry.text },
-      ]),
-    );
-    const t3Context =
+    const additionalContext =
       input.hasT3Mcp === true
         ? buildCodexAdditionalContext(
             { model: input.modelSelection.model, reasoningEffort: effort ?? undefined },
-            {
-              browser: input.browserToolsAvailable ?? true,
-              device: input.deviceToolsAvailable ?? false,
-            },
+            input.browserToolsAvailable ?? true,
           )
         : undefined;
-    const additionalContext =
-      t3Context === undefined && Object.keys(appContext).length === 0
-        ? undefined
-        : { ...t3Context, ...appContext };
     return yield* decodeCodexTurnStartParamsWithCollaborationMode({
       threadId: input.nativeThreadId,
       input: input.codexInput,
@@ -2291,27 +2256,6 @@ export const makeCodexAdapterV2 = Effect.fn("makeCodexAdapterV2")(function* (
             return [remaining.size === 0, updated] as const;
           });
 
-        interface PendingMcpAppCapture {
-          readonly item: Extract<CodexDynamicToolItem, { readonly type: "mcpToolCall" }>;
-          readonly fiber: Fiber.Fiber<void>;
-        }
-        const pendingMcpAppCaptures = yield* Ref.make(
-          new Map<string, ReadonlyMap<string, PendingMcpAppCapture>>(),
-        );
-        const takePendingMcpAppCapture = (nativeTurnId: string, nativeItemId: string) =>
-          Ref.modify(pendingMcpAppCaptures, (current) => {
-            const captures = current.get(nativeTurnId);
-            if (captures === undefined || !captures.has(nativeItemId)) {
-              return [false, current] as const;
-            }
-            const remaining = new Map(captures);
-            remaining.delete(nativeItemId);
-            const updated = new Map(current);
-            if (remaining.size === 0) updated.delete(nativeTurnId);
-            else updated.set(nativeTurnId, remaining);
-            return [true, updated] as const;
-          });
-
         const trackRunningDynamicTool = (nativeTurnId: string, item: CodexDynamicToolItem) =>
           Ref.update(runningDynamicToolsByTurn, (current) => {
             const updated = new Map(current);
@@ -2343,9 +2287,6 @@ export const makeCodexAdapterV2 = Effect.fn("makeCodexAdapterV2")(function* (
           Effect.fnUntraced(function* (nativeTurnId: string) {
             const commands = (yield* Ref.get(runningCommandItemsByTurn)).get(nativeTurnId);
             if (commands !== undefined && commands.size > 0) {
-              return true;
-            }
-            if ((yield* Ref.get(pendingMcpAppCaptures)).has(nativeTurnId)) {
               return true;
             }
             const images = imageTurns.get(nativeTurnId);
@@ -3926,144 +3867,6 @@ export const makeCodexAdapterV2 = Effect.fn("makeCodexAdapterV2")(function* (
           },
         );
 
-        /**
-         * The item stays running until then, which keeps the run's event
-         * ingestion open past turn/completed; it runs off the notification
-         * reader so a slow server cannot stall other events.
-         */
-        const captureMcpApp = Effect.fn("CodexAdapterV2.captureMcpApp")(function* (
-          context: ActiveCodexTurnContext,
-          nativeTurnId: string,
-          item: Extract<CodexDynamicToolItem, { readonly type: "mcpToolCall" }>,
-          resourceUri: string,
-        ) {
-          // Registered before it can run, so a turn ending right away sees it.
-          const started = yield* Deferred.make<void>();
-          const fiber = yield* Deferred.await(started).pipe(
-            Effect.andThen(captureMcpAppItem(context, nativeTurnId, item, resourceUri)),
-            Effect.forkIn(scope, { startImmediately: true }),
-          );
-          yield* Ref.update(pendingMcpAppCaptures, (current) => {
-            const updated = new Map(current);
-            updated.set(
-              nativeTurnId,
-              new Map(current.get(nativeTurnId) ?? []).set(item.id, { item, fiber }),
-            );
-            return updated;
-          });
-          yield* Deferred.succeed(started, undefined);
-        });
-
-        const captureMcpAppItem = (
-          context: ActiveCodexTurnContext,
-          nativeTurnId: string,
-          item: Extract<CodexDynamicToolItem, { readonly type: "mcpToolCall" }>,
-          resourceUri: string,
-        ) =>
-          // Only reads and storage are cancellable; remove partial writes. Once stored, attach the app or delete it if the item settled.
-          Effect.uninterruptibleMask((restore) =>
-            Effect.gen(function* () {
-              const reference =
-                item.result != null && item.error == null
-                  ? yield* restore(
-                      getNativeThreadId(context.providerThread).pipe(
-                        Effect.flatMap((threadId) =>
-                          client.request("mcpServer/resource/read", {
-                            threadId,
-                            server: item.server,
-                            uri: resourceUri,
-                          }),
-                        ),
-                        Effect.timeout(MCP_APP_CAPTURE_TIMEOUT),
-                        Effect.flatMap((response) =>
-                          snapshotMcpApp({
-                            attachmentsDir: serverConfig.attachmentsDir,
-                            threadId: context.projectionThreadId,
-                            server: item.server,
-                            tool: item.tool,
-                            resourceUri,
-                            contents: response.contents,
-                          }),
-                        ),
-                        Effect.provideService(FileSystem.FileSystem, fileSystem),
-                        // Convert failures and defects to plain tool rows; only interruption ends the capture fiber.
-                        Effect.catchCauseIf(
-                          (cause) => !Cause.hasInterruptsOnly(cause),
-                          (cause) =>
-                            Effect.logWarning(
-                              "Failed to capture an MCP app; showing a plain tool row.",
-                              { server: item.server, tool: item.tool, resourceUri, cause },
-                            ).pipe(Effect.as(undefined)),
-                        ),
-                        Effect.orDie,
-                      ),
-                    )
-                  : undefined;
-              const artifacts = yield* buildDynamicToolArtifacts(context, item);
-              // Clear before emitting; ingestion rechecks pending work after each event.
-              if (!(yield* takePendingMcpAppCapture(nativeTurnId, item.id))) {
-                if (reference !== undefined) {
-                  const filePath = resolveAttachmentPathById({
-                    attachmentsDir: serverConfig.attachmentsDir,
-                    attachmentId: reference.attachmentId,
-                  });
-                  if (filePath !== null) {
-                    yield* fileSystem.remove(filePath, { force: true }).pipe(Effect.ignore);
-                  }
-                }
-                return;
-              }
-              const turnItem =
-                reference === undefined || artifacts.turnItem.type !== "dynamic_tool"
-                  ? artifacts.turnItem
-                  : {
-                      ...artifacts.turnItem,
-                      output: {
-                        [MCP_APP_OUTPUT_KEY]: reference,
-                        result:
-                          item.status === "failed"
-                            ? { ...item.result, isError: true }
-                            : item.result,
-                      },
-                    };
-              yield* emitProviderEvent({
-                type: "node.updated",
-                driver: CODEX_PROVIDER,
-                node: artifacts.node,
-              });
-              yield* emitProviderEvent({
-                type: "turn_item.updated",
-                driver: CODEX_PROVIDER,
-                turnItem,
-              });
-              if ((yield* Ref.get(settledTurns)).has(nativeTurnId)) {
-                yield* releaseSettledTurnIfIdle(nativeTurnId);
-              }
-            }),
-          );
-
-        const terminalizeMcpAppCaptures = Effect.fn("CodexAdapterV2.terminalizeMcpAppCaptures")(
-          function* (context: ActiveCodexTurnContext, nativeTurnId: string) {
-            const captures = (yield* Ref.get(pendingMcpAppCaptures)).get(nativeTurnId);
-            if (captures === undefined) return;
-            for (const { item, fiber } of captures.values()) {
-              if (!(yield* takePendingMcpAppCapture(nativeTurnId, item.id))) continue;
-              yield* Fiber.interrupt(fiber);
-              const artifacts = yield* buildDynamicToolArtifacts(context, item);
-              yield* emitProviderEvent({
-                type: "node.updated",
-                driver: CODEX_PROVIDER,
-                node: artifacts.node,
-              });
-              yield* emitProviderEvent({
-                type: "turn_item.updated",
-                driver: CODEX_PROVIDER,
-                turnItem: artifacts.turnItem,
-              });
-            }
-          },
-        );
-
         // The plan coalescer builds these artifacts on every streamed update.
         const buildProposedPlanArtifacts = Effect.fnUntraced(function* (input: {
           readonly context: ActiveCodexTurnContext;
@@ -5154,11 +4957,6 @@ export const makeCodexAdapterV2 = Effect.fn("makeCodexAdapterV2")(function* (
 
             if (payload.item.type === "mcpToolCall" || payload.item.type === "dynamicToolCall") {
               yield* clearRunningDynamicTool(payload.turnId, payload.item.id);
-              const appResourceUri = codexMcpAppResourceUri(payload.item);
-              if (appResourceUri !== undefined && payload.item.type === "mcpToolCall") {
-                yield* captureMcpApp(context, payload.turnId, payload.item, appResourceUri);
-                return;
-              }
               const artifacts = yield* buildDynamicToolArtifacts(context, payload.item);
               yield* emitProviderEvent({
                 type: "node.updated",
@@ -6389,7 +6187,6 @@ export const makeCodexAdapterV2 = Effect.fn("makeCodexAdapterV2")(function* (
                   input.status,
                   input.completedAt,
                 );
-                yield* terminalizeMcpAppCaptures(input.context, input.nativeTurnId);
               }
               const dynamicToolStatus: "cancelled" | "interrupted" | "failed" =
                 input.status === "interrupted" || input.status === "failed"
@@ -6858,9 +6655,7 @@ export const makeCodexAdapterV2 = Effect.fn("makeCodexAdapterV2")(function* (
               modelSelection: turnInput.modelSelection,
               hasT3Mcp: mcpSession !== undefined,
               browserToolsAvailable: mcpSession?.browserToolsAvailable ?? true,
-              deviceToolsAvailable: mcpSession?.capabilities?.has("device") ?? false,
               omitServiceTier: adapterOptions.resolveRuntime !== undefined,
-              ...(turnInput.appContext === undefined ? {} : { appContext: turnInput.appContext }),
             });
             yield* Ref.update(pendingRootTurns, (current) => {
               const updated = new Map(current);
@@ -7041,72 +6836,6 @@ export const makeCodexAdapterV2 = Effect.fn("makeCodexAdapterV2")(function* (
             ),
         );
 
-        const mcpAppsError = (detail: string) => (cause: unknown) =>
-          new ProviderAdapter.ProviderAdapterProtocolError({
-            driver: CODEX_PROVIDER,
-            detail,
-            payload: cause,
-          });
-        const mcpApps: ProviderAdapter.ProviderAdapterV2McpApps = {
-          listTools: Effect.fn("CodexAdapterV2.listTools")(
-            function* (toolsInput) {
-              const threadId = yield* getNativeThreadId(toolsInput.providerThread);
-              const response = yield* ensureInitialized.pipe(
-                Effect.andThen(
-                  client.request("mcpServerStatus/list", {
-                    threadId,
-                    serverName: toolsInput.server,
-                    detail: "toolsAndAuthOnly",
-                  }),
-                ),
-              );
-              const server = response.data.find((entry) => entry.name === toolsInput.server);
-              return Object.values(server?.tools ?? {});
-            },
-            Effect.mapError(mcpAppsError("Failed to list Codex MCP tools.")),
-          ),
-          callTool: Effect.fn("CodexAdapterV2.callTool")(
-            function* (callInput) {
-              const threadId = yield* getNativeThreadId(callInput.providerThread);
-              const response = yield* ensureInitialized.pipe(
-                Effect.andThen(
-                  client.request("mcpServer/tool/call", {
-                    threadId,
-                    server: callInput.server,
-                    tool: callInput.tool,
-                    arguments: callInput.arguments as Schema.Json,
-                  }),
-                ),
-              );
-              return {
-                content: response.content,
-                ...(response.structuredContent === undefined
-                  ? {}
-                  : { structuredContent: response.structuredContent }),
-                ...(response.isError === true ? { isError: true } : {}),
-                ...(response._meta === undefined ? {} : { _meta: response._meta }),
-              };
-            },
-            Effect.mapError(mcpAppsError("Codex MCP tool call failed.")),
-          ),
-          readResource: Effect.fn("CodexAdapterV2.readResource")(
-            function* (readInput) {
-              const threadId = yield* getNativeThreadId(readInput.providerThread);
-              const response = yield* ensureInitialized.pipe(
-                Effect.andThen(
-                  client.request("mcpServer/resource/read", {
-                    threadId,
-                    server: readInput.server,
-                    uri: readInput.uri,
-                  }),
-                ),
-              );
-              return { contents: response.contents };
-            },
-            Effect.mapError(mcpAppsError("Codex MCP resource read failed.")),
-          ),
-        };
-
         const runtime: ProviderAdapter.ProviderAdapterV2SessionRuntime = {
           instanceId: adapterOptions.instanceId,
           driver: CODEX_PROVIDER,
@@ -7125,9 +6854,6 @@ export const makeCodexAdapterV2 = Effect.fn("makeCodexAdapterV2")(function* (
               if (items.size > 0) {
                 return true;
               }
-            }
-            if ((yield* Ref.get(pendingMcpAppCaptures)).size > 0) {
-              return true;
             }
             for (const state of imageTurns.values()) {
               if (state.running.size > 0 || state.saved.size > 0) return true;
@@ -7784,7 +7510,6 @@ export const makeCodexAdapterV2 = Effect.fn("makeCodexAdapterV2")(function* (
                         completedAt,
                         true,
                       );
-                      yield* terminalizeMcpAppCaptures(context, context.nativeTurnId);
                       yield* Ref.update(runningCommandItemsByTurn, (current) => {
                         const updated = new Map(current);
                         updated.delete(context.nativeTurnId);
@@ -7903,7 +7628,6 @@ export const makeCodexAdapterV2 = Effect.fn("makeCodexAdapterV2")(function* (
                 }),
             ),
           ),
-          mcpApps,
           readThreadSnapshot: Effect.fn("CodexAdapterV2.readThreadSnapshot")(
             function* (threadInput) {
               const threadId = yield* getNativeThreadId(threadInput.providerThread);

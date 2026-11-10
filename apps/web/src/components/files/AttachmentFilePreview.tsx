@@ -1,5 +1,5 @@
 import { filePreviewDelimiter } from "@t3tools/shared/delimitedPreview";
-import type { AssetResource, EnvironmentId, ScopedThreadRef } from "@t3tools/contracts";
+import type { AssetResource, EnvironmentId } from "@t3tools/contracts";
 import { formatAttachmentSize } from "@t3tools/client-runtime/state/attachments";
 import { readFilePreviewResponse } from "@t3tools/client-runtime/file-preview";
 import { settlePromise } from "@t3tools/client-runtime/state/runtime";
@@ -93,8 +93,6 @@ export function AttachmentFilePreview(props: {
         environmentId: EnvironmentId;
         resource: Extract<AssetResource, { _tag: "media-file" | "draft-workspace-file" }>;
       };
-  htmlRender?: boolean;
-  threadRef?: ScopedThreadRef;
   origin?: string;
   onRemove?: () => void;
   onClose?: () => void;
@@ -332,8 +330,6 @@ export function AttachmentFilePreview(props: {
       src={url}
       title={props.name}
       pdf={kind === "pdf"}
-      htmlRender={props.htmlRender === true}
-      threadRef={props.threadRef}
       // Each mount signs or creates a new URL, so the URL cannot identify the file across visits.
       // A draft keeps its Blob key after upload, so finishing the upload does not reload the PDF.
       documentKey={

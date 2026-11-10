@@ -49,7 +49,6 @@ import * as ProviderAdapter from "@t3tools/provider-core/server/ProviderAdapter"
 import * as ProjectionStore from "./ProjectionStore.ts";
 import * as ProviderEventIngestor from "./ProviderEventIngestor.ts";
 import * as ProviderUsageAnalytics from "../telemetry/ProviderUsageAnalytics.ts";
-import * as McpAppModelContext from "../mcpApps/McpAppModelContext.ts";
 import * as PreviewAgentActivity from "../preview/PreviewAgentActivity.ts";
 import * as RunExecutionService from "./RunExecutionService.ts";
 import * as RunFinalizationService from "./RunFinalizationService.ts";
@@ -80,7 +79,6 @@ const layerTurnItemPositionsTest = Layer.mock(TurnItemPositionStore.TurnItemPosi
 const layerRunExecutionTest = RunExecutionService.layer.pipe(
   Layer.provide(
     Layer.mergeAll(
-      McpAppModelContext.layerEmpty,
       PreviewAgentActivity.layer,
       Layer.mock(CheckpointService.CheckpointServiceV2)({ captureBaseline: () => Effect.void }),
       layerTurnItemPositionsTest,
@@ -838,92 +836,6 @@ it.effect("rechecks run ownership immediately before calling the provider", () =
   }).pipe(Effect.provide(layerRunExecutionTest)),
 );
 
-it.effect("passes the thread's MCP app context to the provider under a safe key", () =>
-  Effect.gen(function* () {
-    const runExecution = yield* RunExecutionService.RunExecutionServiceV2;
-    const started = yield* Deferred.make<ProviderAdapter.ProviderAdapterV2TurnInput>();
-    const threadId = ThreadId.make("thread:run-execution-app-context");
-    const providerInstanceId = ProviderInstanceId.make("codex");
-    const attemptId = RunAttemptId.make("attempt:run-execution-app-context");
-    const session = {
-      events: Stream.never,
-      startTurn: (input: ProviderAdapter.ProviderAdapterV2TurnInput) =>
-        Deferred.succeed(started, input),
-    } as unknown as ProviderAdapter.ProviderAdapterV2SessionRuntime;
-
-    yield* runExecution.startRootRun({
-      commandId: CommandId.make("command:run-execution-app-context"),
-      appThread: rootAppThread(threadId),
-      providerSessionId: ProviderSessionId.make("session:run-execution-app-context"),
-      session,
-      run: {
-        id: RunId.make("run:run-execution-app-context"),
-        threadId,
-        ordinal: 1,
-        providerInstanceId,
-      } as OrchestrationV2Run,
-      rootNode: {
-        id: NodeId.make("node:run-execution-app-context"),
-      } as OrchestrationV2ExecutionNode,
-      checkpointScope: {
-        id: CheckpointScopeId.make("checkpoint-scope:run-execution-app-context"),
-      } as OrchestrationV2CheckpointScope,
-      providerThread: {
-        id: ProviderThreadId.make("provider-thread:run-execution-app-context"),
-        driver,
-      } as OrchestrationV2ProviderThread,
-      attempt: { id: attemptId, providerTurnId: null } as OrchestrationV2RunAttempt,
-      attemptId,
-      providerTurnOrdinal: 1,
-      message: {
-        messageId: MessageId.make("message:run-execution-app-context"),
-        text: "What is on my list?",
-        attachments: [],
-        createdBy: "user",
-        creationSource: "web",
-      },
-      modelSelection: { instanceId: providerInstanceId, model: "gpt-5.4" },
-      runtimePolicy: { runtimeMode: "full-access", interactionMode: "default", cwd: process.cwd() },
-    });
-
-    const input = yield* Deferred.await(started);
-    assert.deepEqual(input.appContext, [
-      { key: "mcp_app_turn-item_provider_codex_native-item_call-1", text: "2 overdue" },
-    ]);
-  }).pipe(
-    Effect.provide(
-      RunExecutionService.layer.pipe(
-        Layer.provide(
-          Layer.mergeAll(
-            PreviewAgentActivity.layer,
-            Layer.mock(McpAppModelContext.McpAppModelContext)({
-              forThread: () =>
-                Effect.succeed([
-                  {
-                    itemId: "turn-item:provider:codex:native-item:call-1",
-                    server: "my tools>",
-                    tool: "list",
-                    text: "2 overdue",
-                  },
-                ]),
-            }),
-            Layer.mock(CheckpointService.CheckpointServiceV2)({
-              captureBaseline: () => Effect.void,
-            }),
-            layerTurnItemPositionsTest,
-            mockEventSink({}),
-            IdAllocator.layer,
-            Layer.mock(ProviderEventIngestor.ProviderEventIngestorV2)({
-              ingestNormalized: () => Effect.succeed([]),
-            }),
-            ServerSettings.layerTest(),
-          ),
-        ),
-      ),
-    ),
-  ),
-);
-
 it.effect("fails the run when its ownership check cannot be read before calling the provider", () =>
   Effect.gen(function* () {
     const guardCalls = yield* Ref.make(0);
@@ -936,7 +848,6 @@ it.effect("fails the run when its ownership check cannot be read before calling 
     const layerTest = RunExecutionService.layer.pipe(
       Layer.provide(
         Layer.mergeAll(
-          McpAppModelContext.layerEmpty,
           PreviewAgentActivity.layer,
           Layer.mock(CheckpointService.CheckpointServiceV2)({ captureBaseline: () => Effect.void }),
           layerTurnItemPositionsTest,
@@ -1138,7 +1049,6 @@ it.effect("starts the provider when checkpoint baseline capture fails", () =>
     const layerTest = RunExecutionService.layer.pipe(
       Layer.provide(
         Layer.mergeAll(
-          McpAppModelContext.layerEmpty,
           PreviewAgentActivity.layer,
           Layer.mock(CheckpointService.CheckpointServiceV2)({
             captureBaseline: () =>
@@ -1258,7 +1168,6 @@ it.effect.each(["failure", "interruption", "stale-attempt", "start-guard"] as co
       const layerTest = RunExecutionService.layer.pipe(
         Layer.provide(
           Layer.mergeAll(
-            McpAppModelContext.layerEmpty,
             PreviewAgentActivity.layer,
             Layer.mock(CheckpointService.CheckpointServiceV2)({
               captureBaseline: () =>
@@ -1441,7 +1350,6 @@ it.effect("ingests new member threads of an owned child after the root turn term
                 `settled:${input.runId}:${input.status}:children-running=${input.childrenRunning}`,
               ]),
           }),
-          McpAppModelContext.layerEmpty,
           PreviewAgentActivity.layer,
           Layer.mock(CheckpointService.CheckpointServiceV2)({ captureBaseline: () => Effect.void }),
           layerTurnItemPositionsTest,
@@ -1701,7 +1609,6 @@ it.effect("ends a nested native subagent and its thread when the root run is int
     const layerTest = RunExecutionService.layer.pipe(
       Layer.provide(
         Layer.mergeAll(
-          McpAppModelContext.layerEmpty,
           PreviewAgentActivity.layer,
           Layer.mock(CheckpointService.CheckpointServiceV2)({ captureBaseline: () => Effect.void }),
           layerTurnItemPositionsTest,
@@ -2112,7 +2019,6 @@ it.effect(
       const layerTest = RunExecutionService.layer.pipe(
         Layer.provide(
           Layer.mergeAll(
-            McpAppModelContext.layerEmpty,
             PreviewAgentActivity.layer,
             Layer.mock(CheckpointService.CheckpointServiceV2)({
               captureBaseline: () => Effect.void,
@@ -3097,31 +3003,6 @@ it.effect("leaves the run to restart recovery when shutdown interrupts its event
   }),
 );
 
-it.effect("does not start a turn whose run settled during the app context read", () =>
-  Effect.gen(function* () {
-    const contextReadStarted = yield* Deferred.make<void>();
-    const runFailed = yield* Deferred.make<void>();
-    const current = yield* Ref.make(true);
-    const providerCalls = yield* Ref.make(0);
-    const { observed } = yield* captureRootRunTermination({
-      key: "stream-end:context-read",
-      shouldStartProviderTurn: () => Ref.get(current),
-      shouldFinalizeRun: () => Ref.get(current),
-      events: () => Stream.unwrap(Deferred.await(contextReadStarted).pipe(Effect.as(Stream.empty))),
-      appContext: Deferred.succeed(contextReadStarted, undefined).pipe(
-        Effect.andThen(Deferred.await(runFailed)),
-        Effect.as([]),
-      ),
-      refreshAfterTurn: Ref.set(current, false).pipe(
-        Effect.andThen(Deferred.succeed(runFailed, undefined)),
-      ),
-      startTurn: () => Ref.update(providerCalls, (count) => count + 1),
-    });
-    assert.deepEqual(observed, ["run:failed", "pull-requests-refreshed"]);
-    assert.equal(yield* Ref.get(providerCalls), 0);
-  }),
-);
-
 it.effect("keeps completed runs completed when pull request refresh fails", () =>
   Effect.gen(function* () {
     const { observed } = yield* captureRootRunTermination({
@@ -3157,7 +3038,6 @@ function captureRootRunTermination(input: {
   readonly refreshAfterTurn?: Effect.Effect<void>;
   readonly onSubscriptionClose?: Effect.Effect<void>;
   readonly shouldStartProviderTurn?: RunExecutionService.RunExecutionServiceV2StartRootRunInput["shouldStartProviderTurn"];
-  readonly appContext?: ReturnType<McpAppModelContext.McpAppModelContext["Service"]["forThread"]>;
   readonly ingestNormalized?: ProviderEventIngestor.ProviderEventIngestorV2["Service"]["ingestNormalized"];
   readonly beforeTerminalWrite?: (
     request: Parameters<EventSink.EventSinkV2["Service"]["writeIfRunCurrent"]>[0],
@@ -3199,9 +3079,6 @@ function captureRootRunTermination(input: {
     const layerTest = RunExecutionService.layer.pipe(
       Layer.provide(
         Layer.mergeAll(
-          Layer.mock(McpAppModelContext.McpAppModelContext)({
-            forThread: () => input.appContext ?? Effect.succeed([]),
-          }),
           Layer.mock(CheckpointService.CheckpointServiceV2)({ captureBaseline: () => Effect.void }),
           layerTurnItemPositionsTest,
           mockEventSink({
@@ -3722,7 +3599,6 @@ function runBackgroundItemScenario(
     const layerTest = RunExecutionService.layer.pipe(
       Layer.provide(
         Layer.mergeAll(
-          McpAppModelContext.layerEmpty,
           Layer.succeed(PreviewAgentActivity.PreviewAgentActivity, previewActivity),
           Layer.mock(CheckpointService.CheckpointServiceV2)({ captureBaseline: () => Effect.void }),
           layerTurnItemPositionsTest,

@@ -4,17 +4,6 @@ import {
 } from "@t3tools/contracts";
 import * as Predicate from "effect/Predicate";
 
-import {
-  HTML_RENDER_TOOL_NAME,
-  readHtmlRenderReference,
-  type HtmlRenderReference,
-} from "./htmlRender.ts";
-import {
-  claudeMcpToolName,
-  MCP_APP_OUTPUT_KEY,
-  readMcpAppReference,
-  type McpAppReference,
-} from "./mcpApp.ts";
 import { resolveT3McpToolId } from "./t3McpToolPresentation.ts";
 
 const MAX_PARSED_BYTES = 16_384;
@@ -44,8 +33,6 @@ interface CompactToolOutput {
   taskId?: string;
   scheduledTaskId?: string;
   status?: "rolled_back";
-  htmlRender?: HtmlRenderReference;
-  [MCP_APP_OUTPUT_KEY]?: McpAppReference;
   thread?: { threadId: string };
   threads?: Array<{ threadId?: string; status?: "rolled_back" }>;
   linkedCount?: number;
@@ -134,10 +121,6 @@ export function compactDynamicToolOutput(value: unknown): CompactToolOutput | un
       const count = data[key];
       if (typeof count === "number" && Number.isSafeInteger(count)) output[key] = count;
     }
-    const htmlRender = readHtmlRenderReference(data.htmlRender);
-    if (htmlRender !== undefined) output.htmlRender = htmlRender;
-    const mcpApp = readMcpAppReference(data[MCP_APP_OUTPUT_KEY]);
-    if (mcpApp !== undefined) output[MCP_APP_OUTPUT_KEY] = mcpApp;
     const nestedThreadId = Predicate.isObject(data.thread)
       ? boundedId(data.thread.threadId)
       : undefined;
@@ -178,22 +161,7 @@ export function compactDynamicToolOutput(value: unknown): CompactToolOutput | un
     delete output.threadId;
     delete output.status;
   }
-  const app = output[MCP_APP_OUTPUT_KEY];
-  if (app?.csp !== undefined && oversized()) {
-    const { csp: _csp, ...rest } = app;
-    output[MCP_APP_OUTPUT_KEY] = rest;
-  }
-  if (oversized()) delete output[MCP_APP_OUTPUT_KEY];
   return Object.keys(output).length === 0 ? undefined : output;
-}
-
-export function htmlRenderFromToolItem(item: {
-  readonly toolName: string | null | undefined;
-  readonly output?: unknown;
-}): HtmlRenderReference | undefined {
-  if (resolveT3McpToolId(item.toolName) !== HTML_RENDER_TOOL_NAME) return undefined;
-  const output = compactDynamicToolOutput(item.output);
-  return output?.isError ? undefined : output?.htmlRender;
 }
 
 /** The thread-owned file `preview_recording_stop` stored for the agent. */
@@ -209,19 +177,6 @@ export function previewRecordingIdFromToolItem(item: {
   };
   const result = readResult(item.output, budget);
   return result.failed || budget.exceeded ? undefined : boundedId(result.data?.id);
-}
-
-/** Accept app references only when server and tool match the item, so tools cannot impersonate another app source. */
-export function mcpAppFromToolItem(item: {
-  readonly toolName: string | null | undefined;
-  readonly output?: unknown;
-}): McpAppReference | undefined {
-  const app = compactDynamicToolOutput(item.output)?.[MCP_APP_OUTPUT_KEY];
-  return app !== undefined &&
-    (item.toolName === `${app.server}.${app.tool}` ||
-      item.toolName === claudeMcpToolName(app.server, app.tool))
-    ? app
-    : undefined;
 }
 
 /** Some providers report completion even when command output describes a failure. */

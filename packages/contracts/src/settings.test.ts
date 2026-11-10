@@ -14,7 +14,6 @@ import {
   DEFAULT_SERVER_SETTINGS,
   globalIdleCompaction,
   idleCompactionPatch,
-  PROJECT_SCOPED_SERVER_SETTING_KEYS,
   requiredScopesForProjectMutation,
   resolveIdleCompaction,
   resolveProjectProviderInstanceEnabled,
@@ -406,41 +405,6 @@ describe("ServerSettings environment icon", () => {
   });
 });
 
-const decodeDeviceHostSettings = Schema.decodeSync(ServerSettings);
-
-// `deviceHosts` as it was decoded before EAS hosts existed: an SSH host needs a target.
-const decodeOlderDeviceHostSettings = Schema.decodeUnknownSync(
-  Schema.Struct({
-    deviceHosts: Schema.Array(Schema.Struct({ id: Schema.String, target: Schema.String })),
-  }),
-);
-
-it("keeps EAS hosts out of the SSH host list servers and clients before EAS hosts decode", () => {
-  const settings = decodeDeviceHostSettings({
-    deviceHosts: [{ id: "mini", label: "Mac mini", target: "user@mini" }],
-    easDeviceHosts: [{ kind: "eas", id: "eas", label: "EAS Simulator" }],
-  });
-  const wire = encodeServerSettings(settings);
-  expect(decodeOlderDeviceHostSettings(wire).deviceHosts).toEqual([
-    { id: "mini", target: "user@mini" },
-  ]);
-  expect(settings.easDeviceHosts.map((host) => host.id)).toEqual(["eas"]);
-});
-
-it("validates remote device hosts and rejects ambiguous host ids", () => {
-  const host = { id: "mini", label: "Mac mini", target: "user@mini", port: 2222 };
-  // Hosts saved before EAS hosts existed have no `kind`; they are SSH hosts.
-  expect(decodeDeviceHostSettings({ deviceHosts: [host] }).deviceHosts).toEqual([
-    { kind: "ssh", ...host },
-  ]);
-  expect(() => decodeDeviceHostSettings({ deviceHosts: [host, host] })).toThrow();
-  expect(() => decodeDeviceHostSettings({ deviceHosts: [{ ...host, id: "local" }] })).toThrow();
-  expect(() =>
-    decodeDeviceHostSettings({ deviceHosts: [{ ...host, target: "-oProxyCommand=bad" }] }),
-  ).toThrow();
-  expect(() => decodeDeviceHostSettings({ deviceHosts: [{ ...host, port: 0 }] })).toThrow();
-});
-
 describe("ServerSettings project overrides across versions", () => {
   it("sends back an override key from a newer server when an older client edits the entry", () => {
     const projectId = ProjectId.make("project-a");
@@ -495,39 +459,6 @@ describe("requiredScopesForProjectMutation", () => {
         scripts: [],
       }),
     ).toEqual(["orchestration:operate", "settings:write"]);
-  });
-});
-
-describe("voice settings", () => {
-  it("does not import voice consent from ordinary device preferences", () => {
-    const imported = {
-      voiceTranscriptionEnvironmentId: "env-1",
-      voiceTranscriptionDestination: { kind: "environment", environmentId: "env-1" },
-      speechPostProcessingEnabled: true,
-    };
-    expect(decodeClientSettings({}).speechSilenceFiltering).toBe(true);
-    expect(decodeClientSettingsPatch({ speechSilenceFiltering: false })).toEqual({
-      speechSilenceFiltering: false,
-    });
-    for (const key of Object.keys(imported)) {
-      expect(decodeClientSettings(imported)).not.toHaveProperty(key);
-      expect(decodeClientSettingsPatch(imported)).not.toHaveProperty(key);
-    }
-  });
-
-  it("keeps the correction cue personal and project vocabulary on the environment", () => {
-    expect(decodeClientSettings({}).speechCorrectionWord).toBe("");
-    expect(() => decodeClientSettingsPatch({ speechCorrectionWord: "x".repeat(51) })).toThrow();
-    expect(DEFAULT_SERVER_SETTINGS.speechProjectCustomWords).toEqual([]);
-    expect(PROJECT_SCOPED_SERVER_SETTING_KEYS).toContain("speechProjectCustomWords");
-  });
-
-  it("stores the transcription model and resources on the environment", () => {
-    expect(DEFAULT_SERVER_SETTINGS).toMatchObject({
-      speechModelId: "handy-computer/parakeet-unified-en-0.6b-gguf",
-      speechAcceleration: "auto",
-      speechModelUnloadTimeout: "min_15",
-    });
   });
 });
 

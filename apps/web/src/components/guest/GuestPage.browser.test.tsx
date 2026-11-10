@@ -1,7 +1,6 @@
 import {
   EventId,
   GUEST_COMMAND_OUTPUT_ROUTE,
-  GUEST_RENDER_ROUTE,
   GuestMessageId,
   GuestShareId,
   GuestStreamEvent,
@@ -95,13 +94,6 @@ const items: ReadonlyArray<OrchestrationV2TurnItem> = [
     input: "vp run check:changed",
     outputOmitted: true,
     exitCode: 0,
-  },
-  {
-    ...itemBase("visual", 2),
-    type: "dynamic_tool",
-    toolName: "mcp__t3-code__html_render",
-    input: null,
-    output: { htmlRender: { attachmentId: "thread-a-1", title: "Chart", height: 200 } },
   },
   reply("reply", 3, "All checks pass."),
 ];
@@ -236,12 +228,6 @@ describe("GuestPage", () => {
     // Expanding the command shows its output, read through the guest route.
     await userEvent.click(screen.getByText("vp run check:changed"));
     await expect.element(screen.getByText("4 files checked")).toBeVisible();
-    await expect
-      .element(screen.getByTitle("Chart"))
-      .toHaveAttribute(
-        "src",
-        expect.stringContaining(`${GUEST_RENDER_ROUTE}?share=${SHARE_ID}&item=visual`),
-      );
     // Guests cannot act on the thread, so no control offers to.
     expect(screen.container.querySelector('[aria-label="Fork from this response"]')).toBeNull();
     expect(socket).not.toHaveBeenCalled();

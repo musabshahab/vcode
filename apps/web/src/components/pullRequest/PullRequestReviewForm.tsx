@@ -2,9 +2,8 @@ import { useAtomCommand } from "~/state/use-atom-command";
 import { capitalizeTerm } from "@t3tools/client-runtime/source-control-clients";
 import type { EnvironmentId, PullRequestRef, PullRequestReviewVerdict } from "@t3tools/contracts";
 import { CheckIcon, MessageSquareIcon, XCircleIcon } from "lucide-react";
-import { useEffect, useState, type ReactNode, type RefObject } from "react";
+import { useState, type ReactNode, type RefObject } from "react";
 
-import { TextFieldSpeechControls, useTextFieldSpeech } from "~/speech/useTextFieldSpeech";
 import { pullRequestEnvironment } from "~/state/pullRequests";
 import { squashAtomCommandFailure } from "@t3tools/client-runtime/state/runtime";
 
@@ -51,7 +50,6 @@ const VERDICTS: ReadonlyArray<{
 
 export function PullRequestReviewForm({
   environmentId,
-  active,
   reference,
   completionScope,
   term,
@@ -63,8 +61,6 @@ export function PullRequestReviewForm({
   onSubmitted,
 }: {
   environmentId: EnvironmentId;
-  /** False while the form stays mounted but hidden; dictation is cancelled then. */
-  active: boolean;
   reference: PullRequestRef;
   completionScope: PullRequestCompletionScope | null;
   /** The host's word for a change request, as in "pull request". */
@@ -82,20 +78,6 @@ export function PullRequestReviewForm({
   const body = usePullRequestReviewStore((store) => store.summaries[reviewKey] ?? "");
   const removeComments = usePullRequestReviewStore((store) => store.removeComments);
   const setSummary = usePullRequestReviewStore((store) => store.setSummary);
-  const speech = useTextFieldSpeech({
-    environmentId,
-    projectId: reference.projectId,
-    ownerKey: JSON.stringify(["pr-review", environmentId, reviewKey]),
-    text: body,
-    textareaRef,
-    onTextChange: (text) => setSummary(reviewKey, text),
-    disabled: !active || pending,
-  });
-  const { cancel } = speech;
-  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- discards a recording when the hidden form can no longer be submitted
-  useEffect(() => {
-    if (!active) cancel();
-  }, [active, cancel]);
   const clearSummary = usePullRequestReviewStore((store) => store.clearSummary);
   const submitReview = useAtomCommand(pullRequestEnvironment.submitReview, {
     reportFailure: false,
@@ -159,7 +141,6 @@ export function PullRequestReviewForm({
         ref={textareaRef}
         completionScope={completionScope}
         rows={3}
-        readOnly={speech.freezesEditor}
         value={body}
         placeholder={placeholder}
         aria-label="Review summary"
@@ -168,18 +149,15 @@ export function PullRequestReviewForm({
           if (event.nativeEvent.isComposing || event.keyCode === 229 || event.repeat) return;
           if (
             selectedVerdict !== undefined &&
-            isCommentSubmitShortcut(event, body, pending || speech.preparing, true)
+            isCommentSubmitShortcut(event, body, pending, true)
           ) {
             event.preventDefault();
             event.stopPropagation();
-            speech.submitAfterDictation((text) => void submit(selectedVerdict, text));
+            void submit(selectedVerdict, body);
           }
         }}
       />
       <div className="mt-2 flex flex-wrap items-center justify-end gap-2">
-        <div className="mr-auto flex min-w-0 flex-wrap items-center gap-1">
-          <TextFieldSpeechControls speech={speech} disabled={pending} />
-        </div>
         {offered.length > 1 ? (
           <Select
             value={selectedVerdict?.value ?? null}
@@ -209,14 +187,12 @@ export function PullRequestReviewForm({
         <Button
           size="xs"
           disabled={
-            speech.preparing ||
             pending ||
             selectedVerdict === undefined ||
-            (!canSubmit(selectedVerdict.value, body, comments.length) && !speech.blocksSubmission)
+            !canSubmit(selectedVerdict.value, body, comments.length)
           }
           onClick={() => {
-            if (selectedVerdict !== undefined)
-              speech.submitAfterDictation((text) => void submit(selectedVerdict, text));
+            if (selectedVerdict !== undefined) void submit(selectedVerdict, body);
           }}
         >
           {pending ? "Submitting..." : "Submit review"}

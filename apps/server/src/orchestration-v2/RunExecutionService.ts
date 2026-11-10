@@ -37,7 +37,6 @@ import * as Schedule from "effect/Schedule";
 import * as Schema from "effect/Schema";
 
 import * as McpSessionRegistry from "../mcp/McpSessionRegistry.ts";
-import * as McpAppModelContext from "../mcpApps/McpAppModelContext.ts";
 import * as PreviewAgentActivity from "../preview/PreviewAgentActivity.ts";
 import * as ServerSettings from "../serverSettings.ts";
 import * as CheckpointService from "./CheckpointService.ts";
@@ -600,7 +599,6 @@ export const layer: Layer.Layer<
   | IdAllocator.IdAllocatorV2
   | ProviderEventIngestor.ProviderEventIngestorV2
   | ServerSettings.ServerSettingsService
-  | McpAppModelContext.McpAppModelContext
   | PreviewAgentActivity.PreviewAgentActivity
   | TurnItemPositionStore.TurnItemPositionStoreV2
 > = Layer.effect(
@@ -612,7 +610,6 @@ export const layer: Layer.Layer<
     const idAllocator = yield* IdAllocator.IdAllocatorV2;
     const providerEventIngestor = yield* ProviderEventIngestor.ProviderEventIngestorV2;
     const serverSettings = yield* ServerSettings.ServerSettingsService;
-    const mcpAppModelContext = yield* McpAppModelContext.McpAppModelContext;
     const previewAgentActivity = yield* PreviewAgentActivity.PreviewAgentActivity;
     const turnItemPositions = yield* TurnItemPositionStore.TurnItemPositionStoreV2;
     const finalizationObserver = yield* RunFinalizationService.RunFinalizationObserver;
@@ -1677,21 +1674,6 @@ export const layer: Layer.Layer<
           }),
         );
         yield* touchMcpCredential;
-        const appContext = (yield* mcpAppModelContext
-          .forThread(input.run.threadId)
-          .pipe(
-            Effect.catch((cause) =>
-              Effect.logWarning("Failed to read MCP app model context.", { cause }).pipe(
-                Effect.as([]),
-              ),
-            ),
-          )).map((entry) => ({
-          // The item id alone is unique and needs no escaping; server and
-          // tool names are free text that would break the tag Codex wraps
-          // the context in.
-          key: `mcp_app_${entry.itemId.replace(/[^\w.-]/g, "_")}`,
-          text: entry.text,
-        }));
         const turnInput = {
           appThread: input.appThread,
           threadId: input.run.threadId,
@@ -1712,10 +1694,8 @@ export const layer: Layer.Layer<
           message: input.message,
           modelSelection: input.modelSelection,
           runtimePolicy: input.runtimePolicy,
-          ...(appContext.length === 0 ? {} : { appContext }),
         };
-        // Check after the context read: ingestion can settle the run while
-        // it awaits. A failed ownership read fails the start below.
+        // A failed ownership read fails the start below.
         const shouldStart =
           input.shouldStartProviderTurn === undefined
             ? Exit.succeed(true)

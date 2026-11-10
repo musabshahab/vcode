@@ -41,11 +41,6 @@ import * as AgentScopeLive from "./process/agentScope.ts";
 import * as ExternalLauncher from "./process/externalLauncher.ts";
 import * as NodePtyAdapter from "./terminal/NodePtyAdapter.ts";
 import * as PullRequestHttp from "./pullRequest/http.ts";
-import * as SpeechModelStore from "./speech/SpeechModelStore.ts";
-import * as SpeechService from "./speech/SpeechService.ts";
-import * as CloudSpeech from "./speech/CloudSpeech.ts";
-import { speechHttpApiLayer } from "./speech/http.ts";
-import { speechStreamRouteLayer } from "./speech/stream.ts";
 import * as PullRequestProviderRegistry from "./pullRequest/PullRequestProviderRegistry.ts";
 import * as PullRequestService from "./pullRequest/PullRequestService.ts";
 import * as SqlitePersistence from "./persistence/Sqlite.ts";
@@ -81,8 +76,6 @@ import * as PeerLinks from "./peer/PeerLinks.ts";
 import * as PeerMcpClient from "./peer/PeerMcpClient.ts";
 import * as McpSessionRegistry from "./mcp/McpSessionRegistry.ts";
 import * as PreviewAutomationBroker from "./mcp/PreviewAutomationBroker.ts";
-import * as DeviceService from "./device/DeviceService.ts";
-import * as DeviceHubProxy from "./device/DeviceHubProxy.ts";
 import * as PreviewManager from "./preview/Manager.ts";
 import * as PortScanner from "./preview/PortScanner.ts";
 import * as ServerBrowser from "./preview/ServerBrowser.ts";
@@ -180,7 +173,6 @@ import * as ProcessDiagnostics from "./diagnostics/ProcessDiagnostics.ts";
 import * as HostResources from "./resourceTelemetry/HostResources.ts";
 import * as ProcessResourceMonitor from "./diagnostics/ProcessResourceMonitor.ts";
 import * as TraceDiagnostics from "./diagnostics/TraceDiagnostics.ts";
-import * as TriageService from "./triage/TriageService.ts";
 import * as DesktopTelemetryReceiver from "./resourceTelemetry/DesktopTelemetryReceiver.ts";
 import * as NativeTelemetryClient from "./resourceTelemetry/NativeTelemetryClient.ts";
 import * as ResourceAttribution from "./resourceTelemetry/ResourceAttribution.ts";
@@ -488,12 +480,6 @@ const layerPreview = Layer.empty.pipe(
   Layer.provideMerge(layerPortScanner),
 );
 
-const layerDevice = DeviceService.layer.pipe(
-  Layer.provide(layerServerSettings),
-  Layer.provide(ProcessRunner.layer),
-  Layer.provide(NetService.layer),
-);
-
 const layerWorkspaceEntries = WorkspaceEntries.layer.pipe(Layer.provide(WorkspacePaths.layer));
 
 const layerWorkspaceFileSystem = WorkspaceFileSystem.layer.pipe(
@@ -673,7 +659,7 @@ const layerRuntimeCoreDependenciesBase = Layer.mergeAll(
   Layer.provideMerge(layerSourceControlProviderRegistry),
   Layer.provideMerge(layerGit),
   Layer.provideMerge(layerVcs),
-  Layer.provideMerge(Layer.mergeAll(layerTerminal, layerPreview, layerDevice)),
+  Layer.provideMerge(Layer.mergeAll(layerTerminal, layerPreview)),
   Layer.provideMerge(layerPersistence),
   Layer.provideMerge(
     Layer.mergeAll(Keybindings.layer, EnvironmentTheme.layer, UsageLimitSources.layer),
@@ -722,7 +708,6 @@ const layerRuntimeDependencies = layerRuntimeCoreDependencies.pipe(
   Layer.provideMerge(layerBackground),
   Layer.provideMerge(layerResourceDiagnostics),
   Layer.provideMerge(TraceDiagnostics.layer),
-  Layer.provideMerge(TriageService.layer.pipe(Layer.provide(GitVcsDriver.layer))),
   // Layers memoize by reference, so this is the same policy the settings layer reads.
   Layer.provideMerge(AnalyticsService.layer.pipe(Layer.provide(ManagedPolicy.layer))),
   Layer.provideMerge(ExternalLauncher.layer),
@@ -749,7 +734,6 @@ const layerMakeRoutes = Layer.mergeAll(
       Layer.provide(OrchestrationHttp.layer),
       Layer.provide(PullRequestHttp.layer),
       Layer.provide(ProjectHttp.layer),
-      Layer.provide(speechHttpApiLayer),
       Layer.provide(ServerHttp.layerServerEnvironmentHttpApi),
       Layer.provide(WebhookRoute.layer.pipe(Layer.provide(RelayDeliveryProof.layer))),
       Layer.provide(AuthHttp.layerAuthenticatedAuth),
@@ -758,11 +742,9 @@ const layerMakeRoutes = Layer.mergeAll(
     ServerHttp.layerAssetRoute,
     ServerHttp.layerAttachmentUploadRoute,
     GuestHttp.layer,
-    DeviceHubProxy.layer,
     ServerBrowserStream.routeLayer,
     ServerHttp.layerStaticAndDevRoute,
     Ws.layer,
-    speechStreamRouteLayer,
   ),
   McpHttpServer.layer.pipe(
     Layer.provide(ProviderAdapterRegistry.layerFromProviderInstanceRegistry),
@@ -796,13 +778,6 @@ const layerMakeRoutes = Layer.mergeAll(
       Layer.provideMerge(PeerLinks.layer),
     ),
   ),
-  Layer.provide(
-    SpeechService.layer.pipe(
-      Layer.provide(layerServerSettings),
-      Layer.provide(SpeechModelStore.layer),
-    ),
-  ),
-  Layer.provide(CloudSpeech.layer.pipe(Layer.provide(SecretResolver.layer))),
   Layer.provide(layerServerSettings),
   Layer.provide(PreviewAutomationBroker.layer),
   Layer.provide(ServerSelfUpdate.layer.pipe(Layer.provide(layerDesktopAppUpdate))),

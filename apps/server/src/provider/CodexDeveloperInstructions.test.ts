@@ -1,6 +1,5 @@
 import * as NodeAssert from "node:assert/strict";
 
-import { T3_CODE_DEVICE_TOOL_INSTRUCTIONS } from "@t3tools/provider-core/server/orchestrationInstructions";
 import { describe, it } from "vite-plus/test";
 
 import {
@@ -12,7 +11,7 @@ describe("buildCodexAdditionalContext", () => {
   describe.each([
     { model: "custom-model", modelName: "Custom 🦊 Model", reasoningEffort: "xhigh" },
   ])("with runtime $model", (runtime) => {
-    it.each([undefined, { browser: true, device: true }])(
+    it.each([undefined, true])(
       "keeps every entry within Codex's per-entry cap with tools %j",
       (availability) => {
         const context = buildCodexAdditionalContext(runtime, availability);
@@ -77,18 +76,6 @@ describe("Codex orchestration context", () => {
     NodeAssert.ok(!orchestration.includes("Prefer native"));
     // The ACP terminal fallback is ACP-only; Codex agents never need it.
     NodeAssert.ok(!orchestration.includes("acp-mcp-call"));
-  });
-});
-
-describe("Codex device context", () => {
-  it("adds the shared device block only when the session holds device access", () => {
-    const tools = (device: boolean) =>
-      buildCodexAdditionalContext({ model: "gpt-6.1-sol" }, { browser: true, device }).t3_code_tools
-        ?.value ?? "";
-
-    NodeAssert.ok(tools(true).includes(T3_CODE_DEVICE_TOOL_INSTRUCTIONS));
-    NodeAssert.ok(!tools(true).includes("ToolSearch"));
-    NodeAssert.ok(!tools(false).includes("## T3 Code devices"));
   });
 });
 

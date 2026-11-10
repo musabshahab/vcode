@@ -65,15 +65,12 @@ export type T3McpToolSummaryAction =
   | "unwatch-pr"
   | "write-pr-guides"
   | "read-pr-guide"
-  | "browser"
-  | "device"
-  | "html-preview"
-  | "html-render";
+  | "browser";
 
 export interface T3McpToolDefinition {
   readonly displayName: string;
   readonly labels: readonly [action: string, running: string, completed: string, detail: string];
-  readonly icon: "t3-code" | "browser" | "device" | "pull-request";
+  readonly icon: "t3-code" | "browser" | "pull-request";
   readonly summaryAction: T3McpToolSummaryAction;
 }
 
@@ -274,18 +271,6 @@ const T3_MCP_TOOLS: Readonly<Record<string, T3McpToolDefinition>> = {
     "browser",
     "browser",
   ),
-  device_list: tool(["List", "Listing", "Listed", "simulators and emulators"], "device", "device"),
-  device_open: tool(
-    ["Open", "Opening", "Opened", "a device in the Device panel"],
-    "device",
-    "device",
-  ),
-  device_screenshot: tool(
-    ["Take a screenshot of", "Taking a screenshot of", "Took a screenshot of", "the device"],
-    "device",
-    "device",
-  ),
-  device_close: tool(["Close", "Closing", "Closed", "a device"], "device", "device"),
   run_scheduled_task_now: tool(
     ["Run", "Running", "Requested a run of", "a scheduled task"],
     "schedule-run",
@@ -370,8 +355,6 @@ const T3_MCP_TOOLS: Readonly<Record<string, T3McpToolDefinition>> = {
     "attachment-discard",
   ),
   t3_thread_send_attachments: tool(["Send", "Sending", "Sent", "attachments"], "attachment-send"),
-  html_preview: tool(["Preview", "Previewing", "Previewed", "an HTML page"], "html-preview"),
-  html_render: tool(["Render", "Rendering", "Rendered", "an HTML page"], "html-render"),
 };
 
 export const T3_MCP_TOOL_NAMES: ReadonlySet<string> = new Set(Object.keys(T3_MCP_TOOLS));

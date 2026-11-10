@@ -53,7 +53,6 @@ import * as BackgroundPolicy from "./background/BackgroundPolicy.ts";
 import * as CheckpointDiffQuery from "./checkpointing/CheckpointDiffQuery.ts";
 import * as CommandOutputHub from "./orchestration-v2/CommandOutputHub.ts";
 import * as CodexInstallation from "./provider/CodexInstallation.ts";
-import * as DeviceService from "./device/DeviceService.ts";
 import * as DocumentText from "./provider/DocumentText.ts";
 import * as DirectEndpoints from "./environment/DirectEndpoints.ts";
 import * as EnvironmentAuth from "./auth/EnvironmentAuth.ts";
@@ -62,7 +61,6 @@ import * as GitWorkflowService from "./git/GitWorkflowService.ts";
 import * as HostResources from "./resourceTelemetry/HostResources.ts";
 import * as ManagedProjectFolders from "./project/ManagedProjectFolders.ts";
 import * as ScratchThreadPromotion from "./project/ScratchThreadPromotion.ts";
-import * as McpAppRequests from "./mcpApps/McpAppRequests.ts";
 import * as ModelManifest from "./provider/ModelManifest.ts";
 import * as Orchestrator from "./orchestration-v2/Orchestrator.ts";
 import * as OtlpEndpointCheck from "./observability/OtlpEndpointCheck.ts";
@@ -116,7 +114,6 @@ import * as WorkspaceFileSystem from "./workspace/WorkspaceFileSystem.ts";
 import * as WorktreeSetupTracker from "./project/WorktreeSetupTracker.ts";
 import * as ProjectFaviconResolver from "./project/ProjectFaviconResolver.ts";
 import * as TraceDiagnostics from "./diagnostics/TraceDiagnostics.ts";
-import * as TriageService from "./triage/TriageService.ts";
 import * as TextGenerators from "./textGeneration/TextGenerators.ts";
 import * as WorkspacePaths from "./workspace/WorkspacePaths.ts";
 import * as ServerSecretStore from "./auth/ServerSecretStore.ts";
@@ -765,7 +762,6 @@ const layerUnusedConfigRpcServices = Layer.mergeAll(
   Layer.mock(ServerSecretStore.ServerSecretStore)({}),
   Layer.mock(WorkspacePaths.WorkspacePaths)({}),
   Layer.mock(TraceDiagnostics.TraceDiagnostics)({}),
-  Layer.mock(TriageService.TriageService)({}),
   Layer.mock(TextGenerators.TextGenerators)({}),
   Layer.mock(ProjectFaviconResolver.ProjectFaviconResolver)({}),
   Layer.mock(ProjectEnrichment.ProjectEnrichmentService)({}),
@@ -776,11 +772,9 @@ const layerUnusedConfigRpcServices = Layer.mergeAll(
   Layer.mock(CheckpointDiffQuery.CheckpointDiffQuery)({}),
   Layer.mock(CommandOutputHub.CommandOutputHub)({}),
   Layer.mock(CodexInstallation.CodexInstallation)({ managedDirectory: "/unused" }),
-  Layer.mock(DeviceService.DeviceService)({}),
   Layer.mock(EnvironmentTheme.EnvironmentThemeService)({}),
   Layer.mock(GitWorkflowService.GitWorkflowService)({}),
   Layer.mock(HostResources.HostResources)({}),
-  Layer.mock(McpAppRequests.McpAppRequests)({}),
   Layer.mock(ModelManifest.ModelManifest)({}),
   Layer.mock(OrchestrationEventStore.OrchestrationEventStore)({}),
   Layer.mock(Orchestrator.OrchestratorV2)({}),

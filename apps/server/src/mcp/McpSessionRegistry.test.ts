@@ -74,11 +74,6 @@ it.effect("always grants pull-requests and gates browser and device access indep
       providerInstanceId: ProviderInstanceId.make("codex"),
       capabilities: new Set(),
     });
-    const withDevice = yield* registry.issue({
-      threadId: ThreadId.make("thread-device"),
-      providerInstanceId: ProviderInstanceId.make("codex"),
-      capabilities: new Set(["device"]),
-    });
     const capabilitiesOf = (issued: typeof withPreview) =>
       registry
         .resolve(issued.config.authorizationHeader.replace(/^Bearer\s+/, ""))
@@ -91,12 +86,6 @@ it.effect("always grants pull-requests and gates browser and device access indep
       "worktree",
     ]);
     expect(yield* capabilitiesOf(withoutPreview)).toEqual([
-      "orchestration",
-      "pull-requests",
-      "worktree",
-    ]);
-    expect(yield* capabilitiesOf(withDevice)).toEqual([
-      "device",
       "orchestration",
       "pull-requests",
       "worktree",
@@ -181,7 +170,7 @@ it.effect("only a trusted touch restores an expired token with its original scop
     const other = yield* registry.issue({
       threadId: otherThreadId,
       providerInstanceId: ProviderInstanceId.make("codex"),
-      capabilities: new Set(["device"]),
+      capabilities: new Set(["preview"]),
     });
     yield* registry.touch(otherThreadId);
     expect(

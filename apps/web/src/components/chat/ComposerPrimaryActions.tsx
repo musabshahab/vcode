@@ -1,4 +1,4 @@
-import { memo, type MouseEventHandler, type PointerEventHandler, type ReactNode } from "react";
+import { memo, type MouseEventHandler, type PointerEventHandler } from "react";
 import { CheckIcon, ChevronLeftIcon, Minimize2Icon, PlayIcon } from "lucide-react";
 import { CornerUpRight, ListPlus } from "lucide";
 import { MorphIcon } from "~/components/MorphIcon";
@@ -24,8 +24,6 @@ interface PendingActionState {
 }
 
 interface ComposerPrimaryActionsProps {
-  /** Footer controls (dictation) that always sit right before the primary button. */
-  children?: ReactNode;
   compact: boolean;
   canOperateThread: boolean;
   pendingAction: PendingActionState | null;
@@ -34,8 +32,6 @@ interface ComposerPrimaryActionsProps {
   followUpBehavior?: "queue" | "steer";
   canSteer?: boolean;
   alternateShortcutLabel?: string | null;
-  /** Dictation is running; Send finishes it and submits once the transcript lands. */
-  voiceInputActive?: boolean;
   isSendBusy: boolean;
   sendDisabledReason: string | null;
   isEnvironmentUnavailable: boolean;
@@ -79,7 +75,6 @@ const preventPointerFocus: PointerEventHandler<HTMLElement> = (event) => {
 };
 
 export const ComposerPrimaryActions = memo(function ComposerPrimaryActions({
-  children,
   compact,
   canOperateThread,
   pendingAction,
@@ -88,7 +83,6 @@ export const ComposerPrimaryActions = memo(function ComposerPrimaryActions({
   followUpBehavior = "steer",
   canSteer = true,
   alternateShortcutLabel = null,
-  voiceInputActive = false,
   isSendBusy,
   sendDisabledReason,
   isEnvironmentUnavailable,
@@ -177,7 +171,6 @@ export const ComposerPrimaryActions = memo(function ComposerPrimaryActions({
             </Button>
           )
         ) : null}
-        {children}
         <button
           type="submit"
           className={cn(messageActionPillClassName, "h-8 sm:h-7", compact ? "px-3" : "px-4")}
@@ -187,10 +180,7 @@ export const ComposerPrimaryActions = memo(function ComposerPrimaryActions({
             isEnvironmentUnavailable ||
             isSendDisabled ||
             pendingAction.isResponding ||
-            (!voiceInputActive &&
-              (pendingAction.isLastQuestion
-                ? !pendingAction.isComplete
-                : !pendingAction.canAdvance))
+            (pendingAction.isLastQuestion ? !pendingAction.isComplete : !pendingAction.canAdvance)
           }
         >
           {formatPendingPrimaryActionLabel({
@@ -205,12 +195,7 @@ export const ComposerPrimaryActions = memo(function ComposerPrimaryActions({
   }
 
   if (canInterrupt && !hasSendableContent && !isEditingQueuedMessage) {
-    return (
-      <>
-        {children}
-        {renderStopGenerationButton(false)}
-      </>
-    );
+    return renderStopGenerationButton(false);
   }
 
   const showResume = canResume && !hasSendableContent && !isEditingQueuedMessage;
@@ -303,12 +288,7 @@ export const ComposerPrimaryActions = memo(function ComposerPrimaryActions({
     </Tooltip>
   );
   if (compactTokens === null) {
-    return (
-      <>
-        {children}
-        {submit}
-      </>
-    );
+    return submit;
   }
 
   return (
@@ -342,7 +322,6 @@ export const ComposerPrimaryActions = memo(function ComposerPrimaryActions({
           <div>{keepFullHistory ? "Click to compact first" : "Click to keep full history"}</div>
         </TooltipPopup>
       </Tooltip>
-      {children}
       {submit}
     </div>
   );

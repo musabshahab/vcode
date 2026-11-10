@@ -94,8 +94,7 @@ import * as Schema from "effect/Schema";
 import * as SqlClient from "effect/sql/SqlClient";
 import type * as Statement from "effect/sql/Statement";
 
-import { MCP_APP_OUTPUT_KEY } from "@t3tools/shared/mcpApp";
-import { threadHtmlRenderAttachmentIds } from "../attachmentStore.ts";
+import { threadToolOutputAttachmentIds } from "../attachmentStore.ts";
 import {
   isThreadHistoryUserTurn,
   isConversationHistoryItem,
@@ -1980,8 +1979,7 @@ export const layer: Layer.Layer<ProjectionStoreV2, never, SqlClient.SqlClient> =
     const sql = yield* SqlClient.SqlClient;
 
     const inlineWorkOutput = sql`item.type = 'dynamic_tool' AND (
-      item.payload_json LIKE '%htmlRender%' OR item.payload_json LIKE ${`%${MCP_APP_OUTPUT_KEY}%`}
-      OR item.payload_json LIKE '%"viewedImagePath"%'
+      item.payload_json LIKE '%"viewedImagePath"%'
       OR item.payload_json LIKE '%"toolName":"%delegate_task"%')`;
 
     // Start from the few owned provider threads; a thread can have a large settled node history.
@@ -5585,8 +5583,7 @@ export const layer: Layer.Layer<ProjectionStoreV2, never, SqlClient.SqlClient> =
       FROM orchestration_v2_projection_turn_items
       WHERE thread_id = ${threadId}
         AND type = 'dynamic_tool'
-        AND (payload_json LIKE '%htmlRender%' OR payload_json LIKE ${`%${MCP_APP_OUTPUT_KEY}%`}
-          OR payload_json LIKE '%preview_recording_stop%')
+        AND payload_json LIKE '%preview_recording_stop%'
     `,
         sql<{ id: string }>`
       SELECT DISTINCT json_extract(attachment.value, '$.id') AS id
@@ -5611,7 +5608,7 @@ export const layer: Layer.Layer<ProjectionStoreV2, never, SqlClient.SqlClient> =
             ...messages.map((row) => row.id),
             ...guestFiles.map((row) => row.id),
             ...answerFiles.map((row) => row.id),
-            ...threadHtmlRenderAttachmentIds(
+            ...threadToolOutputAttachmentIds(
               threadId,
               renders.map((row) => {
                 const item = parseEncodedPayload(row.payload_json);

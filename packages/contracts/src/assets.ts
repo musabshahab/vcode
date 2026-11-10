@@ -37,7 +37,6 @@ export const AssetResource = Schema.Union([
     mimeType: Schema.optionalKey(TrimmedNonEmptyString.check(Schema.isMaxLength(100))),
     /** Defaults to download; viewers may request inline after checking the type is safe. */
     disposition: Schema.optionalKey(Schema.Literals(["inline", "attachment"])),
-    renderIntent: Schema.optionalKey(Schema.Literal("mcp-app")),
   }),
   Schema.TaggedStruct("tool-output-image", {
     threadId: ThreadId,

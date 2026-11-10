@@ -499,7 +499,6 @@ export interface ProviderAdapterV2TurnInput {
   readonly message: ProviderAdapterV2TurnMessage;
   readonly modelSelection: ModelSelection;
   readonly runtimePolicy: ProviderAdapterV2RuntimePolicy;
-  readonly appContext?: ReadonlyArray<{ readonly key: string; readonly text: string }>;
 }
 
 export interface ProviderAdapterV2SteerInput {
@@ -573,39 +572,6 @@ export interface ProviderAdapterV2EventSubscription {
 export interface ProviderAdapterV2HistoricalContext {
   readonly messages: ReadonlyArray<OrchestrationV2HistoricalMessage>;
   readonly context: string;
-}
-
-export interface ProviderAdapterV2McpTool {
-  readonly name: string;
-  // Apps reject a `hostContext.toolInfo.tool` without one.
-  readonly inputSchema: unknown;
-  readonly _meta?: unknown;
-  readonly annotations?: unknown;
-}
-
-export interface ProviderAdapterV2McpCallToolResult {
-  readonly content: ReadonlyArray<unknown>;
-  readonly structuredContent?: unknown;
-  readonly isError?: boolean;
-  readonly _meta?: unknown;
-}
-
-export interface ProviderAdapterV2McpApps {
-  readonly listTools: (input: {
-    readonly providerThread: OrchestrationV2ProviderThread;
-    readonly server: string;
-  }) => Effect.Effect<ReadonlyArray<ProviderAdapterV2McpTool>, ProviderAdapterV2Error>;
-  readonly callTool: (input: {
-    readonly providerThread: OrchestrationV2ProviderThread;
-    readonly server: string;
-    readonly tool: string;
-    readonly arguments: Record<string, unknown>;
-  }) => Effect.Effect<ProviderAdapterV2McpCallToolResult, ProviderAdapterV2Error>;
-  readonly readResource: (input: {
-    readonly providerThread: OrchestrationV2ProviderThread;
-    readonly server: string;
-    readonly uri: string;
-  }) => Effect.Effect<{ readonly contents: ReadonlyArray<unknown> }, ProviderAdapterV2Error>;
 }
 
 export type ProviderAdapterV2SubagentOutcome = {
@@ -696,8 +662,6 @@ export interface ProviderAdapterV2SessionRuntime {
     readonly providerThread: OrchestrationV2ProviderThread;
     readonly reason?: string;
   }) => Effect.Effect<{ readonly feedbackId: string }, ProviderAdapterV2Error>;
-  /** Absent means non-interactive apps with plain tool rows. */
-  readonly mcpApps?: ProviderAdapterV2McpApps;
   readonly rollbackThread: (
     input: ProviderAdapterV2RollbackThreadInput,
   ) => Effect.Effect<ProviderAdapterV2ThreadSnapshot, ProviderAdapterV2Error>;

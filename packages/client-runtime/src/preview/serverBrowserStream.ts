@@ -1,5 +1,5 @@
 // @effect-diagnostics globalTimers:off globalFetch:off - This browser and WebView transport runs without an Effect runtime.
-import { type DeviceHubAccess, withDeviceHubQuery } from "../device/hubAccess.ts";
+import { type MediaStreamAccess, withMediaStreamQuery } from "../state/mediaStreamAccess.ts";
 import {
   PREVIEW_STREAM_HOST_SETUP_CLOSE_CODE,
   type PreviewStreamHostSetup,
@@ -111,7 +111,7 @@ const previewStreamUploadUrl = (
   target: Pick<PreviewStreamTarget, "access" | "threadId" | "tabId">,
   chooser: string,
 ): string =>
-  withDeviceHubQuery(
+  withMediaStreamQuery(
     `${target.access.httpBase}/upload?${new URLSearchParams({
       threadId: target.threadId,
       tabId: target.tabId,
@@ -138,7 +138,7 @@ export const previewStreamDownloadUrl = (
   target: Pick<PreviewStreamTarget, "access" | "threadId" | "tabId">,
   id: string,
 ): string =>
-  withDeviceHubQuery(
+  withMediaStreamQuery(
     `${target.access.httpBase}/download?${new URLSearchParams({
       threadId: target.threadId,
       tabId: target.tabId,
@@ -172,7 +172,7 @@ export const previewStreamModifiers = (event: {
   (event.shiftKey ? 8 : 0);
 
 export interface PreviewStreamTarget {
-  readonly access: DeviceHubAccess;
+  readonly access: MediaStreamAccess;
   readonly threadId: string;
   readonly tabId: string;
   /** Viewer backing-store size in device px. The server never sends larger frames. */
@@ -216,7 +216,7 @@ export function createPreviewStreamClient(
     maxHeight: String(Math.max(1, Math.round(target.maxHeight))),
   });
   if (target.interactive === false) query.set("interactive", "false");
-  const url = withDeviceHubQuery(`${target.access.wsBase}/ws?${query.toString()}`, target.access);
+  const url = withMediaStreamQuery(`${target.access.wsBase}/ws?${query.toString()}`, target.access);
   let stopped = false;
   let socket: WebSocket | null = null;
   let retryTimer: ReturnType<typeof setTimeout> | null = null;

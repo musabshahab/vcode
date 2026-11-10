@@ -29,9 +29,6 @@ const PreviewPanel = lazy(() =>
   import("../preview/PreviewPanel").then((module) => ({ default: module.PreviewPanel })),
 );
 const DiffPanel = lazy(() => import("../DiffPanel"));
-const DevicePanel = lazy(() =>
-  import("../device/DevicePanel").then((module) => ({ default: module.DevicePanel })),
-);
 const FilePreviewPanel = lazy(() => import("../files/FilePreviewPanel"));
 
 type RightPanelTerminalProps = Omit<
@@ -50,7 +47,6 @@ interface RightPanelPullRequestProps {
 }
 
 interface RightPanelFileProps {
-  readonly projectId?: ProjectId | undefined;
   readonly projectName: string | null;
   readonly workspaceRoot: string | undefined;
   readonly availableEditors: ReadonlyArray<EditorId>;
@@ -180,22 +176,6 @@ export function RightPanelSurfaceContent(props: {
           onClose={() => onCloseSurface(surface)}
         />
       );
-    case "device":
-      return (
-        <Suspense fallback={null}>
-          <DevicePanel
-            mode="embedded"
-            threadRef={threadRef}
-            key={surface.id}
-            surface={surface}
-            visible={visible}
-            onDismissSetup={() => {
-              props.onCloseSurface(surface);
-              useRightPanelStore.getState().show(threadRef);
-            }}
-          />
-        </Suspense>
-      );
     case "files":
     case "file": {
       const files = props.files;
@@ -210,7 +190,6 @@ export function RightPanelSurfaceContent(props: {
             environmentId={props.environmentId}
             cwd={files.workspaceRoot ?? ""}
             projectName={files.projectName ?? ""}
-            projectId={files.projectId}
             threadRef={threadRef}
             composerDraftTarget={props.composerDraftTarget}
             keybindings={props.keybindings}

@@ -31,14 +31,12 @@ import {
 } from "./cli/install.ts";
 import { uninstallCommand } from "./cli/uninstall.ts";
 import { runServiceLauncherCli } from "./cli/serviceLauncher.ts";
-import { speechWorkerCommand } from "./cli/speechWorker.ts";
 import { claudeHistoryCommand } from "./cli/claudeHistory.ts";
 import { sshHelperCommand } from "./cli/sshHelper.ts";
 import { serviceCommand } from "./cli/service.ts";
 import { servicePreflightCommand } from "./cli/servicePreflight.ts";
 import { themeCommand } from "./cli/theme.ts";
 import { traceCommand } from "./cli/trace.ts";
-import { triageCommand } from "./cli/triage.ts";
 import { connectCommand, statusCommand, upCommand } from "./cli/up.ts";
 
 const layerCliRuntime = Layer.mergeAll(NodeServices.layer, NodeCrypto.layer, NetService.layer);
@@ -104,7 +102,6 @@ export const makeCli = ({ cloudEnabled = hasCloudPublicConfig } = {}) =>
         Command.withHandler(() => Effect.sync(() => void runServiceLauncherCli())),
       ),
       claudeHistoryCommand,
-      speechWorkerCommand,
       sshHelperCommand,
 
       servicePreflightCommand,
@@ -112,7 +109,6 @@ export const makeCli = ({ cloudEnabled = hasCloudPublicConfig } = {}) =>
       traceCommand,
       doctorCommand,
       policyCommand,
-      triageCommand,
       cloudEnabled ? connectCommand : connectUnavailableCommand,
     ]),
   );

@@ -14,7 +14,7 @@ import {
   planAttachmentClaim,
   parseThreadSegmentFromAttachmentId,
   sweepStalePendingAttachments,
-  threadHtmlRenderAttachmentIds,
+  threadToolOutputAttachmentIds,
 } from "./attachmentStore.ts";
 
 describe("attachmentStore", () => {
@@ -153,46 +153,21 @@ describe("attachmentStore", () => {
   });
 });
 
-describe("threadHtmlRenderAttachmentIds", () => {
-  it("returns pages this thread published and skips other threads' and failed calls", () => {
-    const own = createAttachmentId("thread-a", "html")!;
-    const other = createAttachmentId("thread-b", "html")!;
-    const render = (attachmentId: string, extra = {}) => ({
-      toolName: "mcp__t3-code__html_render",
-      output: [
-        {
-          type: "text",
-          text: JSON.stringify({ htmlRender: { attachmentId, title: "x", height: 300 }, ...extra }),
-        },
-      ],
+describe("threadToolOutputAttachmentIds", () => {
+  it("returns recordings this thread stored and skips other threads' and failed calls", () => {
+    const own = createAttachmentId("thread-a", "webm")!;
+    const other = createAttachmentId("thread-b", "webm")!;
+    const stop = (id: string, extra = {}) => ({
+      toolName: "mcp__t3-code__preview_recording_stop",
+      output: [{ type: "text", text: JSON.stringify({ id, ...extra }) }],
     });
     expect(
-      threadHtmlRenderAttachmentIds("thread-a", [
-        render(own),
-        render(other),
-        render(createAttachmentId("thread-a", "html")!, { isError: true }),
-        { toolName: "mcp__t3-code__html_preview", output: render(own).output },
+      threadToolOutputAttachmentIds("thread-a", [
+        stop(own),
+        stop(other),
+        stop(createAttachmentId("thread-a", "webm")!, { isError: true }),
+        { toolName: "mcp__t3-code__preview_snapshot", output: stop(own).output },
       ]),
     ).toEqual([own]);
-  });
-
-  it("includes captured MCP App documents from any tool", () => {
-    const app = createAttachmentId("thread-a", "html")!;
-    expect(
-      threadHtmlRenderAttachmentIds("thread-a", [
-        {
-          toolName: "weather.get_weather",
-          output: {
-            t3McpApp: {
-              attachmentId: app,
-              server: "weather",
-              tool: "get_weather",
-              resourceUri: "ui://weather/dashboard",
-            },
-            result: { content: [] },
-          },
-        },
-      ]),
-    ).toEqual([app]);
   });
 });
