@@ -147,7 +147,7 @@ import { readLocalApi } from "../localApi";
 import { cn } from "../lib/utils";
 import { resolveRemoteOpenState, useRemoteOpenResolution } from "../remoteOpen";
 import { useRightPanelStore } from "../rightPanelStore";
-import { readThreadShell, useProjects } from "../state/entities";
+import { readThreadShell } from "../state/entities";
 import { serverEnvironment } from "../state/server";
 import { shellEnvironment } from "../state/shell";
 import { assetEnvironment } from "../state/assets";
@@ -168,12 +168,9 @@ import {
   stripRepeatedWorkspacePrefix,
   WORKSPACE_BASENAME_LOOKUP_LIMIT,
 } from "@t3tools/client-runtime/workspace-basename-lookup";
-import { resolvePullRequestPreviewTarget } from "@t3tools/client-runtime/change-request-links";
 import { sourceControlClients } from "@t3tools/client-runtime/source-control-clients";
 import { useOpenChangeRequestLink } from "~/lib/openPullRequestLink";
-import { openExternalLink } from "~/lib/openExternalLink";
 import { writeTextToClipboard } from "../hooks/useCopyToClipboard";
-import { PullRequestLinkPreview } from "./pullRequest/PullRequestLinkPreview";
 import { MarkdownCodeBlock, SuspenseShikiCodeBlock } from "./chat/MarkdownCodeBlock";
 import { createMarkdownRenderer } from "./chat/markdownRenderer";
 import { splitMarkdownBlocks } from "./chat/markdownStreamBlocks";
@@ -214,7 +211,6 @@ interface ChatMarkdownProps {
   text: string;
   cwd: string | undefined;
   threadRef?: ScopedThreadRef | undefined;
-  pullRequestPanelRef?: ScopedThreadRef | undefined;
   environmentId?: EnvironmentId | undefined;
   onTaskListChange?: ((input: { markerOffset: number; checked: boolean }) => void) | undefined;
   isStreaming?: boolean;
@@ -394,7 +390,6 @@ type MarkdownServerConfigFields = ReturnType<typeof markdownServerConfigFields>;
 
 function markdownServerConfigFields(config: ServerConfig | null) {
   return {
-    pullRequestsEnabled: config !== null,
     availableEditors: config?.availableEditors ?? NO_MARKDOWN_EDITORS,
     revealInFileManagerLabel:
       config?.shellRevealInFileManager === true && config.availableEditors.includes("file-manager")
@@ -410,7 +405,6 @@ function markdownServerConfigFieldsEqual(
   next: MarkdownServerConfigFields,
 ): boolean {
   return (
-    previous.pullRequestsEnabled === next.pullRequestsEnabled &&
     previous.revealInFileManagerLabel === next.revealInFileManagerLabel &&
     previous.availableEditors.length === next.availableEditors.length &&
     previous.availableEditors.every((editor, index) => editor === next.availableEditors[index])
@@ -469,7 +463,6 @@ function useChatMarkdownState({
   inline = false,
   cwd,
   threadRef,
-  pullRequestPanelRef,
   environmentId: explicitEnvironmentId,
   onTaskListChange,
   isStreaming = false,
@@ -601,10 +594,9 @@ function useChatMarkdownState({
       },
     );
   };
-  const { pullRequestsEnabled, availableEditors, revealInFileManagerLabel } = useAtomValue(
+  const { availableEditors, revealInFileManagerLabel } = useAtomValue(
     markdownServerConfigFieldsAtom(environmentId),
   );
-  const projects = useProjects();
   const [preferredEditor] = usePreferredEditor(availableEditors);
   const preferredEditorMenuLabel = openInEditorMenuLabel(preferredEditor);
   const openInPreferredEditor = useOpenInPreferredEditor(environmentId, availableEditors);
@@ -647,7 +639,7 @@ function useChatMarkdownState({
         : payload.html,
     );
   };
-  const openChangeRequestLink = useOpenChangeRequestLink(threadRef, pullRequestPanelRef);
+  const openChangeRequestLink = useOpenChangeRequestLink(threadRef);
   const mathEnabled = useClientSettings((settings) => settings.mathRenderingEnabled);
   // Keyed by the file links found, not the text, so streamed text that adds none keeps the
   // renderer context, and every block reading it, unchanged.
@@ -828,11 +820,9 @@ function useChatMarkdownState({
     onRunShellCommand,
     openChangeRequestLink,
     openMarkdownMedia,
-    projects,
     linkedThreadPullRequestFor,
     resolveThreadPullRequest,
     resolvedTheme,
-    pullRequestsEnabled,
     skills,
     threadRef,
     updateThreadPullRequestLink,
@@ -981,10 +971,8 @@ const CHAT_MARKDOWN_COMPONENTS = {
       markdownFileLinkMetaByHref,
       openMarkdownMedia,
       openChangeRequestLink,
-      projects,
       linkedThreadPullRequestFor,
       resolveThreadPullRequest,
-      pullRequestsEnabled,
       updateThreadPullRequestLink,
       fileLinkChip,
       renderContextReference,
@@ -1030,19 +1018,6 @@ const CHAT_MARKDOWN_COMPONENTS = {
             ? plainHastText(node)
             : undefined;
       const isPullRequestAutolink = pullRequestCopy !== undefined;
-      const confirmBeforeOpen = pullRequestAutolink === "reference";
-      const pullRequestCandidateUrl =
-        confirmBeforeOpen && href
-          ? sourceControlClients.changeRequestUrlFromReferenceAutolink(href)
-          : href;
-      const pullRequestPreviewTarget = pullRequestCandidateUrl
-        ? resolvePullRequestPreviewTarget({
-            environmentId,
-            projects,
-            pullRequestsEnabled,
-            url: pullRequestCandidateUrl,
-          })
-        : null;
       const isSameDocumentLink = href?.startsWith("#") ?? false;
       const onClick = props.onClick;
       const linkChildren = <MarkdownLinkContext value>{children}</MarkdownLinkContext>;
@@ -1157,30 +1132,6 @@ const CHAT_MARKDOWN_COMPONENTS = {
       );
       if (!faviconHost || !href) {
         return link;
-      }
-      if (pullRequestPreviewTarget !== null) {
-        return (
-          <PullRequestLinkPreview
-            link={link}
-            originalUrl={href}
-            target={pullRequestPreviewTarget}
-            confirmBeforeOpen={confirmBeforeOpen}
-            onOpenPullRequest={(targetUrl) =>
-              openChangeRequestLink(
-                {
-                  metaKey: false,
-                  ctrlKey: false,
-                  preventDefault: () => undefined,
-                  stopPropagation: () => undefined,
-                },
-                targetUrl,
-                undefined,
-                environmentId ?? undefined,
-              )
-            }
-            onOpenFallback={openExternalLink}
-          />
-        );
       }
       return (
         <Tooltip>

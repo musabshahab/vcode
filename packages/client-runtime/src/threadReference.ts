@@ -45,15 +45,11 @@ export function threadChipCopyTarget(
 export function resolveThreadReferenceCopyTarget(input: {
   readonly threadRef: ScopedThreadRef;
   readonly title: string;
-  /** Undefined means no PR panel; null means its URL is not available yet. */
-  readonly openPanelPullRequestUrl?: string | null | undefined;
   readonly pullRequests?: ReadonlyArray<ThreadPullRequestLink> | undefined;
   readonly linkedPullRequestUrl?: string | null;
   readonly hostedAppUrl?: string;
-}): ThreadReferenceCopyTarget | null {
-  if (input.openPanelPullRequestUrl === null) return null;
+}): ThreadReferenceCopyTarget {
   const pullRequestUrl =
-    input.openPanelPullRequestUrl ??
     resolveThreadCurrentPullRequestLink(input.pullRequests ?? [])?.url ??
     input.linkedPullRequestUrl;
   return pullRequestUrl

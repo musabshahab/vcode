@@ -68,10 +68,7 @@ function CommitLink({ url = commitUrl }: { url?: string }) {
 function setup() {
   state.preview.mockReset().mockResolvedValue(AsyncResult.success({ sources: [] }));
   state.openLink.mockReset().mockResolvedValue(undefined);
-  __setClientSettingsForTests({
-    ...DEFAULT_CLIENT_SETTINGS,
-    pullRequestLinksOpenInApp: true,
-  });
+  __setClientSettingsForTests(DEFAULT_CLIENT_SETTINGS);
   useDiffPanelStore.setState({
     byThreadKey: {},
     branchBaseRefByThreadKey: {},

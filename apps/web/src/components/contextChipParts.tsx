@@ -19,8 +19,6 @@ import { PullRequestContextDetails } from "./PullRequestContextDetails";
 import { ContextChip, ContextChipLabel, type ContextChipKind } from "./ContextChip";
 import { Popover, PopoverPopup, PopoverTitle, PopoverTrigger } from "./ui/popover";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "./ui/tooltip";
-import { PullRequestLinkPreview } from "./pullRequest/PullRequestLinkPreview";
-import { usePullRequestPreviewTarget } from "~/lib/openPullRequestLink";
 
 export const PULL_REQUEST_CHIP_KINDS = {
   open: "pr-open",
@@ -101,14 +99,12 @@ export function ContextChipPopover(props: {
 
 export function PullRequestChip(props: {
   metadata: PullRequestContextMetadata;
-  environmentId: EnvironmentId | null;
   label: string;
   kindLabel: string;
   kind: ContextChipKind;
   copyMarkdown?: string;
   onOpen: (event: MouseEvent<HTMLElement>, url: string) => void;
 }) {
-  const previewTarget = usePullRequestPreviewTarget(props.environmentId, props.metadata.url);
   const displayState =
     props.metadata.state === "open" && props.metadata.isDraft ? "draft" : props.metadata.state;
   const StateIcon = PULL_REQUEST_STATE_PRESENTATION[displayState].Icon;
@@ -125,17 +121,6 @@ export function PullRequestChip(props: {
       <ContextChipLabel>{props.label}</ContextChipLabel>
     </ContextChip>
   );
-  if (previewTarget !== null) {
-    return (
-      <PullRequestLinkPreview
-        link={button}
-        originalUrl={props.metadata.url}
-        target={previewTarget}
-        confirmBeforeOpen={false}
-        fallback={<PullRequestContextDetails metadata={props.metadata} />}
-      />
-    );
-  }
   return (
     <Tooltip>
       <TooltipTrigger render={button} />

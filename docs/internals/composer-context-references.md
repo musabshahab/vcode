@@ -143,8 +143,8 @@ videos use the shared media modal. Mobile renders context links as their labels.
 Pull-request summaries currently travel as review-comment records with optional typed
 `pullRequest` metadata. The metadata is a snapshot of the number, title, URL, branches, state, and
 draft flag at attachment time. Web and desktop render the compact `#number` label and derive its
-status tone from that snapshot. Hover shows the snapshot details; activation resolves the URL
-against the current environment and opens the pull request in the thread's right panel. Records
+status tone from that snapshot. Hover shows the snapshot details; activation opens the pull request
+on its code host. Records
 written before the metadata was added retain their legacy details and neutral pull-request tone.
 
 ## Attachments

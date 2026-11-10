@@ -2,7 +2,10 @@ import type { FileDiffMetadata, SelectedLineRange, SelectionSide } from "@pierre
 import { PullRequestContextMetadata, type PullRequestReviewPosition } from "@t3tools/contracts";
 import * as Schema from "effect/Schema";
 
-import { isLineInFileDiff } from "./components/pullRequest/pullRequestDiff.logic";
+const isRightLineInFileDiff = (file: FileDiffMetadata, line: number) =>
+  file.hunks.some(
+    (hunk) => line >= hunk.additionStart && line < hunk.additionStart + hunk.additionCount,
+  );
 
 const ReviewCommentSelectionSchema = Schema.Struct({
   start: Schema.Number,
@@ -83,7 +86,7 @@ export function buildFileReviewComment(input: {
   };
 }
 
-export function inferReviewCommentFenceLanguage(filePath: string): string {
+function inferReviewCommentFenceLanguage(filePath: string): string {
   const normalizedPath = filePath.replaceAll("\\", "/");
   const fileName = normalizedPath.slice(normalizedPath.lastIndexOf("/") + 1).toLowerCase();
   const extensionIndex = fileName.lastIndexOf(".");
@@ -364,7 +367,7 @@ export function resolveDiffReviewPosition(
       // over one comment anchored there.
       return line.oldLineNumber === null ||
         line.newLineNumber === null ||
-        !isLineInFileDiff(fileDiff, "right", line.newLineNumber)
+        !isRightLineInFileDiff(fileDiff, line.newLineNumber)
         ? null
         : {
             kind: "context",

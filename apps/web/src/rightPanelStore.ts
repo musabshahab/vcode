@@ -1,9 +1,5 @@
-import {
-  parseScopedThreadKey,
-  scopedThreadKey,
-  scopeThreadRef,
-} from "@t3tools/client-runtime/environment";
-import { EnvironmentId, RunId, ThreadId, type ScopedThreadRef } from "@t3tools/contracts";
+import { parseScopedThreadKey, scopedThreadKey } from "@t3tools/client-runtime/environment";
+import { RunId, ThreadId, type ScopedThreadRef } from "@t3tools/contracts";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
@@ -12,18 +8,8 @@ import { resolveStorage } from "./lib/storage";
 import type { ThreadPanelPresentation } from "./rightPanelLayout";
 import type { ChatFileAttachment } from "./types";
 
-const RIGHT_PANEL_KINDS = [
-  "diff",
-  "files",
-  "file",
-  "terminal",
-  "pull-request",
-  "pull-requests",
-  "side-chat",
-] as const;
+const RIGHT_PANEL_KINDS = ["diff", "files", "file", "terminal", "side-chat"] as const;
 export type RightPanelKind = (typeof RIGHT_PANEL_KINDS)[number];
-
-export type PullRequestDetailTab = "summary" | "guide" | "timeline" | "code";
 
 export type RightPanelSurface =
   | {
@@ -51,28 +37,10 @@ export type RightPanelSurface =
       /** Deepest workspace path retained for navigating back down after moving up. */
       folderTrail?: string;
     }
-  | {
-      id: `pull-request:${string}`;
-      kind: "pull-request";
-      /** Cross-environment lists can repeat project ids; thread panels inherit their ref's environment. */
-      environmentId?: string;
-      projectId: string;
-      host?: string;
-      repository: string;
-      number: number;
-      url?: string;
-      detailTab?: PullRequestDetailTab;
-    }
-  | { id: "pull-requests"; kind: "pull-requests" }
   | { id: `side-chat:${string}`; kind: "side-chat"; threadId: ThreadId };
 
 const RIGHT_PANEL_STORAGE_KEY = "t3code:right-panel-state:v2";
-const RIGHT_PANEL_STORAGE_VERSION = 14;
-
-export const PULL_REQUESTS_PANEL_REF = scopeThreadRef(
-  EnvironmentId.make("pull-requests-panel"),
-  ThreadId.make("pull-requests-panel"),
-);
+const RIGHT_PANEL_STORAGE_VERSION = 15;
 
 const isPullRequestsPanelKey = (threadKey: string) => threadKey.endsWith(":pull-requests-panel");
 
@@ -102,15 +70,12 @@ interface RightPanelStoreState {
   /** Refused if the user chose a panel after expectedUserActionRevision was read. */
   openProactive: (
     ref: ScopedThreadRef,
-    request:
-      | Extract<RightPanelSurface, { kind: "pull-request" | "pull-requests" }>
-      | { kind: "diff"; turnId: RunId },
+    request: { kind: "diff"; turnId: RunId },
     expectedUserActionRevision: number,
-    activateExisting?: boolean,
   ) => boolean;
   open: (
     ref: ScopedThreadRef,
-    kind: Exclude<RightPanelKind, "file" | "terminal" | "pull-request" | "side-chat">,
+    kind: Exclude<RightPanelKind, "file" | "terminal" | "side-chat">,
   ) => void;
   openSideChat: (ref: ScopedThreadRef, threadId: ThreadId) => void;
   openFile: (ref: ScopedThreadRef, relativePath: string, line?: number) => void;
@@ -123,23 +88,6 @@ interface RightPanelStoreState {
     keepSource?: boolean,
   ) => void;
   openAttachment: (ref: ScopedThreadRef, attachment: ChatFileAttachment) => void;
-  openPullRequest: (
-    ref: ScopedThreadRef,
-    target: {
-      environmentId?: string;
-      projectId: string;
-      host?: string;
-      repository: string;
-      number: number;
-      url?: string;
-      detailTab?: PullRequestDetailTab;
-    },
-  ) => void;
-  setPullRequestDetailTab: (
-    ref: ScopedThreadRef,
-    surfaceId: string,
-    detailTab: PullRequestDetailTab,
-  ) => void;
   openTerminal: (ref: ScopedThreadRef, terminalId: string) => void;
   splitTerminal: (
     ref: ScopedThreadRef,
@@ -164,7 +112,7 @@ interface RightPanelStoreState {
   toggleVisibility: (ref: ScopedThreadRef) => void;
   toggle: (
     ref: ScopedThreadRef,
-    kind: Exclude<RightPanelKind, "file" | "terminal" | "pull-request" | "side-chat">,
+    kind: Exclude<RightPanelKind, "file" | "terminal" | "side-chat">,
   ) => void;
   setThreadPanelOpen: (
     ref: ScopedThreadRef,
@@ -187,15 +135,13 @@ const DEFAULT_THREAD_PANEL_VISIBILITY: ThreadPanelVisibility = {
 };
 
 const singletonSurface = (
-  kind: Exclude<RightPanelKind, "file" | "terminal" | "pull-request" | "side-chat">,
+  kind: Exclude<RightPanelKind, "file" | "terminal" | "side-chat">,
 ): RightPanelSurface => {
   switch (kind) {
     case "diff":
       return { id: "diff", kind };
     case "files":
       return { id: "files", kind };
-    case "pull-requests":
-      return { id: "pull-requests", kind };
   }
 };
 
@@ -227,43 +173,6 @@ const terminalSurface = (terminalId: string): RightPanelSurface => ({
   terminalIds: [terminalId],
   activeTerminalId: terminalId,
 });
-
-export type PullRequestSurface = Extract<RightPanelSurface, { kind: "pull-request" }>;
-
-export function pullRequestSurfaceId(target: {
-  environmentId?: string;
-  projectId: string;
-  host?: string;
-  repository: string;
-  number: number;
-}): PullRequestSurface["id"] {
-  const scope =
-    target.environmentId === undefined ? "" : `${encodeURIComponent(target.environmentId)}:`;
-  const host = target.host === undefined ? "" : `${encodeURIComponent(target.host.toLowerCase())}:`;
-  return `pull-request:${scope}${encodeURIComponent(target.projectId)}:${host}${encodeURIComponent(target.repository)}:${target.number}`;
-}
-
-export function pullRequestSurface(target: {
-  environmentId?: string;
-  projectId: string;
-  host?: string;
-  repository: string;
-  number: number;
-  url?: string;
-  detailTab?: PullRequestDetailTab;
-}): PullRequestSurface {
-  return {
-    id: pullRequestSurfaceId(target),
-    kind: "pull-request",
-    ...(target.environmentId === undefined ? {} : { environmentId: target.environmentId }),
-    projectId: target.projectId,
-    ...(typeof target.host === "string" ? { host: target.host.toLowerCase() } : {}),
-    repository: target.repository,
-    number: target.number,
-    ...(typeof target.url === "string" ? { url: target.url } : {}),
-    ...(target.detailTab === undefined ? {} : { detailTab: target.detailTab }),
-  };
-}
 
 const upsertSurface = (
   current: ThreadRightPanelState,
@@ -447,7 +356,9 @@ export function migratePersistedRightPanelState(persistedState: unknown): {
                       kind === "plan" ||
                       kind === "agents" ||
                       kind === "device" ||
-                      kind === "preview"
+                      kind === "preview" ||
+                      kind === "pull-request" ||
+                      kind === "pull-requests"
                     )
                       return [];
                     if (
@@ -471,24 +382,6 @@ export function migratePersistedRightPanelState(persistedState: unknown): {
                           ? surface.revealRequestId
                           : 0;
                       return [{ ...surface, revealLine, revealRequestId }];
-                    }
-                    if (surface.kind === "pull-request") {
-                      if (
-                        typeof surface.projectId !== "string" ||
-                        typeof surface.repository !== "string" ||
-                        typeof surface.number !== "number" ||
-                        !Number.isSafeInteger(surface.number) ||
-                        surface.number < 1
-                      ) {
-                        return [];
-                      }
-                      const { environmentId, ...rest } = surface;
-                      return [
-                        pullRequestSurface({
-                          ...rest,
-                          ...(typeof environmentId === "string" ? { environmentId } : {}),
-                        }),
-                      ];
                     }
                     if (surface.kind !== "terminal") return [surface];
                     if (
@@ -529,9 +422,7 @@ export function migratePersistedRightPanelState(persistedState: unknown): {
                 (surface) => surface.id === rawActiveSurfaceId,
               )
                 ? (rawActiveSurfaceId ?? null)
-                : rawActiveSurfaceId === "pull-request"
-                  ? (surfaces.find((surface) => surface.kind === "pull-request")?.id ?? null)
-                  : null;
+                : null;
               const isOpen =
                 surfaces.length > 0 &&
                 (typeof validThreadState?.isOpen === "boolean"
@@ -599,43 +490,21 @@ export const useRightPanelStore = create<RightPanelStoreState>()(
         }));
         return revision;
       },
-      openProactive: (ref, request, expectedUserActionRevision, activateExisting = false) => {
+      openProactive: (ref, request, expectedUserActionRevision) => {
         let opened = false;
         set((state) => {
           const threadKey = scopedThreadKey(ref);
-          if (request.kind === "diff") {
-            const current = selectThreadRightPanelState(state.byThreadKey, ref);
-            if (current.proactiveDiffTurnId === request.turnId) return state;
-            const activePanel = selectActiveRightPanel(state.byThreadKey, ref);
-            const pullRequestActive =
-              activePanel === "pull-request" || activePanel === "pull-requests";
-            opened =
-              (state.userActionRevisionByThreadKey[threadKey] ?? 0) ===
-                expectedUserActionRevision &&
-              activePanel !== "diff" &&
-              !pullRequestActive;
-            // Record the offer even when refused, so a revisit does not retry this turn.
-            return automaticUpdate(state, threadKey, (thread) => ({
-              ...(opened ? upsertSurface(thread, singletonSurface("diff")) : thread),
-              proactiveDiffTurnId: request.turnId,
-            }));
-          }
-          if (
-            (state.userActionRevisionByThreadKey[threadKey] ?? 0) !== expectedUserActionRevision
-          ) {
-            return state;
-          }
-          // Keep an existing PR tab where the user left it when revisiting a thread.
-          if (
-            !activateExisting &&
-            selectThreadRightPanelState(state.byThreadKey, ref).surfaces.some(
-              (entry) => entry.id === request.id,
-            )
-          ) {
-            return state;
-          }
-          opened = true;
-          return automaticUpdate(state, threadKey, (current) => upsertSurface(current, request));
+          const current = selectThreadRightPanelState(state.byThreadKey, ref);
+          if (current.proactiveDiffTurnId === request.turnId) return state;
+          const activePanel = selectActiveRightPanel(state.byThreadKey, ref);
+          opened =
+            (state.userActionRevisionByThreadKey[threadKey] ?? 0) === expectedUserActionRevision &&
+            activePanel !== "diff";
+          // Record the offer even when refused, so a revisit does not retry this turn.
+          return automaticUpdate(state, threadKey, (thread) => ({
+            ...(opened ? upsertSurface(thread, singletonSurface("diff")) : thread),
+            proactiveDiffTurnId: request.turnId,
+          }));
         });
         return opened;
       },
@@ -651,40 +520,6 @@ export const useRightPanelStore = create<RightPanelStoreState>()(
             upsertSurface(current, { id: `side-chat:${threadId}`, kind: "side-chat", threadId }),
           ),
         ),
-      openPullRequest: (ref, target) =>
-        set((state) =>
-          userAction(state, scopedThreadKey(ref), (current) => {
-            const surface = pullRequestSurface(target);
-            const next = upsertSurface(current, surface);
-            return target.url
-              ? {
-                  ...next,
-                  surfaces: next.surfaces.map((entry) =>
-                    entry.id === surface.id && entry.kind === "pull-request"
-                      ? { ...entry, ...surface }
-                      : entry,
-                  ),
-                }
-              : next;
-          }),
-        ),
-      setPullRequestDetailTab: (ref, surfaceId, detailTab) =>
-        set((state) => {
-          const threadKey = scopedThreadKey(ref);
-          const existing = state.byThreadKey[threadKey]?.surfaces.find(
-            (surface) => surface.id === surfaceId,
-          );
-          if (existing?.kind !== "pull-request" || (existing.detailTab ?? "summary") === detailTab)
-            return state;
-          return automaticUpdate(state, threadKey, (current) => ({
-            ...current,
-            surfaces: current.surfaces.map((surface) =>
-              surface.id === surfaceId && surface.kind === "pull-request"
-                ? { ...surface, detailTab }
-                : surface,
-            ),
-          }));
-        }),
       openFile: (ref, requestedPath, line) =>
         set((state) =>
           userAction(state, scopedThreadKey(ref), (current) => {
@@ -1112,7 +947,7 @@ export function selectActiveRightPanelSurface(
   return selectSelectedRightPanelSurface(byThreadKey, ref);
 }
 
-export function selectSelectedRightPanelSurface(
+function selectSelectedRightPanelSurface(
   byThreadKey: Record<string, ThreadRightPanelState>,
   ref: ScopedThreadRef | null | undefined,
 ): RightPanelSurface | null {

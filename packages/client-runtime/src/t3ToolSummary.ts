@@ -390,36 +390,6 @@ export function summarizeT3ToolCalls(
         `linked pull requests${selected.length === 1 ? "" : ` ${times}`}`,
       );
       break;
-    case "write-pr-guides": {
-      // One call writes many guides, and reports a refusal per guide rather than failing.
-      const outcomes = selected.flatMap((call) =>
-        Array.isArray(call.output?.guides)
-          ? call.output.guides.map((guide) => asRecord(guide)?.outcome)
-          : [],
-      );
-      const started = outcomes.filter((outcome) => outcome !== "failed").length;
-      const failed = outcomes.length - started;
-      failedCount += failed;
-      if (outcomes.length === 0) {
-        label = phrase(
-          "Started writing",
-          "start writing",
-          `review guides${selected.length === 1 ? "" : ` ${times}`}`,
-        );
-      } else if (started === 0) {
-        label = `Could not start ${quantity(failed, "review guide")}`;
-      } else {
-        label = phrase(
-          "Started",
-          "start",
-          `${quantity(started, "review guide")}${failed > 0 ? `, ${failed} failed` : ""}`,
-        );
-      }
-      break;
-    }
-    case "read-pr-guide":
-      label = phrase("Read", "read", quantity(selected.length, "review guide"));
-      break;
     case "capabilities":
       label = phrase("Checked", "check", `orchestration capabilities ${times}`);
       break;

@@ -1,7 +1,7 @@
 # Source control
 
-T3 Code integrates with GitHub to clone and publish repositories, create pull requests, and review
-changes.
+T3 Code integrates with GitHub to clone and publish repositories, create pull requests, and track
+their status.
 
 ## Review turn changes
 
@@ -15,10 +15,9 @@ commit at a time. The list shows the newest 100 commits in the branch comparison
 shows its changes against its first parent.
 
 A commit link from a supported code host opens in the Diff pane when the thread's repository has
-that commit locally, on any branch. Otherwise a pull request commit link opens the pull request. Other
-commit links follow your **Open links in** setting; on web, when that opens a new tab, T3 Code first
-shows an **Open link** button. Command/Ctrl+Click always opens the link in your browser. Commit links follow the **Open pull requests in T3 Code**
-setting in **Settings → Diffs**.
+that commit locally, on any branch. Other commit links follow your **Open links in** setting; on web,
+when that opens a new tab, T3 Code first shows an **Open link** button. Command/Ctrl+Click always
+opens the link in your browser. Pull request links open on the code host.
 
 ## Connect an account
 
@@ -85,98 +84,6 @@ the intended remote with `git branch --set-upstream-to=<remote>/<branch>`.
 Choose the writing style and model in **Settings → Source control**. **Repository conventions**
 uses the project's instructions and recent commit subjects.
 
-## Review and merge
-
-Open **Pull requests** to review changes and comments, request reviewers, check out a branch,
-or merge. You can edit review titles and descriptions and your own comments where the host allows it.
-Where you can edit a description, you can also tick its checkboxes from the Summary tab
-(the Overview tab on mobile).
-
-On mobile, **Pull requests** lists reviews across your connected environments. Open a review
-to read its description, activity, commits, and changed files. Line comments stay as drafts
-until you submit the review. **Work on PR** opens a chat with the review attached; sending
-the first message prepares a worktree from the review's branch.
-
-Previously loaded lists, review details, guides, and diff pages remain readable on mobile
-without a connection, including after restarting the app. Saved content refreshes when the
-environment reconnects; submitting changes requires a connection.
-
-Enable **Remove agent credits when merging** in Settings → Source control to remove recognized
-agent co-author and generated-by lines from GitHub merge and squash commit messages. Human
-co-authors stay credited. The setting is off by default and projects can override it. It also
-applies to auto-merge, but not merge queues or native stack merges. Original commits keep their
-messages, so merge and rebase can still retain agent credits in those commits.
-
-On web and desktop, hold **Shift** in the GitHub pull request list for quick actions.
-To close several, press **Close**, drag across the rows in the same group, and release.
-Press **Escape** before releasing to cancel. Failed closes stay in the list so you can retry them.
-
-GitHub supports auto-merge while checks are outstanding, approving waiting fork workflows, and
-opening a revert pull request for a merged change.
-
-Pull request sharing is off by default. In Settings → Environments → Pull request sharing (Pull
-request routing under Environments on mobile), choose **Read PRs** or **Read and act** for each
-environment you trust to share its source control access.
-Enable both the original environment and the environment answering its requests on this client.
-**Read and act** can use broader permissions than the original environment's credential;
-only enable it for environments you control and trust. Changing a saved endpoint or removing an
-environment clears its permission.
-
-Review details, linked PR status, and permitted review actions can then use another connected
-environment signed in to the same account on the same host. Each needs a project on that host.
-A connected local environment is preferred for actions and can answer slow or failed reads.
-Browsers and mobile clients need a paired environment to use its GitHub credentials.
-Credentials stay on their machines. Previously verified credentials remain usable for routing
-for ten minutes during a GitHub outage; new credentials must be verified first. An action with
-an uncertain result is never automatically retried elsewhere. Listings, diffs, and checkout or
-PR creation from Git actions continue to use the project's environment.
-
-### Review guides
-
-Review guides are in beta. Turn on **Review guides** in Settings → Source control to add the
-**Guide** tab to pull requests on that server. On mobile, move between stops with **Next**
-and the back button; a stale guide offers a rewrite and hides excerpts that no longer match
-the current change.
-
-The **Guide** tab gives you a tour of a pull request without reading it line by line: stops
-through the change in reading order. Each stop points at the lines worth reading, and a stop marked
-**Look closely** has a call only a maintainer can make. Mechanical changes such as renames and
-snapshots are grouped at the end, and every changed file appears somewhere on the tour.
-Conversations already resolved in review are left out. For a pull request in a stack, the guide
-covers that layer only, and may point out what a lower layer introduced or what a higher one uses.
-
-Choose **Write guide** to have the review guide model from Settings → Source control read the
-change in a temporary checkout; without one set, the source control writer model is used. Nothing
-in the checkout is changed, and a large pull request takes a few minutes; you can go elsewhere in
-the app. On web, you are told when the guide is ready; on mobile, return to the guide to check
-its progress. Claude and Codex can write guides. The guide is
-kept for everyone using this server. To write it again, for example after a push or after changing
-the model or instructions, choose **Rewrite guide** from the pull request's **⋯** menu.
-
-On web, while reading a stop, select lines in an excerpt to add a comment to your review or ask an agent
-about them; comments wait with the ones from the **Code** tab until you send the review. Choose a
-suggested question, or **Ask about this stop**, to open a thread that already knows which stop you
-are on. **Finish review** on the last stop opens the review with everything you collected.
-
-Agents can write guides too: ask one to prepare guides for a set of pull requests, and it starts
-them for you. Each is read through the project whose checkout has that repository.
-
-To shape guides to your taste, write **Review guide instructions** in Settings → Source control,
-such as what to show first or what to skip; projects can override them. They change emphasis and
-ordering, not the guide's layout or which files it covers.
-
-### Mark files as viewed
-
-Tick a file off in the **Code** tab once you have read it and it collapses; the toolbar keeps a
-running count. A tick belongs to the pull request rather than to a commit, so scoping the tab to a
-single commit keeps them. A file pushed to after you cleared it comes back marked **Changed**.
-
-These are GitHub's own viewed marks, so a review carries between T3 Code and github.com in either
-direction.
-
-On mobile, open a changed file and mark it viewed from its header. Viewed files collapse,
-and their marks follow the same rules as on web and desktop.
-
 ## Troubleshooting
 
 - **Not authenticated:** run `gh auth login` on the server or save a token in Settings → Source
@@ -184,30 +91,26 @@ and their marks follow the same rules as on web and desktop.
 - **GitHub sign-in cannot be verified:** update GitHub CLI to at least 2.81.0, or save a token in Settings → Source control.
 - **Push fails despite a connected account:** check the Git remote's credentials. SSH and HTTPS
   remotes can require separate setup from the hosting provider's API access.
-- **A review cannot load:** open it on the host website while resolving connectivity, permissions,
-  or rate limits.
+- **A pull request's status does not update:** open it on the host website while resolving
+  connectivity, permissions, or rate limits.
 
 ## Linked pull requests
 
-A thread can hold several pull requests, including reviews from another repository on the same host.
-Use **Link pull request** in the command palette or **Linked pull requests** panel, or right-click a
-pull request link in the conversation. Creating a pull request from Git actions links it automatically,
-and so does an agent creating one with `gh pr create`. Agents can link other
-pull requests with the `link_pull_request` tool.
+A thread can hold several pull requests, including pull requests from another repository on the
+same host. Use **Link pull request** in the command palette, or right-click a pull request link in
+the conversation. Creating a pull request from Git actions links it automatically, and so does an
+agent creating one with `gh pr create`. Agents can link other pull requests with the
+`link_pull_request` tool.
 
-Use **Link pull request to thread** in the command palette to keep a pull request with the thread. From a review
-on the Pull requests page, **Link to thread** lets you search for an active thread. The review header
-also lists the threads that link to it, including archived threads, so you can return to their context.
+The thread header and sidebar row show each linked pull request's state (open, draft, merged or
+closed). Thread badges show a stack's layer count or the current pull request number with a count
+of additional links; hover a badge to see every linked pull request. Linking and unlinking are
+available in the web and desktop clients.
 
-Thread badges show a stack's layer count or the current review number with a count of additional
-links. Clicking a badge with more than one review opens the **Linked pull requests** panel. On mobile, the Git overview lists linked reviews and their stacks; tap a review to open it.
-Linking and unlinking are available in the web and desktop clients.
-
-The **Linked pull requests** panel lists every review and groups stacks. Unlink a review from its
-row menu. An unlinked stack layer stays out of later syncs. Open linked reviews refresh on the server;
-closed reviews refresh periodically so reopening one on the host is detected. Merged reviews refresh
-when requested. A settled thread's reviews stop refreshing until you unsettle it. With **Auto-settle merged threads** enabled, a thread can settle after every linked
-review is terminal. An open or unsynced link keeps it active.
+Open linked pull requests refresh on the server; closed ones refresh periodically so reopening one
+on the host is detected. A settled thread's pull requests stop refreshing until you unsettle it.
+With **Auto-settle merged threads** enabled, a thread can settle after every linked pull request is
+terminal. An open or unsynced link keeps it active.
 
 Ask the agent to watch, monitor, or babysit a pull request and it calls `watch_pull_request`. While
 the thread is active, the server checks the pull request every two minutes and wakes the agent when a
@@ -219,9 +122,9 @@ when the pull request merges or closes, after 10 wakes in a row that bring only 
 failed reads in a row, or when you press Stop on the thread. A rate limit only pauses watching.
 Settling or archiving a thread also ends all its watches. Unsettle the thread before starting a new
 watch. Watching a pull request again does not repeat check or conflict news its last
-watch already reported; unlinking the pull request clears that. Subagents cannot watch pull requests; the thread that delegated to them does. To start or stop
-it yourself, use the row menu in the **Linked pull requests** panel. In the thread details card, a
-watched pull request shows an eye; click it to stop watching.
+watch already reported; unlinking the pull request clears that. Subagents cannot watch pull
+requests; the thread that delegated to them does. In the thread details card, a watched pull
+request shows an eye; click it to stop watching.
 
 A watched thread counts as working between wakes, so it stays in the **Working** section and does
 not auto-settle. Agents stop watching when they hand the work back to you, and the thread then
@@ -229,14 +132,7 @@ returns to your inbox.
 
 Cross-repository links use a project on the same host.
 
-## GitHub stacks
-
-The Pull requests page shows each PR's position in its GitHub stack. Open the stack badge in a
-review to navigate its layers. **Merge stack** submits the selected pull request and every unmerged
-layer below it to GitHub together, respecting branch rules and merge queues. The confirmation shows
-the scope and merge strategy. GitHub rebases the remaining stack after merging.
-
-**Rebase stack** updates remote branches from bottom to top without changing your local checkout.
-It can rewrite history and restart checks. If a layer fails, earlier updates remain; resolve that
-layer before retrying. GitHub may require manual conflict resolution after a lower layer is amended,
-even when its changes look independent. Stack actions require an environment that supports them.
+Pull request sharing is off by default. In Settings → Environments → Pull request sharing, choose
+**Read PRs** for each environment you trust to share its source control access. Linked pull request
+status can then be read through another connected environment signed in to the same account on the
+same host. Credentials stay on their machines.

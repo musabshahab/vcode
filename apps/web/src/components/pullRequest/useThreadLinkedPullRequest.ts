@@ -11,13 +11,12 @@ import {
   squashAtomCommandFailure,
 } from "@t3tools/client-runtime/state/runtime";
 import { useEffect, useRef } from "react";
-import { selectActiveRightPanelSurface, useRightPanelStore } from "../../rightPanelStore";
 import { threadEnvironment } from "../../state/threads";
 import { useOrchestrationCommand } from "../../state/use-orchestration-command";
 import { useLinkedThreadPullRequest } from "../ThreadStatusIndicators";
 import { stackedThreadToast, toastManager } from "../ui/toast";
 
-/** Relink replaced closed/merged requests to the newer open request on the same branch, moving its panel. */
+/** Relink replaced closed/merged requests to the newer open request on the same branch. */
 export function useThreadLinkedPullRequest(input: {
   readonly serverThreadRef: ScopedThreadRef | null;
   readonly environmentId: EnvironmentId | null;
@@ -61,20 +60,6 @@ export function useThreadLinkedPullRequest(input: {
     const relinkKey = `${replacement.projectId}:${replacement.repository}#${replacement.number}`;
     if (relinkKeysRef.current.get(threadKey) === relinkKey) return;
     relinkKeysRef.current.set(threadKey, relinkKey);
-    const openSurface = selectActiveRightPanelSurface(
-      useRightPanelStore.getState().byThreadKey,
-      serverThreadRef,
-    );
-    if (
-      openSurface?.kind === "pull-request" &&
-      persisted !== null &&
-      openSurface.projectId === persisted.projectId &&
-      openSurface.repository.toLowerCase() === persisted.repository.toLowerCase() &&
-      openSurface.number === persisted.number
-    ) {
-      useRightPanelStore.getState().openPullRequest(serverThreadRef, replacement);
-    }
-
     relinkWriteRef.current = relinkWriteRef.current.then(async () => {
       if (relinkKeysRef.current.get(threadKey) !== relinkKey) return;
       const result = await updateThreadMetadata({
@@ -94,12 +79,10 @@ export function useThreadLinkedPullRequest(input: {
         }),
       );
     });
-  }, [persisted, replacement, serverThreadRef, updateThreadMetadata]);
+  }, [replacement, serverThreadRef, updateThreadMetadata]);
 
   const linked = replacement ?? persisted;
   return {
     linked,
-    linkedKey: linked ? JSON.stringify([linked.projectId, linked.repository, linked.number]) : null,
-    hasDetail: persisted !== null,
   };
 }

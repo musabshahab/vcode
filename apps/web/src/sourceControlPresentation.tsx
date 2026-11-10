@@ -53,8 +53,3 @@ export function getSourceControlPresentation(
   const definition = sourceControlClients.get(provider?.kind);
   return presentDefinition(definition, provider?.name || definition.label);
 }
-
-export function getSourceControlPresentationForKind(kind: string): SourceControlPresentation {
-  const definition = sourceControlClients.get(kind);
-  return presentDefinition(definition, definition.label);
-}

@@ -25,32 +25,6 @@ const crossRepositoryPullRequest: ThreadPullRequestLink = {
 };
 
 describe("resolveThreadReferenceCopyTarget", () => {
-  it("does not copy another reference while the open panel URL is unavailable", () => {
-    expect(
-      resolveThreadReferenceCopyTarget({
-        ...thread,
-        openPanelPullRequestUrl: null,
-        pullRequests: [crossRepositoryPullRequest],
-        linkedPullRequestUrl: "https://github.com/t3/pr/12",
-      }),
-    ).toBeNull();
-  });
-
-  it("prefers the open panel pull request over the thread pull request", () => {
-    expect(
-      resolveThreadReferenceCopyTarget({
-        ...thread,
-        openPanelPullRequestUrl: "https://github.com/t3/pr/14",
-        pullRequests: [crossRepositoryPullRequest],
-        linkedPullRequestUrl: "https://github.com/t3/pr/12",
-      }),
-    ).toMatchObject({
-      kind: "pull-request",
-      value: "https://github.com/t3/pr/14",
-      successTitle: "PR link copied",
-    });
-  });
-
   it.each([null, "https://github.com/t3/pr/12"])(
     "copies a native cross-repository link before the fallback URL %s",
     (linkedPullRequestUrl) => {

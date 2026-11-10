@@ -555,9 +555,9 @@ export const SETTINGS_SEARCH_ITEMS = [
   },
   {
     id: "proactive-panels",
-    title: "Open pull requests and changes panels proactively",
+    title: "Open the changes panel proactively",
     to: "/settings/diffs",
-    searchTerms: ["proactive automatically open diff pull request pr right panel agent completion"],
+    searchTerms: ["proactive automatically open diff right panel agent completion"],
   },
   {
     id: "skills-in-slash-menu",
@@ -784,35 +784,11 @@ export const SETTINGS_SEARCH_ITEMS = [
     providerSettingsOnly: true,
   },
   {
-    id: "pull-request-links-open-in-app",
-    title: "Open pull requests in T3 Code",
-    to: "/settings/diffs",
-    searchTerms: [
-      `pr commit links ${SOURCE_CONTROL_HOST_LABELS} browser external click default pull request view panel`,
-    ],
-  },
-  {
     id: "automatic-pull",
     title: "Automatically pull",
     to: "/settings/source-control",
     scope: "project-defaults",
     searchTerms: ["auto pull default branch current checkout fast forward upstream"],
-  },
-  {
-    id: "remove-agent-credits-on-merge",
-    title: "Remove agent credits when merging",
-    to: "/settings/source-control",
-    scope: "project-defaults",
-    searchTerms: [
-      `pull request ${SOURCE_CONTROL_HOST_LABELS} squash co-authored-by attribution claude codex generated`,
-    ],
-  },
-  {
-    id: "pull-request-merge-method",
-    title: "Default merge method",
-    to: "/settings/source-control",
-    scope: "project-defaults",
-    searchTerms: ["pull request merge squash rebase last selected"],
   },
   {
     id: "source-control",
@@ -866,32 +842,6 @@ export const SETTINGS_SEARCH_ITEMS = [
     searchTerms: [
       "override generated commit change request pr titles descriptions branch bookmark",
     ],
-    environmentOnly: true,
-    scope: "project-defaults",
-  },
-  {
-    id: "review-guides",
-    title: "Review guides (beta)",
-    to: "/settings/source-control",
-    searchTerms: ["pull request pr guided review guide tour beta experimental"],
-    environmentOnly: true,
-  },
-  {
-    id: "review-guide-model",
-    title: "Review guide model",
-    to: "/settings/source-control",
-    // Hidden until review guides are on, so a search lands on the switch that shows it.
-    targetId: "review-guides",
-    searchTerms: ["pull request pr guided review guide brief maintainer"],
-    environmentOnly: true,
-    scope: "project-defaults",
-  },
-  {
-    id: "review-guide-instructions",
-    title: "Review guide instructions",
-    to: "/settings/source-control",
-    targetId: "review-guides",
-    searchTerms: ["pull request pr guided review guide preferences taste prompt custom"],
     environmentOnly: true,
     scope: "project-defaults",
   },

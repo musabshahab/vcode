@@ -271,7 +271,6 @@ export function planScopedSettingsPatch(
                   isPlainObject(base) &&
                   (key === "defaultModelSelection" ||
                     key === "sourceControlWriterModelSelection" ||
-                    key === "reviewGuideModelSelection" ||
                     key === "textGenerationModelSelection") &&
                   (value.instanceId !== undefined || value.model !== undefined)
                 ) {

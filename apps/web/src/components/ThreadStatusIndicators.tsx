@@ -34,7 +34,7 @@ import { cn } from "../lib/utils";
 import { revealThreadTerminal } from "../lib/revealThreadTerminal";
 
 import { useEnvironmentQuery } from "../state/query";
-import { linkedPullRequestDetailAtom, useSharedPullRequestSummary } from "../state/pullRequests";
+import { useLinkedPullRequestSummary } from "../state/pullRequests";
 import { useThreadRunningTerminalIds } from "../state/terminalSessions";
 import { vcsEnvironment } from "../state/vcs";
 import { useUiStateStore } from "../uiStateStore";
@@ -95,13 +95,7 @@ export function useLinkedThreadPullRequest(
     current === null ? ((!supportsLinks ? linkedPullRequest : null) ?? branchPullRequest) : null;
   // Preserve reference identity so sidebar renders do not touch the summary cache.
   const reference = fallback == null ? null : linkedPullRequestReference(fallback);
-  // Mounted for its answers, which land in the shared summary read below.
-  useEnvironmentQuery(
-    !enabled || environmentId === null || reference === null
-      ? null
-      : linkedPullRequestDetailAtom({ environmentId, input: reference }),
-  );
-  const detail = useSharedPullRequestSummary(environmentId, reference);
+  const detail = useLinkedPullRequestSummary(environmentId, reference, enabled);
 
   if (current !== null) return currentStatus;
   return detail === null
@@ -209,7 +203,6 @@ export function ThreadPullRequestBadgeControl({
   number,
   url,
   status,
-  onOpenList,
   onOpenPullRequest,
 }: {
   render: ReactElement<{ render?: useRender.RenderProp }>;
@@ -218,7 +211,6 @@ export function ThreadPullRequestBadgeControl({
   number?: number | undefined;
   url?: string | undefined;
   status: PrStatusIndicator | null;
-  onOpenList: () => void;
   onOpenPullRequest: (event: MouseEvent<HTMLElement>, url?: string) => void;
 }) {
   const presentation = resolveThreadPullRequestBadgePresentation({ badge, number, url, status });
@@ -227,12 +219,10 @@ export function ThreadPullRequestBadgeControl({
     <PullRequestBadge
       render={render}
       presentation={presentation}
-      opensList={badge !== null && (badge.kind === "stack" || badge.others > 0)}
       url={url}
       number={number}
       status={status}
       pullRequests={pullRequests}
-      onOpenList={onOpenList}
       onOpenPullRequest={onOpenPullRequest}
     />
   );
@@ -241,36 +231,34 @@ export function ThreadPullRequestBadgeControl({
 function PullRequestBadge({
   render,
   presentation,
-  opensList,
   url,
   number,
   status,
   pullRequests,
-  onOpenList,
   onOpenPullRequest,
 }: {
   render: ReactElement<{ render?: useRender.RenderProp }>;
   presentation: NonNullable<ReturnType<typeof resolveThreadPullRequestBadgePresentation>>;
-  opensList: boolean;
   url: string | undefined;
   number: number | undefined;
   status: PrStatusIndicator | null;
   pullRequests: ReadonlyArray<ThreadPullRequestLink>;
-  onOpenList: () => void;
   onOpenPullRequest: (event: MouseEvent<HTMLElement>, url?: string) => void;
 }) {
-  const onClick = opensList
-    ? (event: MouseEvent<HTMLElement>) => {
-        event.preventDefault();
-        event.stopPropagation();
-        onOpenList();
-      }
-    : onOpenPullRequest;
-  const element = opensList ? (
-    <button type="button" />
-  ) : (
-    <a href={url} target="_blank" rel="noopener noreferrer" />
-  );
+  // Without a current link, the tooltip's list is the way in.
+  const onClick =
+    url === undefined
+      ? (event: MouseEvent<HTMLElement>) => {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+      : onOpenPullRequest;
+  const element =
+    url === undefined ? (
+      <button type="button" />
+    ) : (
+      <a href={url} target="_blank" rel="noopener noreferrer" />
+    );
   const control = useRender({
     render,
     props: {
@@ -281,7 +269,7 @@ function PullRequestBadge({
     },
   });
   return (
-    <Tooltip key={opensList ? "list" : "link"}>
+    <Tooltip key={url === undefined ? "list" : "link"}>
       <TooltipTrigger render={control}>
         <span
           className={cn("contents font-normal text-xs tabular-nums", presentation.toneClassName)}

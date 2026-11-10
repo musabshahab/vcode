@@ -1,12 +1,5 @@
 import type { EnvironmentId, ScopedThreadRef } from "@t3tools/contracts";
-import { useAtomValue } from "@effect/atom-react";
-import { useNavigate } from "@tanstack/react-router";
 import { type MouseEvent } from "react";
-
-import {
-  resolveChangeRequestLinkTarget,
-  resolvePullRequestPreviewTarget,
-} from "@t3tools/client-runtime/change-request-links";
 
 import { sourceControlClients } from "@t3tools/client-runtime/source-control-clients";
 
@@ -20,23 +13,9 @@ import {
   useDiffPanelStore,
 } from "../diffPanelStore";
 
-import { appAtomRegistry } from "../rpc/atomRegistry";
-import { readProject, readProjects, readThreadShell, useProjects } from "../state/entities";
-import { environmentServerConfigsAtom, serverEnvironment } from "../state/server";
-import { usePrimaryEnvironmentId } from "../state/environments";
+import { readProject, readThreadShell } from "../state/entities";
 import { reviewEnvironment } from "../state/review";
 import { useAtomQueryRunner } from "../state/use-atom-query-runner";
-
-export function usePullRequestPreviewTarget(environmentId: EnvironmentId | null, url: string) {
-  const projects = useProjects();
-  const serverConfig = useAtomValue(serverEnvironment.configValueAtom(environmentId));
-  return resolvePullRequestPreviewTarget({
-    environmentId,
-    projects,
-    pullRequestsEnabled: serverConfig !== null,
-    url,
-  });
-}
 
 function shouldOpenPullRequestExternally(
   event: Pick<MouseEvent<HTMLElement>, "metaKey" | "ctrlKey"> &
@@ -47,7 +26,6 @@ function shouldOpenPullRequestExternally(
 
 export function useOpenChangeRequestLink(
   threadRef?: ScopedThreadRef,
-  panelRef?: ScopedThreadRef,
 ): (
   event: Pick<
     MouseEvent<HTMLElement>,
@@ -59,72 +37,14 @@ export function useOpenChangeRequestLink(
   targetEnvironmentId?: EnvironmentId,
   onCommitUnavailable?: () => void,
 ) => boolean {
-  const navigate = useNavigate();
-  const primaryEnvironmentId = usePrimaryEnvironmentId();
-  const openInApp = useClientSettings((settings) => settings.pullRequestLinksOpenInApp);
   const ignoreWhitespace = useClientSettings((settings) => settings.diffIgnoreWhitespace);
   const readDiffPreview = useAtomQueryRunner(reviewEnvironment.diffPreview, {
     reportFailure: false,
     refresh: true,
   });
   return (event, targetUrl, targetThreadRef, targetEnvironmentId, onCommitUnavailable) => {
-    if (!openInApp || shouldOpenPullRequestExternally(event)) return false;
+    if (shouldOpenPullRequestExternally(event)) return false;
     const resolvedThreadRef = targetThreadRef ?? threadRef;
-    const resolvedPanelRef = panelRef ?? resolvedThreadRef;
-    const openPullRequest = () => {
-      // Read at click time: every provider status push replaces the config map, and
-      // subscribing would hand every rendered link a new handler. Projects likewise, so a
-      // link can resolve against a snapshot that arrived after this handler was built.
-      const serverConfigs = appAtomRegistry.get(environmentServerConfigsAtom);
-      const target = resolveChangeRequestLinkTarget({
-        url: targetUrl,
-        projects: readProjects(),
-        configLoaded: (environmentId) => serverConfigs.has(environmentId),
-        environmentId: resolvedThreadRef?.environmentId ?? targetEnvironmentId,
-        primaryEnvironmentId,
-        lendHostProject: resolvedPanelRef !== undefined,
-      });
-      if (target === null) return false;
-      const { project, repository, number, host } = target;
-      const pullRequestsSearch = {
-        repository,
-        number,
-        ...(host === undefined ? {} : { selectedHost: host }),
-        selectedProjectId: project.id,
-        selectedEnvironmentId: project.environmentId,
-      };
-      if (resolvedPanelRef) {
-        useRightPanelStore.getState().openPullRequest(resolvedPanelRef, {
-          // The standalone PR panel has a synthetic ref; each tab keeps its real environment.
-          ...(resolvedPanelRef.environmentId === project.environmentId
-            ? {}
-            : { environmentId: project.environmentId }),
-          projectId: project.id,
-          ...(host === undefined ? {} : { host }),
-          repository,
-          url: targetUrl,
-          number,
-        });
-        if (!resolvedThreadRef) {
-          void navigate({
-            to: "/pull-requests",
-            search: (previous) => ({
-              ...previous,
-              involvement: previous.involvement ?? "all",
-              state: previous.state ?? "all",
-              ...pullRequestsSearch,
-            }),
-            replace: true,
-          });
-        }
-        return true;
-      }
-      void navigate({
-        to: "/pull-requests",
-        search: { involvement: "all", state: "all", ...pullRequestsSearch },
-      });
-      return true;
-    };
     const commitThread = resolvedThreadRef ? readThreadShell(resolvedThreadRef) : null;
     const commitProject =
       commitThread && resolvedThreadRef
@@ -189,7 +109,6 @@ export function useOpenChangeRequestLink(
             useRightPanelStore.getState().open(resolvedThreadRef, "diff");
             return;
           }
-          if (openPullRequest()) return;
           if (onCommitUnavailable) return onCommitUnavailable();
           // A popup opened after the lookup has lost the click's activation, so browsers block it.
           if (window.desktopBridge === undefined) {
@@ -213,10 +132,7 @@ export function useOpenChangeRequestLink(
         .catch((error: unknown) => console.error(error));
       return true;
     }
-    if (!openPullRequest()) return false;
-    event.preventDefault();
-    event.stopPropagation();
-    return true;
+    return false;
   };
 }
 

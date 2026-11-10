@@ -116,7 +116,7 @@ export const make = Effect.gen(function* () {
           }),
         )) satisfies TextGenerationOperations.Runner;
     }
-    return TextGenerationOperations.withoutInvestigation(label, runnerFor(config));
+    return runnerFor(config);
   });
 
   const listModels = Effect.fn("TextGenerators.listModels")(

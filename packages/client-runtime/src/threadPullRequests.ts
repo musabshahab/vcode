@@ -16,7 +16,6 @@ export {
 
 export const {
   normalizeThreadPullRequestKey,
-  legacyThreadPullRequestKey,
   threadPullRequestKeysEqual,
   threadPullRequestKeyOf,
   resolveThreadCurrentPullRequest,

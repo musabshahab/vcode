@@ -763,11 +763,10 @@ describe("isRichTextBoldShortcut", () => {
   });
 });
 
-describe("composer and pull request shortcuts", () => {
-  it("fills missing number shortcuts without replacing the saved URL binding", () => {
+describe("composer and thread reference shortcuts", () => {
+  it("fills missing shortcuts without replacing the saved reference binding", () => {
     const olderServerBindings = DEFAULT_RESOLVED_KEYBINDINGS.filter(
-      (binding) =>
-        binding.command !== "pullRequest.copyNumber" && binding.command !== "thread.copyReference",
+      (binding) => binding.command !== "thread.copyReference",
     );
     const bindings = mergeWithDefaultKeybindings([
       ...olderServerBindings,
@@ -776,7 +775,6 @@ describe("composer and pull request shortcuts", () => {
       ]),
     ]);
     for (const [key, command] of [
-      ["k", "pullRequest.copyNumber"],
       ["8", "thread.copyReference"],
       ["c", null],
       ["y", null],

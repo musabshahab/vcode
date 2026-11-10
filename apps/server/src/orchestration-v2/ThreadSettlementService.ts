@@ -306,10 +306,7 @@ export const make = Effect.gen(function* () {
   // Repeated thread.settled retains settledAt; run the action only once per settlement.
   const settleActionRunAt = new Map<ThreadId, number>();
 
-  const sweep = Effect.fn("ThreadSettlementServiceV2.sweep")(function* (
-    mergedPullRequest: PullRequestService.PullRequestMergeEvent | null,
-    threadId?: ThreadId,
-  ) {
+  const sweep = Effect.fn("ThreadSettlementServiceV2.sweep")(function* (threadId?: ThreadId) {
     const settings = yield* settingsService.getSettings;
     if (!autoSettlementConfigured(settings)) {
       return;
@@ -319,7 +316,6 @@ export const make = Effect.gen(function* () {
     const projectShells = yield* projectStore.listShells();
     const nowMs = DateTime.toEpochMillis(yield* DateTime.now);
     const projects = new Map(projectShells.map((project) => [project.id, project]));
-    // Merge events resweep all candidates because unlinked threads settle through branch lookup.
     const candidates = threads.filter((thread) => isAutoSettlementCandidate(thread, nowMs));
 
     // Runs per candidate thread, thousands per sweep on busy servers; the sweep owns the span.
@@ -409,14 +405,6 @@ export const make = Effect.gen(function* () {
         }),
       { concurrency: 8, discard: true },
     );
-    if (mergedPullRequest !== null) {
-      // Invalidate checkout caches on merge; cached open branches would delay settlement beyond this sweep.
-      const cwds = [...new Set(lookupCwdByThreadId.values())];
-      yield* Effect.forEach(cwds, (cwd) => git.invalidateStatus(cwd), {
-        concurrency: 8,
-        discard: true,
-      });
-    }
     const lookupKey = (thread: (typeof lookupCandidates)[number]) => {
       const reference = thread.linkedPullRequest ?? thread.branchPullRequest;
       if (reference != null) {
@@ -465,29 +453,17 @@ export const make = Effect.gen(function* () {
       const thread = group[0]!;
       const reference = thread.linkedPullRequest ?? thread.branchPullRequest;
       if (reference != null) {
-        // Only matching PR links settle from this merge event; unrelated links require fresh lookup.
-        const matchesMerge =
-          mergedPullRequest !== null &&
-          reference.projectId === mergedPullRequest.projectId &&
-          reference.repository.toLowerCase() === mergedPullRequest.repository.toLowerCase() &&
-          reference.number === mergedPullRequest.number;
-        if (!matchesMerge && !projects.has(reference.projectId)) {
+        if (!projects.has(reference.projectId)) {
           return yield* Effect.die(new Error("linked pull request project not found"));
         }
-        const summary = matchesMerge
-          ? ({
-              state: "merged",
-              closedAt: null,
-              mergedAt: mergedPullRequest.mergedAt,
-            } satisfies SettlementPullRequest)
-          : yield* pullRequests.summary(
-              {
-                projectId: reference.projectId,
-                repository: reference.repository,
-                number: reference.number,
-              },
-              { recoverTransientFailure: false },
-            );
+        const summary = yield* pullRequests.summary(
+          {
+            projectId: reference.projectId,
+            repository: reference.repository,
+            number: reference.number,
+          },
+          { recoverTransientFailure: false },
+        );
         const terminal = {
           state: summary.state,
           closedAt: summary.closedAt ?? null,
@@ -543,11 +519,8 @@ export const make = Effect.gen(function* () {
     );
   });
 
-  const runSweep = (
-    mergedPullRequest: PullRequestService.PullRequestMergeEvent | null,
-    threadId?: ThreadId,
-  ) =>
-    sweep(mergedPullRequest, threadId).pipe(
+  const runSweep = (threadId?: ThreadId) =>
+    sweep(threadId).pipe(
       Effect.provideService(GitVcsDriver.BackgroundGitWork, true),
       Effect.catchCauseIf(
         (cause) => !Cause.hasInterruptsOnly(cause),
@@ -559,7 +532,7 @@ export const make = Effect.gen(function* () {
     );
   // A thread that just stopped must not wait behind a full sweep or another thread's host
   // reads: clients hold it in Working only briefly, so a late settle makes it appear and then vanish.
-  const fullSweeps = yield* makeDrainableWorker(() => runSweep(null));
+  const fullSweeps = yield* makeDrainableWorker(() => runSweep());
   const threadSweeps = yield* FiberSet.make<void>();
   const threadSweepSlots = yield* Semaphore.make(8);
   // One sweep per thread at a time; events during a running sweep coalesce into one more pass.
@@ -568,7 +541,7 @@ export const make = Effect.gen(function* () {
     threadId: ThreadId,
   ): Effect.Effect<void, Effect.Error<ReturnType<typeof runSweep>>> =>
     Effect.sync(() => threadSweepStates.set(threadId, "running")).pipe(
-      Effect.andThen(runSweep(null, threadId)),
+      Effect.andThen(runSweep(threadId)),
       threadSweepSlots.withPermits(1),
       Effect.andThen(
         Effect.suspend(() => {
@@ -677,7 +650,6 @@ export const make = Effect.gen(function* () {
     "ThreadSettlementServiceV2.start",
   )(function* () {
     const settingsChanges = yield* settingsService.subscribeChanges;
-    const mergedPullRequests = yield* pullRequests.subscribeMerges;
     const events = orchestrator.streamDomainEvents;
     const initialSettings = yield* settingsService.getSettings.pipe(Effect.orDie);
     let lastSettlementSettings = autoSettlementSettingsKey(initialSettings);
@@ -697,7 +669,6 @@ export const make = Effect.gen(function* () {
         return fullSweeps.enqueue(undefined);
       }),
     );
-    yield* forkParked(Stream.runForEach(mergedPullRequests, (event) => runSweep(event)));
     yield* forkParked(
       Stream.runForEach(events, processEvent).pipe(
         Effect.catchCause((cause) =>

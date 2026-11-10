@@ -237,7 +237,6 @@ function PullRequestContextChip(props: { record: ReviewCommentContext; kind: Con
   return (
     <PullRequestChip
       metadata={metadata}
-      environmentId={actions.environmentId}
       label={reviewCommentContextLabel(props.record)}
       kindLabel={pullRequestContextKindLabel(props.record)}
       kind={props.kind}

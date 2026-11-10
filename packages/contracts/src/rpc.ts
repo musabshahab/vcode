@@ -113,49 +113,16 @@ import {
   ProviderUploadFeedbackResult,
 } from "./provider.ts";
 import { ProviderInstanceId, ProviderInstanceMutation } from "./providerInstance.ts";
-import { PullRequestReviewGuideResult } from "./pullRequestReviewGuide.ts";
 import {
-  PullRequestActionInput,
-  PullRequestActivity,
-  PullRequestChangeBreakdown,
-  PullRequestCommentInput,
-  PullRequestCommentUpdateInput,
-  PullRequestDetail,
-  PullRequestPreview,
-  PullRequestChecks,
-  PullRequestDiffFileContentsInput,
-  PullRequestDiffFileContentsResult,
-  PullRequestFilesViewedResult,
-  PullRequestInvalidateInput,
   PullRequestReportStateInput,
-  PullRequestListInput,
-  PullRequestListResult,
-  PullRequestListStatsInput,
-  PullRequestListStatsResult,
-  PullRequestFilterOptions,
-  PullRequestFilterOptionsInput,
   PullRequestOperationError,
-  PullRequestReactionInput,
   PullRequestRef,
   PullRequestRoutingResult,
   PullRequestRoutingIdentityInput,
   PullRequestRoutingIdentityResult,
-  PullRequestStack,
   PullRequestLinkedThreadsResult,
   PullRequestSummary,
-  PullRequestReviewerCandidateList,
-  PullRequestReviewerCandidatesInput,
-  PullRequestReviewerRequestInput,
-  PullRequestLabelCandidateList,
-  PullRequestLabelChangeInput,
-  PullRequestSetFilesViewedInput,
-  PullRequestSubmitReviewInput,
-  PullRequestThreadCommentsInput,
-  PullRequestThreadCommentsResult,
-  PullRequestThreadReplyInput,
-  PullRequestThreadResolutionInput,
   PullRequestUnavailableError,
-  PullRequestUpdateInput,
 } from "./pullRequest.ts";
 import {
   RelayClientInstallFailedError,
@@ -373,40 +340,12 @@ export const WS_METHODS = {
   cloudGetRelayClientStatus: "cloud.getRelayClientStatus",
   cloudInstallRelayClient: "cloud.installRelayClient",
 
-  pullRequestsList: "pullRequests.list",
-  pullRequestsListStats: "pullRequests.listStats",
-  pullRequestsFilterOptions: "pullRequests.filterOptions",
   pullRequestsSummary: "pullRequests.summary",
   pullRequestsRouting: "pullRequests.routing",
   pullRequestsRoutingIdentity: "pullRequests.routingIdentity",
-  pullRequestsStack: "pullRequests.stack",
   pullRequestsLinkedThreads: "pullRequests.linkedThreads",
-  pullRequestsDetail: "pullRequests.detail",
-  pullRequestsPreview: "pullRequests.preview",
-  pullRequestsChecks: "pullRequests.checks",
-  pullRequestsActivity: "pullRequests.activity",
-  pullRequestsReviewGuide: "pullRequests.reviewGuide",
-  pullRequestsGenerateReviewGuide: "pullRequests.generateReviewGuide",
-  pullRequestsThreadComments: "pullRequests.threadComments",
-  pullRequestsDiffFileContents: "pullRequests.diffFileContents",
-  pullRequestsFilesViewed: "pullRequests.filesViewed",
-  pullRequestsChangeBreakdown: "pullRequests.changeBreakdown",
-  pullRequestsSetFilesViewed: "pullRequests.setFilesViewed",
-  pullRequestsRunAction: "pullRequests.runAction",
-  pullRequestsUpdate: "pullRequests.update",
-  pullRequestsComment: "pullRequests.comment",
-  pullRequestsUpdateComment: "pullRequests.updateComment",
-  pullRequestsSubmitReview: "pullRequests.submitReview",
-  pullRequestsReplyToThread: "pullRequests.replyToThread",
-  pullRequestsSetThreadResolution: "pullRequests.setThreadResolution",
-  pullRequestsSetReaction: "pullRequests.setReaction",
-  pullRequestsInvalidate: "pullRequests.invalidate",
   pullRequestsReportState: "pullRequests.reportState",
   pullRequestsSubscribeRefreshes: "pullRequests.subscribeRefreshes",
-  pullRequestsReviewerCandidates: "pullRequests.reviewerCandidates",
-  pullRequestsRequestReviewers: "pullRequests.requestReviewers",
-  pullRequestsLabelCandidates: "pullRequests.labelCandidates",
-  pullRequestsSetLabels: "pullRequests.setLabels",
 
   sourceControlLookupRepository: "sourceControl.lookupRepository",
   sourceControlCloneRepository: "sourceControl.cloneRepository",
@@ -709,24 +648,7 @@ const PullRequestRpcError = Schema.Union([
   EnvironmentAuthorizationError,
 ]);
 
-const WsPullRequestsListRpc = Rpc.make(WS_METHODS.pullRequestsList, {
-  payload: PullRequestListInput,
-  success: PullRequestListResult,
-  error: PullRequestRpcError,
-});
-
 // GitHub line counts cost 40-60% of the listing read; fetch separately so rows arrive first.
-const WsPullRequestsListStatsRpc = Rpc.make(WS_METHODS.pullRequestsListStats, {
-  payload: PullRequestListStatsInput,
-  success: PullRequestListStatsResult,
-  error: PullRequestRpcError,
-});
-
-const WsPullRequestsFilterOptionsRpc = Rpc.make(WS_METHODS.pullRequestsFilterOptions, {
-  payload: PullRequestFilterOptionsInput,
-  success: PullRequestFilterOptions,
-  error: PullRequestRpcError,
-});
 
 const WsPullRequestsRoutingRpc = Rpc.make(WS_METHODS.pullRequestsRouting, {
   payload: PullRequestRef,
@@ -746,136 +668,9 @@ const WsPullRequestsSummaryRpc = Rpc.make(WS_METHODS.pullRequestsSummary, {
   error: PullRequestRpcError,
 });
 
-const WsPullRequestsStackRpc = Rpc.make(WS_METHODS.pullRequestsStack, {
-  payload: PullRequestRef,
-  success: Schema.NullOr(PullRequestStack),
-  error: PullRequestRpcError,
-});
-
 const WsPullRequestsLinkedThreadsRpc = Rpc.make(WS_METHODS.pullRequestsLinkedThreads, {
   payload: PullRequestRef,
   success: PullRequestLinkedThreadsResult,
-  error: PullRequestRpcError,
-});
-
-const WsPullRequestsDetailRpc = Rpc.make(WS_METHODS.pullRequestsDetail, {
-  payload: PullRequestRef,
-  success: PullRequestDetail,
-  error: PullRequestRpcError,
-});
-
-const WsPullRequestsPreviewRpc = Rpc.make(WS_METHODS.pullRequestsPreview, {
-  payload: PullRequestRef,
-  success: PullRequestPreview,
-  error: PullRequestRpcError,
-});
-
-const WsPullRequestsChecksRpc = Rpc.make(WS_METHODS.pullRequestsChecks, {
-  payload: PullRequestRef,
-  success: Schema.NullOr(PullRequestChecks),
-  error: PullRequestRpcError,
-});
-
-const WsPullRequestsActivityRpc = Rpc.make(WS_METHODS.pullRequestsActivity, {
-  payload: PullRequestRef,
-  success: PullRequestActivity,
-  error: PullRequestRpcError,
-});
-
-const WsPullRequestsReviewGuideRpc = Rpc.make(WS_METHODS.pullRequestsReviewGuide, {
-  payload: PullRequestRef,
-  success: PullRequestReviewGuideResult,
-  error: PullRequestRpcError,
-});
-
-const WsPullRequestsGenerateReviewGuideRpc = Rpc.make(WS_METHODS.pullRequestsGenerateReviewGuide, {
-  payload: PullRequestRef,
-  success: PullRequestReviewGuideResult,
-  error: PullRequestRpcError,
-});
-
-const WsPullRequestsThreadCommentsRpc = Rpc.make(WS_METHODS.pullRequestsThreadComments, {
-  payload: PullRequestThreadCommentsInput,
-  success: PullRequestThreadCommentsResult,
-  error: PullRequestRpcError,
-});
-
-const WsPullRequestsDiffFileContentsRpc = Rpc.make(WS_METHODS.pullRequestsDiffFileContents, {
-  payload: PullRequestDiffFileContentsInput,
-  success: PullRequestDiffFileContentsResult,
-  error: PullRequestRpcError,
-});
-
-const WsPullRequestsFilesViewedRpc = Rpc.make(WS_METHODS.pullRequestsFilesViewed, {
-  payload: PullRequestRef,
-  success: PullRequestFilesViewedResult,
-  error: PullRequestRpcError,
-});
-
-const WsPullRequestsChangeBreakdownRpc = Rpc.make(WS_METHODS.pullRequestsChangeBreakdown, {
-  payload: PullRequestRef,
-  success: PullRequestChangeBreakdown,
-  error: PullRequestRpcError,
-});
-
-const WsPullRequestsSetFilesViewedRpc = Rpc.make(WS_METHODS.pullRequestsSetFilesViewed, {
-  payload: PullRequestSetFilesViewedInput,
-  success: Schema.Void,
-  error: PullRequestRpcError,
-});
-
-const WsPullRequestsRunActionRpc = Rpc.make(WS_METHODS.pullRequestsRunAction, {
-  payload: PullRequestActionInput,
-  // Undefined unless asked for with replyWithSummary, or when the host's reply lacked it.
-  success: Schema.UndefinedOr(PullRequestSummary),
-  error: PullRequestRpcError,
-});
-
-const WsPullRequestsUpdateRpc = Rpc.make(WS_METHODS.pullRequestsUpdate, {
-  payload: PullRequestUpdateInput,
-  success: Schema.Void,
-  error: PullRequestRpcError,
-});
-
-const WsPullRequestsCommentRpc = Rpc.make(WS_METHODS.pullRequestsComment, {
-  payload: PullRequestCommentInput,
-  success: Schema.Void,
-  error: PullRequestRpcError,
-});
-
-const WsPullRequestsUpdateCommentRpc = Rpc.make(WS_METHODS.pullRequestsUpdateComment, {
-  payload: PullRequestCommentUpdateInput,
-  success: Schema.Void,
-  error: PullRequestRpcError,
-});
-
-const WsPullRequestsSubmitReviewRpc = Rpc.make(WS_METHODS.pullRequestsSubmitReview, {
-  payload: PullRequestSubmitReviewInput,
-  success: Schema.Void,
-  error: PullRequestRpcError,
-});
-
-const WsPullRequestsReplyToThreadRpc = Rpc.make(WS_METHODS.pullRequestsReplyToThread, {
-  payload: PullRequestThreadReplyInput,
-  success: Schema.Void,
-  error: PullRequestRpcError,
-});
-
-const WsPullRequestsSetThreadResolutionRpc = Rpc.make(WS_METHODS.pullRequestsSetThreadResolution, {
-  payload: PullRequestThreadResolutionInput,
-  success: Schema.Void,
-  error: PullRequestRpcError,
-});
-
-const WsPullRequestsSetReactionRpc = Rpc.make(WS_METHODS.pullRequestsSetReaction, {
-  payload: PullRequestReactionInput,
-  success: Schema.Void,
-  error: PullRequestRpcError,
-});
-
-const WsPullRequestsInvalidateRpc = Rpc.make(WS_METHODS.pullRequestsInvalidate, {
-  payload: PullRequestInvalidateInput,
-  success: Schema.Void,
   error: PullRequestRpcError,
 });
 
@@ -893,29 +688,6 @@ const WsPullRequestsSubscribeRefreshesRpc = Rpc.make(WS_METHODS.pullRequestsSubs
 });
 
 // Fetch reviewer candidates only when the menu opens to avoid unused host requests.
-const WsPullRequestsReviewerCandidatesRpc = Rpc.make(WS_METHODS.pullRequestsReviewerCandidates, {
-  payload: PullRequestReviewerCandidatesInput,
-  success: PullRequestReviewerCandidateList,
-  error: PullRequestRpcError,
-});
-
-const WsPullRequestsRequestReviewersRpc = Rpc.make(WS_METHODS.pullRequestsRequestReviewers, {
-  payload: PullRequestReviewerRequestInput,
-  success: Schema.Void,
-  error: PullRequestRpcError,
-});
-
-const WsPullRequestsLabelCandidatesRpc = Rpc.make(WS_METHODS.pullRequestsLabelCandidates, {
-  payload: PullRequestRef,
-  success: PullRequestLabelCandidateList,
-  error: PullRequestRpcError,
-});
-
-const WsPullRequestsSetLabelsRpc = Rpc.make(WS_METHODS.pullRequestsSetLabels, {
-  payload: PullRequestLabelChangeInput,
-  success: Schema.Void,
-  error: PullRequestRpcError,
-});
 
 const WsSourceControlLookupRepositoryRpc = Rpc.make(WS_METHODS.sourceControlLookupRepository, {
   payload: SourceControlRepositoryLookupInput,
@@ -1529,40 +1301,12 @@ export const WsRpcGroup = RpcGroup.make(
   WsServerReportClientActivityRpc,
   WsCloudGetRelayClientStatusRpc,
   WsCloudInstallRelayClientRpc,
-  WsPullRequestsListRpc,
-  WsPullRequestsListStatsRpc,
-  WsPullRequestsFilterOptionsRpc,
   WsPullRequestsSummaryRpc,
   WsPullRequestsRoutingRpc,
   WsPullRequestsRoutingIdentityRpc,
-  WsPullRequestsStackRpc,
   WsPullRequestsLinkedThreadsRpc,
-  WsPullRequestsDetailRpc,
-  WsPullRequestsPreviewRpc,
-  WsPullRequestsChecksRpc,
-  WsPullRequestsActivityRpc,
-  WsPullRequestsReviewGuideRpc,
-  WsPullRequestsGenerateReviewGuideRpc,
-  WsPullRequestsThreadCommentsRpc,
-  WsPullRequestsDiffFileContentsRpc,
-  WsPullRequestsFilesViewedRpc,
-  WsPullRequestsChangeBreakdownRpc,
-  WsPullRequestsSetFilesViewedRpc,
-  WsPullRequestsRunActionRpc,
-  WsPullRequestsUpdateRpc,
-  WsPullRequestsCommentRpc,
-  WsPullRequestsUpdateCommentRpc,
-  WsPullRequestsSubmitReviewRpc,
-  WsPullRequestsReplyToThreadRpc,
-  WsPullRequestsSetThreadResolutionRpc,
-  WsPullRequestsSetReactionRpc,
-  WsPullRequestsInvalidateRpc,
   WsPullRequestsReportStateRpc,
   WsPullRequestsSubscribeRefreshesRpc,
-  WsPullRequestsReviewerCandidatesRpc,
-  WsPullRequestsRequestReviewersRpc,
-  WsPullRequestsLabelCandidatesRpc,
-  WsPullRequestsSetLabelsRpc,
   WsSourceControlLookupRepositoryRpc,
   WsSourceControlCloneRepositoryRpc,
   WsSourceControlPublishRepositoryRpc,

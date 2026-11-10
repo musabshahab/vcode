@@ -79,8 +79,7 @@ branch name remains.
 ## Defaults and inheritance
 
 Threads contains the model and workspace for new threads. Browser controls agent browser
-access. Source control contains automatic pull, the default pull request merge method and text
-generation. The same rows edit environment defaults or project overrides depending on the
+access. Source control contains automatic pull and text generation. The same rows edit environment defaults or project overrides depending on the
 project crumb.
 
 The Projects category, under Code, holds the project's name, icon, actions,

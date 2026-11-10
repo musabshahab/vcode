@@ -138,7 +138,7 @@ function subscribeSharedWorkerPool(onStoreChange: () => void) {
   };
 }
 
-export function useDiffWorkerPool() {
+function useDiffWorkerPool() {
   return useSyncExternalStore(
     subscribeSharedWorkerPool,
     () => sharedWorkerPool?.pool,

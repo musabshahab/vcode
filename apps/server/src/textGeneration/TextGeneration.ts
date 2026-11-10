@@ -28,8 +28,6 @@ export type {
   CommitMessageGenerationResult,
   PrContentGenerationInput,
   PrContentGenerationResult,
-  ReviewGuideGenerationInput,
-  ReviewGuideGenerationResult,
   ThreadTitleGenerationInput,
   ThreadTitleGenerationResult,
 } from "@t3tools/provider-core/server/textGeneration";
@@ -42,8 +40,7 @@ type TextGenerationOp =
   | "generateCommitMessage"
   | "generatePrContent"
   | "generateBranchName"
-  | "generateThreadTitle"
-  | "generateReviewGuide";
+  | "generateThreadTitle";
 
 const resolveInstance = (
   registry: ProviderInstanceRegistry.ProviderInstanceRegistry["Service"],
@@ -63,9 +60,6 @@ const resolveInstance = (
     ),
   );
 
-// Review guides investigate the checkout read-only; the other drivers reject that request.
-const INVESTIGATING_DRIVERS = new Set(["codex", "claudeAgent"]);
-
 /** @public */
 export const make = Effect.gen(function* () {
   const registry = yield* ProviderInstanceRegistry.ProviderInstanceRegistry;
@@ -81,11 +75,7 @@ export const make = Effect.gen(function* () {
     ) => Effect.Effect<A, TextGenerationError>,
   ) {
     const textGenerator = yield* textGenerators.runner(selection.instanceId);
-    // A review guide reaches a text generator only through a fallback; it needs an agent instead.
-    const textGeneratorId = selection.instanceId;
-    const textGeneratorCannotRun =
-      textGenerator !== undefined && operation === "generateReviewGuide";
-    if (textGenerator !== undefined && !textGeneratorCannotRun) {
+    if (textGenerator !== undefined) {
       return yield* invoke(
         TextGenerationOperations.fromRunner("TextGenerator", textGenerator),
         selection,
@@ -100,10 +90,9 @@ export const make = Effect.gen(function* () {
     const selected = snapshots.find((provider) => provider.instanceId === selection.instanceId);
     // Only a failed probe counts: a pending one is also not installed yet.
     const unusable =
-      textGeneratorCannotRun ||
-      (selected?.enabled === true &&
-        selected.status === "error" &&
-        (!selected.installed || selected.auth.status === "unauthenticated"));
+      selected?.enabled === true &&
+      selected.status === "error" &&
+      (!selected.installed || selected.auth.status === "unauthenticated");
     if (unusable || exhaustedUsageWindow(selected, now)) {
       const settings = yield* serverSettings.getSettings.pipe(
         Effect.mapError(
@@ -118,7 +107,7 @@ export const make = Effect.gen(function* () {
       selection =
         fallbackTextGenerationModelSelection(
           settings.providerInstances,
-          (instanceId, driver) => {
+          (instanceId) => {
             const provider = snapshots.find((candidate) => candidate.instanceId === instanceId);
             return (
               instanceId !== selection.instanceId &&
@@ -129,19 +118,11 @@ export const make = Effect.gen(function* () {
               provider.status !== "error" &&
               isProviderAvailable(provider) &&
               isProviderTextGenerationCapable(provider) &&
-              (operation !== "generateReviewGuide" || INVESTIGATING_DRIVERS.has(driver)) &&
               !exhaustedUsageWindow(provider, now)
             );
           },
           { includeConfiguredInstances: true },
         ) ?? selection;
-    }
-    if (textGeneratorCannotRun && selection.instanceId === textGeneratorId) {
-      return yield* new TextGenerationError({
-        operation,
-        detail:
-          "Review guides need a coding agent that can read the checkout. None is ready. Pick Codex or Claude as the review guide model in Settings → Source control.",
-      });
     }
     return yield* resolveInstance(registry, operation, selection.instanceId).pipe(
       Effect.flatMap((service) => invoke(service, selection)),
@@ -161,11 +142,6 @@ export const make = Effect.gen(function* () {
     generateBranchName: Effect.fn("TextGeneration.generateBranchName")(function (input) {
       return generate("generateBranchName", input.modelSelection, (service, modelSelection) =>
         service.generateBranchName({ ...input, modelSelection }),
-      );
-    }),
-    generateReviewGuide: Effect.fn("TextGeneration.generateReviewGuide")(function (input) {
-      return generate("generateReviewGuide", input.modelSelection, (service, modelSelection) =>
-        service.generateReviewGuide({ ...input, modelSelection }),
       );
     }),
     generateThreadTitle: Effect.fn("TextGeneration.generateThreadTitle")(function (input) {

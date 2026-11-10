@@ -2,7 +2,6 @@ import { ThreadDetailsControl } from "./chat/ThreadDetailsControl";
 import { ComposerContextLabel } from "./ComposerContextLabel";
 import { useSupportsMultiplePullRequests } from "~/hooks/useSupportsMultiplePullRequests";
 import { resolveThreadCurrentPullRequestLink } from "@t3tools/client-runtime/thread-pull-requests";
-import { useRightPanelStore } from "../rightPanelStore";
 import { scopeProjectRef, scopeThreadRef } from "@t3tools/client-runtime/environment";
 import {
   isAtomCommandInterrupted,
@@ -698,7 +697,6 @@ export function BranchToolbarBranchSelector({
             number={prNumber}
             url={prUrl}
             status={displayedPrStatus}
-            onOpenList={() => useRightPanelStore.getState().open(threadRef, "pull-requests")}
             onOpenPullRequest={(event, targetUrl = prUrl) => {
               if (targetUrl) openPrLink(event, targetUrl);
             }}
@@ -741,16 +739,12 @@ export function BranchToolbarBranchSelector({
             links={serverThread?.pullRequests ?? []}
             currentLink={currentLinkedPr}
             onOpenLink={openPrLink}
-            environmentId={environmentId}
             pr={displayedPr}
             number={prNumber}
-            reference={currentLinkedPr}
             status={displayedPrStatus}
-            project={activeProject}
             label={panelPrLabel}
             openAriaLabel={prUrl ?? `Open ${sourceControlPresentation.terminology.singular}`}
             onOpen={(event) => openPrLink(event, prUrl)}
-            onActed={() => branchStatusQuery.refresh()}
           />
         ) : null}
       </div>
