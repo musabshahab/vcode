@@ -56,6 +56,7 @@ import {
   type ComposerSubmissionIntent,
   collapseExpandedComposerCursor,
 } from "../../composer-logic";
+import { isFeatureHidden } from "../../edition";
 import { type ChatMessage, DEFAULT_INTERACTION_MODE } from "../../types";
 import { recordPromptSent } from "../GitHubStarPrompt";
 import { stackedThreadToast, toastManager } from "../ui/toast";
@@ -1312,7 +1313,7 @@ export function useComposerSend(input: ComposerSendInput) {
         ) {
           handleNewThreadInActiveProject();
         }
-        void recordPromptSent(environmentId);
+        if (!isFeatureHidden("upstreamPrompts")) void recordPromptSent(environmentId);
       }
     }
 

@@ -46,6 +46,7 @@ import { searchableSetting, sourceControlHostSettingsSearchId } from "./settings
 import { PullRequestGlyph } from "~/components/pullRequest/pullRequestIcons";
 import { sourceControlClients } from "@t3tools/client-runtime/source-control-clients";
 import { sourceControlIcon } from "~/sourceControlPresentation";
+import { isFeatureHidden } from "../../edition";
 
 const EMPTY_DISCOVERY_RESULT: SourceControlDiscoveryResult = {
   versionControlSystems: [],
@@ -381,7 +382,15 @@ export function SourceControlSettingsPanel() {
           input: {},
         }),
   );
-  const result = discovery.data ?? EMPTY_DISCOVERY_RESULT;
+  const found = discovery.data ?? EMPTY_DISCOVERY_RESULT;
+  const result = isFeatureHidden("otherSourceControlHosts")
+    ? {
+        ...found,
+        sourceControlProviders: found.sourceControlProviders.filter(
+          (item) => item.kind === "github",
+        ),
+      }
+    : found;
   const hasVersionControlSystems = result.versionControlSystems.length > 0;
   const hasDiscoveryItems = hasVersionControlSystems || result.sourceControlProviders.length > 0;
   const isInitialScanPending = discovery.isPending && discovery.data === null;

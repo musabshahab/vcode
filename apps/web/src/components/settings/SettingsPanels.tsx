@@ -43,6 +43,7 @@ import {
 } from "../../components/desktopUpdate.logic";
 import { ProviderModelPicker } from "../chat/ProviderModelPicker";
 import { TraitsPicker } from "../chat/TraitsPicker";
+import { isFeatureHidden } from "../../edition";
 import { isElectron } from "../../env";
 import { buildHostedChannelSelectionUrl, type HostedAppChannel } from "../../hostedPairing";
 import {
@@ -2095,7 +2096,7 @@ export function AboutSettingsPanel() {
             />
           </>
         )}
-        <MobileAppSettingsRow />
+        {isFeatureHidden("mobileApp") ? null : <MobileAppSettingsRow />}
         {primaryEnvironmentId === null ? null : (
           <SettingsRow
             {...searchableSetting("welcome-page")}
@@ -2110,23 +2111,25 @@ export function AboutSettingsPanel() {
       </SettingsSection>
 
       <SettingsSection id="legal" title="Legal">
-        <SettingsRow
-          {...searchableSetting("privacy-policy")}
-          description={
-            telemetryOff === undefined
-              ? "How we handle your data, including the anonymous usage data T3 Code collects."
-              : `How we handle your data. ${telemetryOff}`
-          }
-          control={
-            <Button
-              render={<a href={PRIVACY_POLICY_URL} target="_blank" rel="noreferrer noopener" />}
-              size="sm"
-              variant="outline"
-            >
-              View policy
-            </Button>
-          }
-        />
+        {isFeatureHidden("upstreamPrompts") ? null : (
+          <SettingsRow
+            {...searchableSetting("privacy-policy")}
+            description={
+              telemetryOff === undefined
+                ? "How we handle your data, including the anonymous usage data T3 Code collects."
+                : `How we handle your data. ${telemetryOff}`
+            }
+            control={
+              <Button
+                render={<a href={PRIVACY_POLICY_URL} target="_blank" rel="noreferrer noopener" />}
+                size="sm"
+                variant="outline"
+              >
+                View policy
+              </Button>
+            }
+          />
+        )}
         <SettingsRow
           {...searchableSetting("open-source-licenses")}
           description="Notices for dependencies, assets, and optional tools used by T3 Code."

@@ -41,6 +41,7 @@ import { useEffect, useEffectEvent, useRef, useState, type ReactNode } from "rea
 
 import { TYPOGRAPHY_ADVANCED_STORAGE_KEY } from "../../appearanceFonts";
 import { MOBILE_APP_URL } from "../../branding";
+import { isFeatureHidden } from "../../edition";
 import { isElectron } from "../../env";
 import { useLocalStorage } from "../../hooks/useLocalStorage";
 import { usePersistEnvironmentProviderInstanceMutation } from "../../hooks/useSettings";
@@ -315,7 +316,9 @@ export function WelcomePage({
                 </Button>
               </div>
             </div>
-            <TelemetryNotice environmentId={environmentId} />
+            {isFeatureHidden("upstreamPrompts") ? null : (
+              <TelemetryNotice environmentId={environmentId} />
+            )}
           </div>
         </div>
       </div>

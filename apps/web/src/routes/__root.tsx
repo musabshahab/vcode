@@ -60,6 +60,7 @@ import { readProject } from "../state/entities";
 
 import { getDesktopSnapShotBridge } from "../lib/desktopSnapShot";
 import { shouldResumeSnapShotSetupOnStartup } from "../lib/snapShotSetupResume";
+import { isFeatureHidden } from "../edition";
 
 export const Route = createRootRoute({
   beforeLoad: async ({ location }) => {
@@ -96,6 +97,7 @@ export const Route = createRootRoute({
     }
     if (
       authGateState.status === "authenticated" &&
+      !isFeatureHidden("snapShot") &&
       getDesktopSnapShotBridge() &&
       shouldResumeSnapShotSetupOnStartup() &&
       location.pathname !== "/settings/snap-shot"
@@ -182,7 +184,7 @@ function RootRouteBranch() {
       <RelayClientInstallDialog />
       <ConnectOnboardingDialog />
       <SshPasswordPromptDialog />
-      <SnapShotCoordinator />
+      {isFeatureHidden("snapShot") ? null : <SnapShotCoordinator />}
       <ReopenClosedViewShortcut />
       <ConfirmDialogHost />
       <CustomSnoozeDialogHost />

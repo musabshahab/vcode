@@ -270,6 +270,7 @@ import { ComposerControlsBar } from "./ComposerControlsBar";
 import { composerCommandKeyHandler } from "./composerCommandKey";
 import { usePromptSuggestion } from "./usePromptSuggestion";
 import { useFreshSessionArmed } from "./freshSessionArms";
+import { isFeatureHidden } from "../../edition";
 
 function consumePasteAsTextShortcut(deadline: { current: number }): boolean {
   const armed = Date.now() <= deadline.current;
@@ -3609,7 +3610,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                     keepFullHistory={props.keepFullHistory}
                     onToggleKeepFullHistory={props.onToggleKeepFullHistory}
                   >
-                    {speechInput.available ? (
+                    {speechInput.available && !isFeatureHidden("voice") ? (
                       <>
                         <ComposerSpeechRecordingPill
                           state={speechInput.state}

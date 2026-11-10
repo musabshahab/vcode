@@ -138,6 +138,7 @@ import {
   SavedBackendListRow,
 } from "./SavedEnvironmentRows";
 import { AddEnvironmentDialog } from "./AddEnvironmentDialog";
+import { isFeatureHidden } from "../../edition";
 
 const DEFAULT_TAILSCALE_SERVE_PORT = 443;
 const EMPTY_ADVERTISED_ENDPOINTS: ReadonlyArray<AdvertisedEndpoint> = [];
@@ -1641,7 +1642,7 @@ function ConnectionsSettingsContent({
           }}
         />
       ) : null}
-      {peerLinkHosts.map((environment, index) => (
+      {(isFeatureHidden("linkedEnvironments") ? [] : peerLinkHosts).map((environment, index) => (
         <LinkedEnvironmentsSettings
           key={environment.environmentId}
           environmentId={environment.environmentId}
@@ -1649,7 +1650,9 @@ function ConnectionsSettingsContent({
           isSearchTarget={index === 0}
         />
       ))}
-      <LoadBalancingSettings environments={loadBalancingEnvironments} />
+      {isFeatureHidden("linkedEnvironments") ? null : (
+        <LoadBalancingSettings environments={loadBalancingEnvironments} />
+      )}
       <PullRequestRoutingSettings environments={loadBalancingEnvironments} />
     </SettingsPageContainer>
   );
