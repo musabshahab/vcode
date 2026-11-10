@@ -10,8 +10,7 @@ import {
 
 import { sourceControlClients } from "@t3tools/client-runtime/source-control-clients";
 
-import { canOpenLinksInApp } from "../browser/browserLinkTarget";
-import { useOpenLink } from "../browser/useOpenLink";
+import { openExternalLink } from "./openExternalLink";
 import { useClientSettings } from "../hooks/useSettings";
 import { stackedThreadToast, toastManager } from "../components/ui/toast";
 import { selectActiveRightPanel, useRightPanelStore } from "../rightPanelStore";
@@ -64,12 +63,10 @@ export function useOpenChangeRequestLink(
   const primaryEnvironmentId = usePrimaryEnvironmentId();
   const openInApp = useClientSettings((settings) => settings.pullRequestLinksOpenInApp);
   const ignoreWhitespace = useClientSettings((settings) => settings.diffIgnoreWhitespace);
-  const browserLinkTarget = useClientSettings((settings) => settings.browserLinkTarget);
   const readDiffPreview = useAtomQueryRunner(reviewEnvironment.diffPreview, {
     reportFailure: false,
     refresh: true,
   });
-  const openLink = useOpenLink(threadRef);
   return (event, targetUrl, targetThreadRef, targetEnvironmentId, onCommitUnavailable) => {
     if (!openInApp || shouldOpenPullRequestExternally(event)) return false;
     const resolvedThreadRef = targetThreadRef ?? threadRef;
@@ -195,10 +192,7 @@ export function useOpenChangeRequestLink(
           if (openPullRequest()) return;
           if (onCommitUnavailable) return onCommitUnavailable();
           // A popup opened after the lookup has lost the click's activation, so browsers block it.
-          if (
-            window.desktopBridge === undefined &&
-            (browserLinkTarget !== "app" || !canOpenLinksInApp(resolvedThreadRef))
-          ) {
+          if (window.desktopBridge === undefined) {
             const toastId = toastManager.add(
               stackedThreadToast({
                 type: "info",
@@ -214,10 +208,7 @@ export function useOpenChangeRequestLink(
             );
             return;
           }
-          return openLink(targetUrl, {
-            event: { metaKey: event.metaKey, ctrlKey: event.ctrlKey, button: event.button },
-            threadRef: resolvedThreadRef,
-          });
+          return openExternalLink(targetUrl);
         })
         .catch((error: unknown) => console.error(error));
       return true;
@@ -231,7 +222,6 @@ export function useOpenChangeRequestLink(
 
 export function useOpenPrLink(threadRef?: ScopedThreadRef) {
   const openChangeRequest = useOpenChangeRequestLink(threadRef);
-  const openLink = useOpenLink(threadRef);
   return (event: MouseEvent<HTMLElement>, prUrl: string, targetThreadRef?: ScopedThreadRef) => {
     if (event.button > 1) return false;
     event.stopPropagation();
@@ -244,7 +234,7 @@ export function useOpenPrLink(threadRef?: ScopedThreadRef) {
     event.preventDefault();
     if (!openInBrowser && openChangeRequest(event, prUrl, targetThreadRef)) return true;
 
-    void openLink(prUrl, { event, threadRef: targetThreadRef }).catch((error: unknown) => {
+    void openExternalLink(prUrl).catch((error: unknown) => {
       console.error(error);
       toastManager.add(
         stackedThreadToast({

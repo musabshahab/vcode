@@ -493,7 +493,6 @@ const cleanupFixture = (
           ...settings,
           storageCleanup: {
             ...settings.storageCleanup,
-            browserArtifactsAfterDays: 8,
             logsAfterDays: 8,
           },
         };
@@ -2678,19 +2677,13 @@ describe("storage cleanup reports and local file policies", () => {
       }),
     ),
   );
-  it.live("aggregates expired artifacts and rotated logs while retaining current logs", () =>
+  it.live("removes rotated logs while retaining current logs", () =>
     runCleanupTest(
       Effect.gen(function* () {
         const { service, fs, config, enableFiles, disable } = yield* cleanupFixture();
         disable();
         enableFiles();
-        yield* fs.makeDirectory(config.browserArtifactsDir, { recursive: true });
         yield* fs.makeDirectory(config.logsDir, { recursive: true });
-        for (const name of ["one.png", "two.webm"]) {
-          const file = config.browserArtifactsDir + "/" + name;
-          yield* fs.writeFileString(file, "capture");
-          yield* fs.utimes(file, 1, 1);
-        }
         for (const name of ["server.log.1", "server.log.2", "server.log"]) {
           const file = config.logsDir + "/" + name;
           yield* fs.writeFileString(file, "log");
@@ -2699,13 +2692,6 @@ describe("storage cleanup reports and local file policies", () => {
         const report = yield* service.runNow;
         expect(report.entries.filter((entry) => entry.kind !== "worktree")).toMatchObject([
           {
-            kind: "browser-artifacts",
-            outcome: "removed",
-            reason: "Removed 2 browser artifacts",
-            bytes: 14,
-            files: 2,
-          },
-          {
             kind: "logs",
             outcome: "removed",
             reason: "Removed 2 rotated logs",
@@ -2713,8 +2699,7 @@ describe("storage cleanup reports and local file policies", () => {
             files: 2,
           },
         ]);
-        expect(report.bytesFreed).toBe(20);
-        expect(yield* fs.readDirectory(config.browserArtifactsDir)).toEqual([]);
+        expect(report.bytesFreed).toBe(6);
         expect(yield* fs.exists(config.logsDir + "/server.log")).toBe(true);
         expect(yield* fs.exists(config.logsDir + "/server.log.1")).toBe(false);
         expect(yield* fs.exists(config.logsDir + "/server.log.2")).toBe(false);
@@ -2766,11 +2751,7 @@ describe("storage cleanup reports and local file policies", () => {
         const report = yield* service.runNow;
         expect(report.entries[0]).toMatchObject({ outcome: "failed" });
         expect(report.entries[0]?.reason).toContain("git worktree remove: fatal:");
-        expect(report.entries.map((entry) => entry.kind)).toEqual([
-          "worktree",
-          "browser-artifacts",
-          "logs",
-        ]);
+        expect(report.entries.map((entry) => entry.kind)).toEqual(["worktree", "logs"]);
       }),
     ),
   );

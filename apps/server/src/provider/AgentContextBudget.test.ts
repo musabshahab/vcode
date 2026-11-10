@@ -13,7 +13,6 @@ import { ServerConfig } from "../config.ts";
 import { ServerEnvironment } from "../environment/ServerEnvironment.ts";
 import { GitWorkflowService } from "../git/GitWorkflowService.ts";
 import * as McpHttpServer from "../mcp/McpHttpServer.ts";
-import { PreviewAutomationBroker } from "../mcp/PreviewAutomationBroker.ts";
 import {
   CLAUDE_PROVIDER,
   makeClaudeQueryOptions,
@@ -23,8 +22,6 @@ import { ProviderAdapterRegistryV2 } from "../orchestration-v2/ProviderAdapterRe
 import { ThreadLaunchService } from "../orchestration-v2/ThreadLaunchService.ts";
 import { ThreadManagementService } from "../orchestration-v2/ThreadManagementService.ts";
 import { ThreadSearch } from "../orchestration-v2/ThreadSearch.ts";
-import { PreviewManager } from "../preview/Manager.ts";
-import { PreviewBrowser } from "../preview/PreviewBrowser.ts";
 import { ManagedProjectFolders } from "../project/ManagedProjectFolders.ts";
 import { ProjectCloneTracker } from "../project/ProjectCloneTracker.ts";
 import { ProjectService } from "../project/ProjectService.ts";
@@ -49,9 +46,6 @@ const toolHandlerServices = Layer.mergeAll(
   Layer.mock(ManagedProjectFolders)({ namedProjectsRoot: "" }),
   Layer.mock(McpProviderSessions)({}),
   Layer.mock(OrchestratorV2)({}),
-  Layer.mock(PreviewAutomationBroker)({}),
-  Layer.mock(PreviewBrowser)({}),
-  Layer.mock(PreviewManager)({}),
   Layer.mock(ProjectCloneTracker)({}),
   Layer.mock(ProjectService)({}),
   Layer.mock(ProjectSetupScriptRunner)({}),
@@ -88,10 +82,11 @@ const claudeSystemAppend = () => {
 
 const codexAdditionalContext = () =>
   Object.values(
-    buildCodexAdditionalContext(
-      { model: "gpt-6.1-sol", modelName: "GPT-6.1 Sol", reasoningEffort: "high" },
-      true,
-    ),
+    buildCodexAdditionalContext({
+      model: "gpt-6.1-sol",
+      modelName: "GPT-6.1 Sol",
+      reasoningEffort: "high",
+    }),
   )
     .map((entry) => entry.value)
     .join("");

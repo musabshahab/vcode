@@ -109,7 +109,6 @@ describe("serverSettings helpers", () => {
       worktreeOnDelete: false,
       worktreeUnchanged: false,
       worktreeKeepWhen: "uncommitted-changes",
-      browserArtifactsAfterDays: null,
       logsAfterDays: 30,
     });
   });
@@ -229,31 +228,21 @@ describe("serverSettings helpers", () => {
     const firstUpdate = applyServerSettingsPatch(DEFAULT_SERVER_SETTINGS, {
       defaultAutoPull: true,
       projectAutoPullOverrides: { [firstProjectId]: false },
-      projectAgentBrowserAccessOverrides: { [firstProjectId]: false },
     });
     const secondUpdate = applyServerSettingsPatch(firstUpdate, {
       projectAutoPullOverrides: { [secondProjectId]: false },
-      projectAgentBrowserAccessOverrides: { [secondProjectId]: false },
     });
     expect(secondUpdate.projectAutoPullOverrides).toEqual({
-      [firstProjectId]: false,
-      [secondProjectId]: false,
-    });
-    expect(secondUpdate.projectAgentBrowserAccessOverrides).toEqual({
       [firstProjectId]: false,
       [secondProjectId]: false,
     });
 
     const reset = applyServerSettingsPatch(secondUpdate, {
       projectAutoPullOverrides: { [firstProjectId]: null },
-      projectAgentBrowserAccessOverrides: { [firstProjectId]: null },
     });
     expect(reset.projectAutoPullOverrides[firstProjectId]).toBeUndefined();
-    expect(reset.projectAgentBrowserAccessOverrides[firstProjectId]).toBeUndefined();
     expect(reset.projectAutoPullOverrides[secondProjectId]).toBe(false);
-    expect(reset.projectAgentBrowserAccessOverrides[secondProjectId]).toBe(false);
     expect(secondUpdate.projectAutoPullOverrides[firstProjectId]).toBe(false);
-    expect(secondUpdate.projectAgentBrowserAccessOverrides[firstProjectId]).toBe(false);
   });
 
   it("parses lenient persisted settings JSON and trims observability URLs", () => {

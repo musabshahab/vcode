@@ -68,7 +68,6 @@ import * as ProviderReplayHarness from "../testkit/ProviderReplayHarness.ts";
 import * as ProviderAdapter from "@t3tools/provider-core/server/ProviderAdapter";
 import type * as ProviderContinuationRequests from "@t3tools/provider-core/server/ProviderContinuationRequests";
 import * as ModelManifest from "../../provider/ModelManifest.ts";
-import * as PortScanner from "../../preview/PortScanner.ts";
 import { resolveProviderCompatibility } from "../../provider/providerCompatibility.ts";
 import * as CodexAdapterV2 from "./CodexAdapterV2.ts";
 import { withCodexReplayChildMetadata } from "./CodexAdapterV2.testkit.ts";
@@ -457,11 +456,6 @@ const CODEX_TEST_RUNTIME_POLICY = ProviderAdapter.ProviderAdapterV2RuntimePolicy
   interactionMode: "default",
   cwd: "/workspace",
 });
-const T3_THREAD_ENV_KEY = "shell_environment_policy.set.T3CODE_THREAD_ID";
-const threadEnvOf = (params: unknown) =>
-  Predicate.hasProperty(params, "config") && Predicate.hasProperty(params.config, T3_THREAD_ENV_KEY)
-    ? params.config[T3_THREAD_ENV_KEY]
-    : undefined;
 
 function makeCodexTestAppThread(input: {
   readonly threadId: ThreadId;
@@ -852,66 +846,6 @@ describe("CodexAdapterV2 process exit", () => {
       ),
     ),
   );
-
-  it.effect("counts the app-server as a running agent until its session closes", () => {
-    let runningAgents = 0;
-    const factoryLayer = CodexAdapterV2.layerAppServerClientFactory.pipe(
-      Layer.provide(
-        Layer.mock(PortScanner.PortDiscovery)({
-          trackAgent: () => {
-            runningAgents += 1;
-            return () => {
-              runningAgents -= 1;
-            };
-          },
-        }),
-      ),
-      Layer.provide(
-        Layer.succeed(ProviderEventLoggers.ProviderEventLoggers, {
-          native: undefined,
-          canonical: undefined,
-        }),
-      ),
-      Layer.provide(
-        Layer.succeed(
-          ChildProcessSpawner.ChildProcessSpawner,
-          ChildProcessSpawner.make(() =>
-            Effect.succeed(
-              ChildProcessSpawner.makeHandle({
-                pid: ChildProcessSpawner.ProcessId(999_999_999),
-                exitCode: Effect.never,
-                isRunning: Effect.succeed(true),
-                kill: () => Effect.void,
-                unref: Effect.succeed(Effect.void),
-                stdin: Sink.drain,
-                stdout: Stream.never,
-                stderr: Stream.empty,
-                all: Stream.empty,
-                getInputFd: () => Sink.drain,
-                getOutputFd: () => Stream.empty,
-              }),
-            ),
-          ),
-        ),
-      ),
-    );
-    return Effect.gen(function* () {
-      const factory = yield* CodexAdapterV2.CodexAppServerClientFactory;
-      yield* Effect.scoped(
-        factory
-          .open({
-            instanceId: CodexAdapterV2.CODEX_DEFAULT_INSTANCE_ID,
-            threadId: ThreadId.make("thread-codex-agent"),
-            providerSessionId: ProviderSessionId.make("session-codex-agent"),
-            runtimePolicy: CODEX_TEST_RUNTIME_POLICY,
-            settings: DEFAULT_CODEX_SETTINGS,
-            environment: {},
-          })
-          .pipe(Effect.tap(() => Effect.sync(() => assert.equal(runningAgents, 1)))),
-      );
-      assert.equal(runningAgents, 0);
-    }).pipe(Effect.provide(factoryLayer));
-  });
 });
 
 describe("CodexAdapterV2 session initialize", () => {
@@ -1567,7 +1501,6 @@ describe("CodexAdapterV2 post-settle continuation", () => {
         providerInstanceId: ProviderInstanceId.make("codex"),
         endpoint: "http://127.0.0.1:43123/mcp",
         authorizationHeader: "Bearer secret-codex-token",
-        browserToolsAvailable: true,
       });
       const requests: Array<unknown> = [];
       yield* makeCodexReplayHarness(
@@ -1593,7 +1526,6 @@ describe("CodexAdapterV2 post-settle continuation", () => {
             "tools.update_plan.enabled": true,
             mcp_optional_startup_grace_ms: 10_000,
             "features.concurrent_reasoning_summaries": true,
-            "shell_environment_policy.set.T3CODE_THREAD_ID": `thread-${scenario}`,
             "mcp_servers.t3-code": {
               url: "http://127.0.0.1:43123/mcp",
               tool_timeout_sec: 3_900,
@@ -2433,7 +2365,6 @@ describe("CodexAdapterV2 post-settle continuation", () => {
           providerInstanceId: ProviderInstanceId.make("codex"),
           endpoint: "http://127.0.0.1:43123/mcp",
           authorizationHeader: "Bearer test",
-          browserToolsAvailable: true,
         });
         yield* harness.runtime.startTurn(
           makeCodexTestTurnInput({
@@ -2871,15 +2802,7 @@ describe("CodexAdapterV2 post-settle continuation", () => {
             },
           ],
         });
-        const resumeThreadEnvs: Array<unknown> = [];
-        const harness = yield* makeCodexReplayHarness(
-          transcript,
-          () => Effect.void,
-          (method, params) =>
-            Effect.sync(() => {
-              if (method === "thread/resume") resumeThreadEnvs.push(threadEnvOf(params));
-            }),
-        );
+        const harness = yield* makeCodexReplayHarness(transcript);
         const resumed = yield* harness.runtime.resumeThread({
           providerThread: harness.providerThread,
           modelSelection: CODEX_TEST_MODEL_SELECTION,
@@ -2901,7 +2824,6 @@ describe("CodexAdapterV2 post-settle continuation", () => {
         assert.equal(resumed.nativeThreadRef?.nativeId, nativeThreadId);
         assert.equal(resumed.status, "idle");
         assert.equal(DateTime.toEpochMillis(resumed.updatedAt), 1782622450000);
-        assert.deepEqual(resumeThreadEnvs, [harness.threadId, undefined, explicitThreadId]);
       }).pipe(
         Effect.provide(
           Layer.mergeAll(
@@ -8203,14 +8125,12 @@ describe("CodexAdapterV2 post-settle continuation", () => {
           ],
         });
         const outbound: Array<string> = [];
-        const forkThreadEnvs: Array<unknown> = [];
         const harness = yield* makeCodexReplayHarness(
           transcript,
           () => Effect.void,
-          (method, params) =>
+          (method) =>
             Effect.sync(() => {
               outbound.push(method);
-              if (method === "thread/fork") forkThreadEnvs.push(threadEnvOf(params));
             }),
         );
         const now = yield* DateTime.now;
@@ -8240,7 +8160,6 @@ describe("CodexAdapterV2 post-settle continuation", () => {
         assert.notEqual(forkedProviderThread.id, harness.providerThread.id);
         assert.equal(forkedProviderThread.forkedFrom?.providerTurnId, firstTurn.id);
         assert.deepEqual(outbound.slice(-2), ["thread/turns/list", "thread/revert"]);
-        assert.deepEqual(forkThreadEnvs, ["thread-fork-paginated-fallback-target"]);
       }).pipe(
         Effect.scoped,
         Effect.provide(

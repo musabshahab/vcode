@@ -29,10 +29,6 @@ const DEFINITIONS = [
     capabilities: { details: "popover", expanded: "none", defaultDraftView: "compact" },
   },
   {
-    kind: "preview-annotation",
-    capabilities: { details: "popover", expanded: "modal", defaultDraftView: "compact" },
-  },
-  {
     kind: "review-comment",
     capabilities: { details: "popover", expanded: "none", defaultDraftView: "compact" },
   },

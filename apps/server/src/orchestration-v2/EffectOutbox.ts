@@ -99,9 +99,6 @@ export const OrchestrationEffectRequestV2 = Schema.Union([
     type: Schema.Literal("terminal.cleanup"),
   }),
   Schema.Struct({
-    type: Schema.Literal("preview.cleanup"),
-  }),
-  Schema.Struct({
     type: Schema.Literal("attachment.cleanup"),
     attachmentIds: Schema.Array(Schema.String),
   }),
@@ -125,7 +122,6 @@ export const REPLAY_SAFE_EFFECT_TYPES_AFTER_PROCESS_LOSS = [
   "provider-thread.rollback",
   "checkpoint.capture",
   "terminal.cleanup",
-  "preview.cleanup",
   "attachment.cleanup",
   "thread-title.generate",
   "delegated-tasks.stop",

@@ -237,12 +237,11 @@ describe("persistClientSettingsUpdate", () => {
         durableSettings = settings;
       });
     __setClientSettingsForTests(DEFAULT_CLIENT_SETTINGS);
-    const importedProfile = { id: "profile-import", name: "Imported", kind: "persistent" as const };
 
     const pending = persistClientSettingsUpdate(
       (current) => ({
         ...current,
-        browserProfiles: [...current.browserProfiles, importedProfile],
+        fontFamilyCode: `${current.fontFamilyCode}Imported Mono`,
       }),
       persist,
     );
@@ -255,11 +254,11 @@ describe("persistClientSettingsUpdate", () => {
     expect(persist.mock.calls[1]?.[0]).toMatchObject({
       wordWrap: false,
     });
-    expect(persist.mock.calls[1]?.[0].browserProfiles).toContainEqual(importedProfile);
+    expect(persist.mock.calls[1]?.[0].fontFamilyCode).toBe("Imported Mono");
     expect(durableSettings.wordWrap).toBe(false);
-    expect(durableSettings.browserProfiles).toContainEqual(importedProfile);
+    expect(durableSettings.fontFamilyCode).toBe("Imported Mono");
     expect(getClientSettings().wordWrap).toBe(false);
-    expect(getClientSettings().browserProfiles).toContainEqual(importedProfile);
+    expect(getClientSettings().fontFamilyCode).toBe("Imported Mono");
   });
 });
 

@@ -102,18 +102,6 @@ describe("rightPanelStore", () => {
     expect(useClosedViewStore.getState().entries).toEqual([]);
   });
 
-  it("ignores session tabs without browser snapshots and records the empty browser tab", () => {
-    const store = useRightPanelStore.getState();
-    store.openBrowser(refA, "tab-1");
-    store.closeSurface(refA, "browser:tab-1");
-    expect(useClosedViewStore.getState().entries).toEqual([]);
-    store.openBrowser(refA, null);
-    store.closeSurface(refA, "browser:new");
-    expect(useClosedViewStore.getState().entries).toMatchObject([
-      { kind: "panel-tab", surface: { id: "browser:new", resourceId: null } },
-    ]);
-  });
-
   it("records only closed tabs when a panel is hidden or a terminal tab closes", () => {
     const store = useRightPanelStore.getState();
     store.open(refA, "diff");
@@ -149,14 +137,13 @@ describe("rightPanelStore", () => {
       surface: { id: "pull-requests", kind: "pull-requests" } as const,
     },
   ])(
-    "prioritizes $surface.kind over browser and diff with $order delivery",
+    "prioritizes $surface.kind over a file and diff with $order delivery",
     ({ order, surface }) => {
       const store = useRightPanelStore.getState();
-      store.openBrowser(refA, "existing-browser");
+      store.openFile(refA, "notes.md");
       const revision = store.getUserActionRevision(refA);
       const requests = order === "diff-first" ? [completedDiff, surface] : [surface, completedDiff];
       for (const surface of requests) store.openProactive(refA, surface, revision);
-      store.reconcileBrowserSurfaces(refA, ["existing-browser", "agent-browser"]);
 
       expect(
         selectActiveRightPanelSurface(useRightPanelStore.getState().byThreadKey, refA),
@@ -174,7 +161,7 @@ describe("rightPanelStore", () => {
       choose: () =>
         useRightPanelStore.getState().openPullRequest(refA, { ...linkedPullRequest, number: 41 }),
     },
-    { choice: "browser", choose: () => useRightPanelStore.getState().openBrowser(refA, "tab-a") },
+    { choice: "files", choose: () => useRightPanelStore.getState().open(refA, "files") },
     {
       choice: "terminal",
       choose: () => useRightPanelStore.getState().openTerminal(refA, "term-1"),
@@ -224,7 +211,7 @@ describe("rightPanelStore", () => {
     },
     {
       surface: { id: "pull-requests", kind: "pull-requests" } as const,
-      choose: () => useRightPanelStore.getState().openBrowser(refA, "tab-a"),
+      choose: () => useRightPanelStore.getState().open(refA, "files"),
     },
   ])(
     "preserves the selected tab and hidden panel when $surface.kind already exists",
@@ -379,7 +366,6 @@ describe("rightPanelStore", () => {
     const store = useRightPanelStore.getState();
     store.openFile(refA, "src/app.ts");
     const revision = store.getUserActionRevision(refA);
-    store.reconcileBrowserSurfaces(refA, ["agent-browser"]);
     store.reconcileFileSurfaces(refA, false);
 
     expect(store.openProactive(refA, completedDiff, revision)).toBe(true);
@@ -388,7 +374,7 @@ describe("rightPanelStore", () => {
 
   it("keeps a maximized panel per thread without counting it as a manual choice", () => {
     const store = useRightPanelStore.getState();
-    store.open(refA, "preview");
+    store.open(refA, "files");
     store.open(refB, "diff");
     const revision = store.getUserActionRevision(refA);
     store.setMaximized(refA, true);
@@ -415,13 +401,14 @@ describe("rightPanelStore", () => {
     expect(selectThreadRightPanelState(migrated.byThreadKey, refA).maximized).toBe(true);
   });
 
-  it("drops the legacy singleton terminal surface during migration", () => {
+  it("drops the legacy singleton terminal and retired browser surfaces during migration", () => {
     expect(
       migratePersistedRightPanelState({
         byThreadKey: {
           "env-1:thread-A": {
             activeSurfaceId: "terminal",
             surfaces: [
+              { id: "diff", kind: "diff" },
               { id: "browser:tab-a", kind: "preview", resourceId: "tab-a" },
               { id: "terminal", kind: "terminal" },
             ],
@@ -433,7 +420,7 @@ describe("rightPanelStore", () => {
         "env-1:thread-A": {
           isOpen: false,
           activeSurfaceId: null,
-          surfaces: [{ id: "browser:tab-a", kind: "preview", resourceId: "tab-a" }],
+          surfaces: [{ id: "diff", kind: "diff" }],
         },
       },
       threadPanelVisibilityByThreadKey: {},
@@ -951,12 +938,7 @@ describe("rightPanelStore", () => {
       expect(active?.id).toBe(pullRequestSurfaceId(reference));
       expect(active?.kind === "pull-request" && (active.detailTab ?? "summary")).toBe(tab);
       store.closeSurface(ref, active!.id);
-      await reopenClosedView(useClosedViewStore.getState().entries[0]!, {
-        workspaceAvailable: true,
-        openPreview: () => {
-          throw new Error("A PR tab must not create a browser session");
-        },
-      });
+      reopenClosedView(useClosedViewStore.getState().entries[0]!, { workspaceAvailable: true });
       const reopened = selectActiveRightPanelSurface(
         useRightPanelStore.getState().byThreadKey,
         ref,
@@ -1048,77 +1030,33 @@ describe("rightPanelStore", () => {
   });
 
   it("closing the active surface activates a neighboring surface", () => {
-    useRightPanelStore.getState().openBrowser(refA, "tab-a");
+    useRightPanelStore.getState().open(refA, "diff");
     useRightPanelStore.getState().openTerminal(refA, "term-1");
     useRightPanelStore.getState().closeSurface(refA, "terminal:term-1");
 
     expect(selectActiveRightPanelSurface(useRightPanelStore.getState().byThreadKey, refA)?.id).toBe(
-      "browser:tab-a",
+      "diff",
     );
   });
 
   it("closing surfaces to the right activates the selected surface when active was removed", () => {
-    useRightPanelStore.getState().openBrowser(refA, "tab-a");
+    useRightPanelStore.getState().open(refA, "diff");
     useRightPanelStore.getState().openFile(refA, "src/index.ts");
     useRightPanelStore.getState().openTerminal(refA, "term-1");
 
-    useRightPanelStore.getState().closeSurfacesToRight(refA, "browser:tab-a");
+    useRightPanelStore.getState().closeSurfacesToRight(refA, "diff");
 
     expect(selectThreadRightPanelState(useRightPanelStore.getState().byThreadKey, refA)).toEqual({
       isOpen: true,
-      activeSurfaceId: "browser:tab-a",
-      surfaces: [{ id: "browser:tab-a", kind: "preview", resourceId: "tab-a" }],
+      activeSurfaceId: "diff",
+      surfaces: [{ id: "diff", kind: "diff" }],
     });
   });
 
-  it("does not replace a stale surface with a hidden tab, but preserves explicit opens", () => {
-    const store = useRightPanelStore.getState();
-    store.openBrowser(refA, "stale-tab");
-    store.reconcileBrowserSurfaces(refA, ["hidden-tab"], new Set(["hidden-tab"]));
-    expect(
-      selectThreadRightPanelState(useRightPanelStore.getState().byThreadKey, refA),
-    ).toMatchObject({
-      activeSurfaceId: null,
-      surfaces: [],
-    });
-
-    store.openBrowser(refA, "hidden-tab");
-    store.reconcileBrowserSurfaces(
-      refA,
-      ["hidden-tab", "other-tab"],
-      new Set(["hidden-tab", "other-tab"]),
-    );
-    expect(
-      selectThreadRightPanelState(useRightPanelStore.getState().byThreadKey, refA),
-    ).toMatchObject({
-      isOpen: true,
-      activeSurfaceId: "browser:hidden-tab",
-      surfaces: [{ id: "browser:hidden-tab", kind: "preview", resourceId: "hidden-tab" }],
-    });
-  });
-
-  it("hides the panel when browser reconciliation removes its last session tab", () => {
-    const store = useRightPanelStore.getState();
-    store.openBrowser(refA, "tab-a");
-    store.reconcileBrowserSurfaces(refA, []);
-    expect(selectThreadRightPanelState(useRightPanelStore.getState().byThreadKey, refA)).toEqual({
-      isOpen: false,
-      activeSurfaceId: null,
-      surfaces: [],
-    });
-
-    store.openBrowser(refA, "tab-b");
-    store.open(refA, "diff");
-    store.reconcileBrowserSurfaces(refA, []);
-    expect(
-      selectThreadRightPanelState(useRightPanelStore.getState().byThreadKey, refA),
-    ).toMatchObject({ isOpen: true, activeSurfaceId: "diff" });
-  });
-
-  it("moves a surface to a new index and keeps it there through browser reconciliation", () => {
+  it("moves a surface to a new index without counting it as a manual choice", () => {
     const store = useRightPanelStore.getState();
     store.openTerminal(refA, "term-1");
-    store.openBrowser(refA, "tab-a");
+    store.open(refA, "files");
     store.open(refA, "diff");
     const revision = store.getUserActionRevision(refA);
     const surfaceIds = () =>
@@ -1126,14 +1064,10 @@ describe("rightPanelStore", () => {
         (surface) => surface.id,
       );
 
-    store.moveSurface(refA, "browser:tab-a", 0);
-    expect(surfaceIds()).toEqual(["browser:tab-a", "terminal:term-1", "diff"]);
-    store.moveSurface(refA, "browser:tab-a", 2);
-    expect(surfaceIds()).toEqual(["terminal:term-1", "diff", "browser:tab-a"]);
-    store.moveSurface(refA, "browser:tab-a", 0);
-
-    store.reconcileBrowserSurfaces(refA, ["tab-a", "tab-b"]);
-    expect(surfaceIds()).toEqual(["browser:tab-a", "terminal:term-1", "diff", "browser:tab-b"]);
+    store.moveSurface(refA, "files", 0);
+    expect(surfaceIds()).toEqual(["files", "terminal:term-1", "diff"]);
+    store.moveSurface(refA, "files", 2);
+    expect(surfaceIds()).toEqual(["terminal:term-1", "diff", "files"]);
     expect(store.getUserActionRevision(refA)).toBe(revision);
   });
 });

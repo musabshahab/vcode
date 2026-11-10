@@ -277,7 +277,6 @@ export const make = Effect.gen(function* () {
         ? { serverSelfUpdateProgress: true }
         : {}),
       ...(desktopAppUpdate ? { desktopAppUpdate: true, desktopAppChannelSwitch: true } : {}),
-      serverBrowser: true,
       mcpApprovalCodes: true,
     },
   };

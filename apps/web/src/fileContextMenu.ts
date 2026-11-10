@@ -9,7 +9,7 @@ import { resolveDiffPathForWorkspace } from "./diffFileActions";
 import {
   revealInFileExplorerLabelForKind,
   revealInFileExplorerLabelForOs,
-} from "~/components/preview/fileExplorerLabel";
+} from "~/lib/fileExplorerLabel";
 import { readLocalApi } from "./localApi";
 import { serverEnvironment } from "./state/server";
 import { shellEnvironment } from "./state/shell";

@@ -1,7 +1,6 @@
 import {
   boundAttachmentIds,
   buildExpiredTerminalContextToastCopy,
-  mergeDirectPreviewAnnotation,
   planComposerTurn,
   snapshotComposerSend,
   withMessageContext,
@@ -17,7 +16,6 @@ import {
   EnvironmentId,
   MessageId,
   ProjectId,
-  PROVIDER_SEND_TURN_MAX_ATTACHMENTS,
   ProviderInstanceId,
   ProviderSessionId,
   ProviderThreadId,
@@ -933,40 +931,6 @@ describe("waitForRevertedMessage", () => {
   });
 });
 
-describe("mergeDirectPreviewAnnotation", () => {
-  const annotation = (id: string) =>
-    ({
-      id,
-      pageUrl: "http://localhost:5173/",
-      pageTitle: null,
-      comment: "tighten this",
-      elements: [],
-      regions: [],
-      strokes: [],
-      styleChanges: [],
-      screenshot: {
-        dataUrl: "data:image/png;base64,AAAA",
-        width: 10,
-        height: 10,
-        cropRect: { x: 0, y: 0, width: 10, height: 10 },
-      },
-      createdAt: "2026-10-16T00:00:00.000Z",
-    }) as const;
-  const image = (id: string) =>
-    ({ id, type: "image", name: `${id}.png`, mimeType: "image/png", sizeBytes: 1 }) as never;
-
-  it("drops the screenshot claim when the attachment cap is full", () => {
-    const result = mergeDirectPreviewAnnotation({
-      images: [],
-      fileCount: PROVIDER_SEND_TURN_MAX_ATTACHMENTS,
-      previewAnnotations: [],
-      direct: { annotation: annotation("a"), image: image("crop") },
-    });
-    expect(result.images).toEqual([]);
-    expect(result.previewAnnotations[0]?.screenshot).toBeNull();
-  });
-});
-
 describe("snapshotComposerSend", () => {
   const expired = {
     id: "ctx-expired",
@@ -990,7 +954,6 @@ describe("snapshotComposerSend", () => {
       files: [],
       terminalContexts: [expired, live],
       sendableTerminalContexts: [live],
-      previewAnnotations: [],
       reviewComments: [],
       threadContexts: [],
       environmentContexts: [],

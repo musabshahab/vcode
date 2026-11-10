@@ -55,30 +55,6 @@ const knownRecords: Record<(typeof COMPOSER_CONTEXT_KINDS)[number], Record<strin
     source: { functionName: "Button", fileName: "Button.tsx", lineNumber: 12, columnNumber: 3 },
     styles: "color: red;",
   },
-  "preview-annotation": {
-    ...base,
-    kind: "preview-annotation",
-    label: "Checkout",
-    annotationId: "ann_1",
-    pageUrl: "http://localhost:3000/checkout",
-    pageTitle: "Checkout",
-    comment: "Make this bigger",
-    targetSummary: "1 selected element",
-    styleChanges: ["font-size: 20px"],
-    elements: [
-      {
-        pageUrl: "http://localhost:3000/checkout",
-        pageTitle: "Checkout",
-        tagName: "button",
-        selector: "#pay",
-        htmlPreview: "<button>Pay</button>",
-        componentName: "Button",
-        source: null,
-        styles: "",
-      },
-    ],
-    screenshotContextId: "ctx_2",
-  },
   "review-comment": {
     ...base,
     kind: "review-comment",
@@ -159,26 +135,13 @@ describe("ComposerContextRecord", () => {
 });
 
 describe("OrchestrationMessageContext", () => {
-  it("rejects aggregate context size even when each record is valid", () => {
-    const record = {
-      ...knownRecords["preview-annotation"],
-      styleChangeDetails: Array.from({ length: 200 }, () => ({
-        targetId: "target",
-        selector: null,
-        property: "content",
-        previousValue: "x".repeat(8_000),
-        value: "y".repeat(8_000),
-      })),
-    };
-    expect(Option.isSome(decodeRecord(record))).toBe(true);
+  it("rejects aggregate context size before dropping oversized records", () => {
+    const record = { ...knownRecords.terminal, text: "x".repeat(9_000_000) };
     expect(() => decodeContext({ version: 1, records: [record] })).not.toThrow();
     expect(() =>
       decodeContext({
         version: 1,
-        records: Array.from({ length: 6 }, (_, index) => ({
-          ...record,
-          contextId: `ctx_${index}`,
-        })),
+        records: [record, { ...record, contextId: "ctx_other" }],
       }),
     ).toThrow();
   });

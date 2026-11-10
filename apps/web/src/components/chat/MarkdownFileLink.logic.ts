@@ -1,10 +1,7 @@
 import type { EnvironmentId } from "@t3tools/contracts";
 import { splitFilePathPosition } from "@t3tools/shared/fileLinks";
 
-import {
-  shouldOpenMarkdownFileLinkInBrowserByDefault,
-  type MarkdownFileLinkMeta,
-} from "../../markdown-links";
+import type { MarkdownFileLinkMeta } from "../../markdown-links";
 import type { RemoteOpenMode } from "../../remoteOpen";
 
 export function canUseMarkdownFileShellActions(
@@ -17,16 +14,10 @@ export function canUseMarkdownFileShellActions(
 
 export function hasMarkdownFilePrimaryAction(input: {
   canOpenInEditor: boolean;
-  canOpenInBrowser: boolean;
   canOpenInPanel: boolean;
   canOpenMedia?: boolean;
 }): boolean {
-  return (
-    input.canOpenInEditor ||
-    input.canOpenInBrowser ||
-    input.canOpenInPanel ||
-    input.canOpenMedia === true
-  );
+  return input.canOpenInEditor || input.canOpenInPanel || input.canOpenMedia === true;
 }
 
 export function markdownFileCopyMenuItems({
@@ -46,17 +37,4 @@ export function markdownFileCopyMenuItems({
     });
   }
   return items;
-}
-
-export function shouldUseMarkdownFileBrowserPrimaryAction(input: {
-  iconPath: string;
-  canOpenInEditor: boolean;
-  canOpenInBrowser: boolean;
-  canOpenInPanel: boolean;
-}): boolean {
-  return (
-    input.canOpenInBrowser &&
-    (shouldOpenMarkdownFileLinkInBrowserByDefault(input.iconPath) ||
-      (!input.canOpenInEditor && !input.canOpenInPanel))
-  );
 }

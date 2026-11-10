@@ -16,7 +16,6 @@ export const COMPOSER_CONTEXT_KINDS = [
   "file",
   "terminal",
   "element",
-  "preview-annotation",
   "review-comment",
   "mention",
   "skill",
@@ -36,7 +35,6 @@ const COMPOSER_CONTEXT_ELEMENT_HTML_MAX_CHARS = 8_000;
 const COMPOSER_CONTEXT_ELEMENT_STYLES_MAX_CHARS = 8_000;
 export const COMPOSER_CONTEXT_REVIEW_TEXT_MAX_CHARS = 16_000;
 export const COMPOSER_CONTEXT_REVIEW_DIFF_MAX_CHARS = 32_000;
-const COMPOSER_CONTEXT_PREVIEW_COMMENT_MAX_CHARS = 8_000;
 
 export const ComposerContextId = TrimmedNonEmptyString.check(
   Schema.isMaxLength(CONTEXT_ID_MAX_CHARS),
@@ -141,35 +139,6 @@ export const ElementContextRecord = Schema.Struct({
 });
 export type ElementContextRecord = typeof ElementContextRecord.Type;
 
-// `optionalKey` rejects explicit undefined within one record, so only that record is dropped.
-export const PreviewAnnotationContextRecord = Schema.Struct({
-  ...recordBase,
-  kind: Schema.Literal("preview-annotation"),
-  annotationId: ShortString,
-  pageUrl: ShortString,
-  pageTitle: NullableShortString,
-  comment: BoundedString(COMPOSER_CONTEXT_PREVIEW_COMMENT_MAX_CHARS),
-  targetSummary: ShortString,
-  styleChanges: Schema.Array(ShortString).check(Schema.isMaxLength(200)),
-  elements: Schema.optionalKey(Schema.Array(ElementContextDetails).check(Schema.isMaxLength(50))),
-  elementIds: Schema.optionalKey(Schema.Array(ShortString).check(Schema.isMaxLength(50))),
-  regionCount: Schema.optionalKey(NonNegativeInt),
-  strokeCount: Schema.optionalKey(NonNegativeInt),
-  styleChangeDetails: Schema.optionalKey(
-    Schema.Array(
-      Schema.Struct({
-        targetId: ShortString,
-        selector: NullableShortString,
-        property: ShortString,
-        previousValue: BoundedString(COMPOSER_CONTEXT_ELEMENT_STYLES_MAX_CHARS),
-        value: BoundedString(COMPOSER_CONTEXT_ELEMENT_STYLES_MAX_CHARS),
-      }),
-    ).check(Schema.isMaxLength(200)),
-  ),
-  screenshotContextId: Schema.optionalKey(ComposerContextId),
-});
-export type PreviewAnnotationContextRecord = typeof PreviewAnnotationContextRecord.Type;
-
 export const ReviewCommentContextRecord = Schema.Struct({
   ...recordBase,
   kind: Schema.Literal("review-comment"),
@@ -246,7 +215,6 @@ export const KnownComposerContextRecord = Schema.Union([
   FileContextRecord,
   TerminalContextRecord,
   ElementContextRecord,
-  PreviewAnnotationContextRecord,
   ReviewCommentContextRecord,
   MentionContextRecord,
   SkillContextRecord,

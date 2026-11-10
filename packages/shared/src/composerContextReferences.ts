@@ -307,25 +307,6 @@ function formatComposerContextProviderPayload(record: KnownComposerContextRecord
     }
     case "element":
       return formatElementDetails(record).join("\n");
-    case "preview-annotation": {
-      const lines = [
-        `page: ${record.pageTitle?.trim() || record.pageUrl}`,
-        `url: ${record.pageUrl}`,
-      ];
-      if (record.comment.trim()) lines.push(`comment: ${record.comment.trim()}`);
-      if (record.targetSummary) lines.push(`targets: ${record.targetSummary}`);
-      if (record.styleChanges.length > 0) {
-        lines.push(
-          "requested visual changes:",
-          ...record.styleChanges.map((change) => `- ${change}`),
-        );
-      }
-      if (record.screenshotContextId) lines.push(`screenshot: ref=${record.screenshotContextId}`);
-      for (const [index, element] of (record.elements ?? []).entries()) {
-        lines.push(`element ${index + 1}:`, indent(formatElementDetails(element).join("\n")));
-      }
-      return lines.join("\n");
-    }
     case "review-comment": {
       const lines = [
         `file: ${record.filePath}`,

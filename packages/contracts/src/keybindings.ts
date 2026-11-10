@@ -73,12 +73,6 @@ export const STATIC_KEYBINDING_COMMANDS = [
   "view.reopenClosed",
   "pullRequest.copyNumber",
   "diff.toggle",
-  "preview.toggle",
-  "preview.refresh",
-  "preview.focusUrl",
-  "preview.zoomIn",
-  "preview.zoomOut",
-  "preview.resetZoom",
   "commandPalette.toggle",
   "filePicker.toggle",
   "projectSearch.toggle",
@@ -160,12 +154,6 @@ export const KeybindingShortcut = Schema.Struct({
   modKey: Schema.Boolean,
 });
 export type KeybindingShortcut = typeof KeybindingShortcut.Type;
-
-export const PreviewForwardedShortcut = Schema.Struct({
-  command: KeybindingCommand,
-  shortcut: KeybindingShortcut,
-});
-export type PreviewForwardedShortcut = typeof PreviewForwardedShortcut.Type;
 
 const KeybindingWhenNodeRef = Schema.suspend(
   (): Schema.Codec<KeybindingWhenNode> => KeybindingWhenNode,

@@ -566,7 +566,6 @@ function foldLegacyProjectSettings(
   if (settings.projectSettingsFolded) return settings;
   if (
     rows.length === 0 &&
-    Object.keys(settings.projectAgentBrowserAccessOverrides).length === 0 &&
     Object.keys(settings.projectAutoPullOverrides).length === 0 &&
     Object.keys(settings.projectScriptOverrides).length === 0
   ) {
@@ -585,9 +584,6 @@ function foldLegacyProjectSettings(
     if (Object.hasOwn(entry, key)) return;
     entries[projectId] = { ...entry, [key]: value };
   };
-  for (const [projectId, value] of Object.entries(settings.projectAgentBrowserAccessOverrides)) {
-    set(projectId, "enableAgentBrowserAccess", value);
-  }
   for (const [projectId, value] of Object.entries(settings.projectAutoPullOverrides)) {
     set(projectId, "defaultAutoPull", value);
   }

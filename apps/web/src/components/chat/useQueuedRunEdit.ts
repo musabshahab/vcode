@@ -11,7 +11,6 @@ import {
   type EnvironmentId,
   type MessageId,
   type OrchestrationMessageContext,
-  type PreviewAnnotationPayload,
   type RunId,
   type ScopedThreadRef,
   type ThreadContextRecord,
@@ -80,7 +79,6 @@ interface QueuedRunEditContent {
   readonly files: ReadonlyArray<ComposerFileAttachment>;
   readonly terminalContexts: ReadonlyArray<TerminalContextDraft>;
   readonly reviewComments: ReadonlyArray<ReviewCommentContext>;
-  readonly previewAnnotations: ReadonlyArray<PreviewAnnotationPayload>;
   readonly threadContexts: ReadonlyArray<ThreadContextRecord>;
   readonly environmentContexts: ReadonlyArray<EnvironmentContextRecord>;
 }
@@ -138,7 +136,6 @@ async function submitQueuedRunEdit(input: {
           (context) => context.text.trim().length > 0,
         ),
         reviewComments: content.reviewComments,
-        previewAnnotations: content.previewAnnotations,
         threadContexts: content.threadContexts,
         environmentContexts: content.environmentContexts,
         attachments: newAttachments.map((attachment, index) => ({

@@ -1,7 +1,6 @@
 import { isClearComposerCommand, parseSideChatCommand } from "@t3tools/shared/composerTrigger";
 import { armFreshSession, disarmFreshSession, readFreshSessionArm } from "./freshSessionArms";
 import {
-  mergeDirectPreviewAnnotation,
   resolveBackgroundDraftWorkspaceOptions,
   shouldDockDraftHeroForSubmission,
   buildExpiredTerminalContextToastCopy,
@@ -21,7 +20,6 @@ import {
   DEFAULT_MODEL,
   type EnvironmentId,
   type ModelSelection,
-  type PreviewAnnotationPayload,
   type ThreadId,
   ProviderInteractionMode,
   RuntimeMode,
@@ -79,11 +77,7 @@ import {
   filterTerminalContextsWithText,
   type TerminalContextDraft,
 } from "../../lib/terminalContext";
-import { ensureInlineContextReferences } from "../../lib/composerContextReferences";
-import {
-  buildMessageContext,
-  previewAnnotationContextReference,
-} from "../../lib/composerContextRecords";
+import { buildMessageContext } from "../../lib/composerContextRecords";
 import { environmentServerConfigsAtom } from "../../state/server";
 import { threadEnvironment } from "../../state/threads";
 import { runMobileComposerTransition } from "./draftHeroTransition";
@@ -364,10 +358,6 @@ export function useComposerSend(input: ComposerSendInput) {
     e?: { preventDefault: () => void },
     dispatchMode: ComposerDispatchMode = "auto",
     submissionIntent: ComposerSubmissionIntent = "foreground",
-    directAnnotation?: {
-      annotation: PreviewAnnotationPayload;
-      image: ComposerImageAttachment | null;
-    },
   ) => {
     e?.preventDefault();
     // What the user pressed send on; uploads below can take a while, and a redirect must not
@@ -376,7 +366,6 @@ export function useComposerSend(input: ComposerSendInput) {
     if (
       usageLimitsOffered &&
       usageLimitsKey !== null &&
-      !directAnnotation &&
       !draftHasNonPromptContent(composerDraftTarget) &&
       isUsageLimitsCommand(promptRef.current)
     ) {
@@ -388,16 +377,6 @@ export function useComposerSend(input: ComposerSendInput) {
       return;
     }
 
-    const notifyDirectAnnotationAttached = () => {
-      if (!directAnnotation) return;
-      toastManager.add(
-        stackedThreadToast({
-          type: "info",
-          title: "Annotation attached to draft",
-          description: "Sending is unavailable right now. Finish the current action, then send.",
-        }),
-      );
-    };
     if (
       !readEnvironmentScope(environmentId, AuthOrchestrationOperateScope) ||
       !activeThread ||
@@ -409,7 +388,6 @@ export function useComposerSend(input: ComposerSendInput) {
       sendInFlightRef.current ||
       feedbackUploadsInFlightRef.current.has(routeThreadKey)
     ) {
-      notifyDirectAnnotationAttached();
       return;
     }
     if (needsLoadBalancing) {
@@ -443,9 +421,7 @@ export function useComposerSend(input: ComposerSendInput) {
     const sendCtx = composerRef.current?.getSendContext();
     // `/side` beats an open question and a plan follow-up, which would send the text to main.
     const sideChatCommand =
-      sendCtx && !directAnnotation && !queuedRunEdit.isEditing
-        ? parseSideChatCommand(promptAtSend)
-        : null;
+      sendCtx && !queuedRunEdit.isEditing ? parseSideChatCommand(promptAtSend) : null;
     const answeringQuestion =
       Boolean(activePendingProgress) && sendCtx?.answeringPendingUserInput !== false;
     // Where side chats are unavailable, `/side` text can still be a literal answer.
@@ -464,7 +440,6 @@ export function useComposerSend(input: ComposerSendInput) {
         sendCtx.images.length > 0 ||
         sendCtx.files.length > 0 ||
         filterTerminalContextsWithText(sendCtx.terminalContexts).length > 0 ||
-        sendCtx.previewAnnotations.length > 0 ||
         sendCtx.reviewComments.length > 0 ||
         sendCtx.threadContexts.length > 0 ||
         sendCtx.environmentContexts.length > 0
@@ -492,15 +467,10 @@ export function useComposerSend(input: ComposerSendInput) {
       return;
     }
     if (answeringQuestion) {
-      if (directAnnotation) {
-        notifyDirectAnnotationAttached();
-        return;
-      }
       onAdvanceActivePendingUserInput();
       return;
     }
     if (!sendCtx?.providerAvailable) {
-      notifyDirectAnnotationAttached();
       return;
     }
     const multipleModelSelections = sendCtx.multipleModelSelections;
@@ -536,10 +506,9 @@ export function useComposerSend(input: ComposerSendInput) {
       return;
     }
     const {
-      images: sendContextImages,
+      images: composerImages,
       files: composerFiles,
       terminalContexts: composerTerminalContexts,
-      previewAnnotations: sendContextPreviewAnnotations,
       reviewComments: composerReviewComments,
       threadContexts: composerThreadContexts,
       environmentContexts: composerEnvironmentContexts,
@@ -549,20 +518,7 @@ export function useComposerSend(input: ComposerSendInput) {
       selectedPromptEffort: ctxSelectedPromptEffort,
       selectedModelSelection: ctxSelectedModelSelection,
     } = sendCtx;
-    const { images: composerImages, previewAnnotations: composerPreviewAnnotations } =
-      mergeDirectPreviewAnnotation({
-        images: sendContextImages,
-        fileCount: composerFiles.length,
-        previewAnnotations: sendContextPreviewAnnotations,
-        direct: directAnnotation,
-      });
-    // A direct "send annotation" writes the draft and sends in the same tick; the reference
-    // must be in the text now, not after the next render.
-    const promptForSend = directAnnotation
-      ? ensureInlineContextReferences(promptRef.current, [
-          previewAnnotationContextReference(directAnnotation.annotation),
-        ])
-      : promptRef.current;
+    const promptForSend = promptRef.current;
     const strandedThread = threadContextsOutsideEnvironment({
       text: promptForSend,
       records: composerThreadContexts,
@@ -591,7 +547,6 @@ export function useComposerSend(input: ComposerSendInput) {
           files: composerFiles,
           terminalContexts: composerTerminalContexts,
           reviewComments: composerReviewComments,
-          previewAnnotations: composerPreviewAnnotations,
           threadContexts: composerThreadContexts,
           environmentContexts: composerEnvironmentContexts,
         },
@@ -609,7 +564,6 @@ export function useComposerSend(input: ComposerSendInput) {
       imageCount: composerImages.length + composerFiles.length,
       terminalContexts: composerTerminalContexts,
       elementContextCount:
-        composerPreviewAnnotations.length +
         composerReviewComments.length +
         composerThreadContexts.length +
         composerEnvironmentContexts.length,
@@ -619,7 +573,6 @@ export function useComposerSend(input: ComposerSendInput) {
       composerImages.length === 0 &&
       composerFiles.length === 0 &&
       sendableComposerTerminalContexts.length === 0 &&
-      composerPreviewAnnotations.length === 0 &&
       composerReviewComments.length === 0 &&
       composerThreadContexts.length === 0 &&
       composerEnvironmentContexts.length === 0
@@ -675,7 +628,6 @@ export function useComposerSend(input: ComposerSendInput) {
       composerImages.length === 0 &&
       composerFiles.length === 0 &&
       sendableComposerTerminalContexts.length === 0 &&
-      composerPreviewAnnotations.length === 0 &&
       composerReviewComments.length === 0 &&
       composerThreadContexts.length === 0 &&
       composerEnvironmentContexts.length === 0;
@@ -721,7 +673,6 @@ export function useComposerSend(input: ComposerSendInput) {
       files: composerFiles,
       terminalContexts: composerTerminalContexts,
       sendableTerminalContexts: sendableComposerTerminalContexts,
-      previewAnnotations: composerPreviewAnnotations,
       reviewComments: composerReviewComments,
       threadContexts: composerThreadContexts,
       environmentContexts: composerEnvironmentContexts,
@@ -730,7 +681,6 @@ export function useComposerSend(input: ComposerSendInput) {
       files: composerFilesSnapshot,
       attachments: composerAttachmentsSnapshot,
       terminalContexts: composerTerminalContextsSnapshot,
-      previewAnnotations: composerPreviewAnnotationsSnapshot,
       reviewComments: composerReviewCommentsSnapshot,
       threadContexts: composerThreadContextsSnapshot,
       environmentContexts: composerEnvironmentContextsSnapshot,
@@ -767,7 +717,6 @@ export function useComposerSend(input: ComposerSendInput) {
       buildMessageContext({
         terminalContexts: composerTerminalContextsSnapshot,
         reviewComments: composerReviewCommentsSnapshot,
-        previewAnnotations: composerPreviewAnnotationsSnapshot,
         threadContexts: composerThreadContextsSnapshot,
         environmentContexts: composerEnvironmentContextsSnapshot,
         attachments: composerAttachmentsSnapshot.map((attachment, index) => ({
@@ -914,12 +863,6 @@ export function useComposerSend(input: ComposerSendInput) {
       // A draft edited since send, or a paste still landing in it, is no longer the message
       // the user sent.
       const attachmentIdsAtSend = composerAttachmentsSnapshot.map((attachment) => attachment.id);
-      // A direct annotation send writes its image and reference into the draft as it sends,
-      // so the live draft may still lack them; anything else differing is a real edit.
-      const annotationImageId = directAnnotation?.image?.id;
-      const attachmentIdsBeforeAnnotation = attachmentIdsAtSend.filter(
-        (id) => id !== annotationImageId,
-      );
       const sameIds = (left: ReadonlyArray<string>, right: ReadonlyArray<string>) =>
         left.length === right.length && left.every((id, index) => id === right[index]);
       const draftChangedSinceSend = () => {
@@ -930,10 +873,7 @@ export function useComposerSend(input: ComposerSendInput) {
           : attachmentIdsAtSend;
         const promptUnchanged =
           promptRef.current === promptAtSend || promptRef.current === promptForSend;
-        const attachmentsUnchanged =
-          sameIds(attachmentIds, attachmentIdsAtSend) ||
-          (annotationImageId !== undefined &&
-            sameIds(attachmentIds, attachmentIdsBeforeAnnotation));
+        const attachmentsUnchanged = sameIds(attachmentIds, attachmentIdsAtSend);
         return !promptUnchanged || !attachmentsUnchanged;
       };
       const draftBeforeDecline = useComposerDraftStore

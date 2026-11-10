@@ -4,7 +4,6 @@ import {
   MessageId,
   OrchestrationMessageContext,
   ThreadId,
-  type PreviewAnnotationPayload,
 } from "@t3tools/contracts";
 import * as Schema from "effect/Schema";
 import { upgradeLegacyContextMessage } from "@t3tools/shared/composerContextLegacy";
@@ -20,8 +19,6 @@ import {
   buildMessageContext,
   composerContextImportLookupIds,
   isSameComposerContextPayload,
-  previewAnnotationContextRecord,
-  previewAnnotationFromRecord,
   pullRequestContextKindLabel,
   resolveUserMessageContext,
   reviewCommentContextLabel,
@@ -34,38 +31,6 @@ import {
 } from "./composerContextRecords";
 
 const decodeMessageContext = Schema.decodeUnknownSync(OrchestrationMessageContext);
-
-const annotation: PreviewAnnotationPayload = {
-  id: "ann_1",
-  pageUrl: "http://localhost:3000/checkout",
-  pageTitle: "Checkout",
-  comment: "  Make this   bigger ",
-  elements: [
-    {
-      id: "el_1",
-      rect: { x: 0, y: 0, width: 10, height: 10 },
-      element: {
-        pageUrl: "http://localhost:3000/checkout",
-        pageTitle: "Checkout",
-        tagName: "BUTTON",
-        selector: "#pay",
-        htmlPreview: '<button id="pay">Pay</button>',
-        componentName: "Button",
-        source: null,
-        stack: [],
-        styles: "color: red;",
-        pickedAt: "2026-01-01T00:00:00.000Z",
-      },
-    },
-  ],
-  regions: [],
-  strokes: [],
-  styleChanges: [
-    { targetId: "el_1", selector: "#pay", property: "font-size", previousValue: "", value: "20px" },
-  ],
-  screenshot: null,
-  createdAt: "2026-01-01T00:00:00.000Z",
-};
 
 describe("composerContextRecords", () => {
   it("copies only ready or persisted server-side attachment IDs", () => {
@@ -114,28 +79,6 @@ describe("composerContextRecords", () => {
       ),
     ).toMatchObject({ attachmentId: "persisted-file", contextId: "file_local-file" });
   });
-  it("does not bind an annotation screenshot to a same-ID file", () => {
-    const context = buildMessageContext({
-      terminalContexts: [],
-      reviewComments: [],
-      previewAnnotations: [annotation],
-      attachments: [
-        {
-          attachment: {
-            type: "file",
-            id: annotation.id,
-            name: "notes.txt",
-            mimeType: "text/plain",
-            sizeBytes: 1,
-            file: null,
-          },
-          attachmentId: "uploaded-file",
-        },
-      ],
-    })!;
-    expect(context.records.map((record) => record.kind)).toEqual(["preview-annotation", "file"]);
-    expect(context.records[0]).not.toHaveProperty("screenshotContextId");
-  });
   it.each(["x", "terminal_x"])(
     "preserves canonical terminal IDs across repeated imports: %s",
     (id) => {
@@ -157,7 +100,7 @@ describe("composerContextRecords", () => {
       );
     },
   );
-  it("scopes colliding producer ids and links the annotation to its screenshot record", () => {
+  it("scopes colliding producer ids across context kinds", () => {
     const id = "same.id:1";
     const context = buildMessageContext({
       terminalContexts: [
@@ -185,7 +128,6 @@ describe("composerContextRecords", () => {
           diff: "",
         },
       ],
-      previewAnnotations: [{ ...annotation, id }],
       attachments: [
         {
           attachment: {
@@ -212,37 +154,9 @@ describe("composerContextRecords", () => {
         },
       ],
     })!;
-    expect(decodeMessageContext(context).records).toHaveLength(5);
-    const preview = context.records.find((record) => record.kind === "preview-annotation");
+    expect(decodeMessageContext(context).records).toHaveLength(4);
     const image = context.records.find((record) => record.kind === "image");
-    expect(preview).toMatchObject({ screenshotContextId: image!.contextId });
     expect(image).toMatchObject({ attachmentId: "uploaded-image" });
-  });
-
-  it("shortens a long annotation comment label without splitting an emoji", () => {
-    const record = previewAnnotationContextRecord({
-      ...annotation,
-      comment: `${"a".repeat(46)}😀 and make the button bigger`,
-    });
-    expect(record.label).toBe(`${"a".repeat(46)}…`);
-  });
-
-  it("restores multiple edits on one target without parsing display strings", () => {
-    const styleChanges = [
-      ...annotation.styleChanges,
-      {
-        targetId: "el_1",
-        selector: "#pay",
-        property: "content",
-        previousValue: "a → b",
-        value: "first\nsecond → third",
-      },
-    ];
-    const restored = previewAnnotationFromRecord(
-      previewAnnotationContextRecord({ ...annotation, styleChanges }),
-    );
-    expect(restored.styleChanges).toEqual(styleChanges);
-    expect(restored.elements[0]?.id).toBe("el_1");
   });
 
   it("removes an expired terminal chip by its kind-scoped id, not the producer id", () => {

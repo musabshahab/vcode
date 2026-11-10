@@ -32,17 +32,6 @@ import {
 import { ModelSelection } from "./modelSelection.ts";
 import { ProjectScript, type ProjectMutation } from "./project.ts";
 import { DEFAULT_RUNTIME_MODE, RuntimeMode } from "./providerPolicy.ts";
-import { BrowserProfile, BrowserProfileId, DEFAULT_BROWSER_PROFILE_ID } from "./browserProfile.ts";
-import {
-  BrowserRecordingFrameRate,
-  DEFAULT_BROWSER_RECORDING_FRAME_RATE,
-  DEFAULT_PREVIEW_APPEARANCE,
-  DEFAULT_PREVIEW_ZOOM_FACTOR,
-  FILL_PREVIEW_VIEWPORT,
-  PreviewAppearancePreference,
-  PreviewViewportSetting,
-  PreviewZoomFactor,
-} from "./preview.ts";
 import { ProviderInstanceConfig, ProviderInstanceId } from "./providerInstance.ts";
 import { PullRequestMergeMethod } from "./pullRequest.ts";
 
@@ -223,36 +212,6 @@ export const DefaultThemePreference = Schema.String.check(Schema.isMaxLength(64)
 // Excluded from RPC patches so t3 theme set can validate syntax and resolvability.
 export type DefaultThemePreference = typeof DefaultThemePreference.Type;
 
-export const DEFAULT_BROWSER_VIEWPORT: PreviewViewportSetting = FILL_PREVIEW_VIEWPORT;
-export const DEFAULT_BROWSER_AUTO_SHOW_FLOATING_PREVIEW = true;
-export {
-  BROWSER_RECORDING_FRAME_RATES,
-  BrowserRecordingFrameRate,
-  DEFAULT_BROWSER_RECORDING_FRAME_RATE,
-} from "./preview.ts";
-export const BrowserLinkTarget = Schema.Literals(["system", "app"]);
-export type BrowserLinkTarget = typeof BrowserLinkTarget.Type;
-export const DEFAULT_BROWSER_LINK_TARGET: BrowserLinkTarget = "system";
-/**
- * What the address bar searches with when the input is not an address.
- * "custom" uses `browserCustomSearchUrl`, a template with `%s` for the query.
- */
-export const BrowserSearchEngine = Schema.Literals([
-  "duckduckgo",
-  "google",
-  "bing",
-  "brave",
-  "kagi",
-  "ecosia",
-  "custom",
-]);
-export type BrowserSearchEngine = typeof BrowserSearchEngine.Type;
-export const DEFAULT_BROWSER_SEARCH_ENGINE: BrowserSearchEngine = "duckduckgo";
-export const BROWSER_CUSTOM_SEARCH_URL_MAX_LENGTH = 2048;
-export const BrowserCustomSearchUrl = Schema.String.check(
-  Schema.isMaxLength(BROWSER_CUSTOM_SEARCH_URL_MAX_LENGTH),
-);
-
 export const LoadBalancingWeights = Schema.Record(
   TrimmedNonEmptyString,
   Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 100 })),
@@ -306,50 +265,6 @@ export const ClientSettingsSchema = Schema.Struct({
   panelAnimationDurationMs: PanelAnimationDurationMs.pipe(
     Schema.withDecodingDefault(Effect.succeed(DEFAULT_PANEL_ANIMATION_DURATION_MS)),
   ),
-  browserDefaultViewport: PreviewViewportSetting.pipe(
-    Schema.withDecodingDefault(Effect.succeed(DEFAULT_BROWSER_VIEWPORT)),
-  ),
-  browserDefaultZoomFactor: PreviewZoomFactor.pipe(
-    Schema.withDecodingDefault(Effect.succeed(DEFAULT_PREVIEW_ZOOM_FACTOR)),
-  ),
-  browserDefaultAppearance: PreviewAppearancePreference.pipe(
-    Schema.withDecodingDefault(Effect.succeed(DEFAULT_PREVIEW_APPEARANCE)),
-  ),
-  browserRecordingFrameRate: BrowserRecordingFrameRate.pipe(
-    Schema.withDecodingDefault(Effect.succeed(DEFAULT_BROWSER_RECORDING_FRAME_RATE)),
-  ),
-  browserRecordingShowKeyPresses: Schema.Boolean.pipe(
-    Schema.withDecodingDefault(Effect.succeed(false)),
-  ),
-  browserRecordingShowMousePresses: Schema.Boolean.pipe(
-    Schema.withDecodingDefault(Effect.succeed(false)),
-  ),
-
-  browserLinkTarget: BrowserLinkTarget.pipe(
-    Schema.withDecodingDefault(Effect.succeed(DEFAULT_BROWSER_LINK_TARGET)),
-  ),
-
-  browserSearchEngine: BrowserSearchEngine.pipe(
-    Schema.withDecodingDefault(Effect.succeed(DEFAULT_BROWSER_SEARCH_ENGINE)),
-  ),
-
-  // Kept when the engine is switched away from "custom" so switching back restores it.
-  browserCustomSearchUrl: BrowserCustomSearchUrl.pipe(
-    Schema.withDecodingDefault(Effect.succeed("")),
-  ),
-
-  browserAutoShowFloatingPreview: Schema.Boolean.pipe(
-    Schema.withDecodingDefault(Effect.succeed(DEFAULT_BROWSER_AUTO_SHOW_FLOATING_PREVIEW)),
-  ),
-
-  browserProfiles: Schema.Array(BrowserProfile).pipe(
-    Schema.withDecodingDefault(Effect.succeed([])),
-  ),
-
-  browserDefaultProfileId: BrowserProfileId.pipe(
-    Schema.withDecodingDefault(Effect.succeed(DEFAULT_BROWSER_PROFILE_ID)),
-  ),
-
   confirmQuit: QuitConfirmationModeSetting.pipe(
     Schema.withDecodingDefault(Effect.succeed(DEFAULT_QUIT_CONFIRMATION_MODE)),
   ),
@@ -948,7 +863,6 @@ export const PROJECT_SCOPED_SERVER_SETTING_KEYS = [
   "worktreeSubmodules",
   "defaultAutoPull",
   "defaultProjectScripts",
-  "enableAgentBrowserAccess",
   "textGenerationModelSelection",
   "threadTitleInstructions",
   "sourceControlWriterModelSelection",
@@ -984,7 +898,6 @@ export const ProjectSettingsOverrides = Schema.Struct({
   worktreeSubmodules: ForwardCompatibleOptional(WorktreeSubmodules),
   defaultAutoPull: Schema.optionalKey(Schema.Boolean),
   defaultProjectScripts: Schema.optionalKey(Schema.Array(ProjectScript)),
-  enableAgentBrowserAccess: Schema.optionalKey(Schema.Boolean),
   textGenerationModelSelection: Schema.optionalKey(ModelSelection),
   threadTitleInstructions: Schema.optionalKey(TrimmedString),
   sourceControlWriterModelSelection: Schema.optionalKey(Schema.NullOr(ModelSelection)),
@@ -1107,9 +1020,6 @@ export const StorageCleanupSettings = Schema.Struct({
   worktreeOnMerge: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(false))),
   worktreeOnDelete: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(false))),
   worktreeUnchanged: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(false))),
-  browserArtifactsAfterDays: StorageRetentionDays.pipe(
-    Schema.withDecodingDefault(Effect.succeed(null)),
-  ),
   logsAfterDays: StorageRetentionDays.pipe(Schema.withDecodingDefault(Effect.succeed(null))),
 });
 export type StorageCleanupSettings = typeof StorageCleanupSettings.Type;
@@ -1140,10 +1050,6 @@ export const ServerSettings = Schema.Struct({
     Schema.withDecodingDefault(Effect.succeed(true)),
   ),
 
-  enableAgentBrowserAccess: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(true))),
-  projectAgentBrowserAccessOverrides: Schema.Record(ProjectId, Schema.Boolean).pipe(
-    Schema.withDecodingDefault(Effect.succeed({})),
-  ),
   defaultAutoPull: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(false))),
   defaultProjectScripts: Schema.Array(ProjectScript).pipe(
     Schema.withDecodingDefault(Effect.succeed([])),
@@ -1515,7 +1421,6 @@ export const ServerSettingsPatch = Schema.Struct({
       worktreeOnMerge: Schema.optionalKey(Schema.Boolean),
       worktreeOnDelete: Schema.optionalKey(Schema.Boolean),
       worktreeUnchanged: Schema.optionalKey(Schema.Boolean),
-      browserArtifactsAfterDays: Schema.optionalKey(StorageRetentionDays),
       logsAfterDays: Schema.optionalKey(StorageRetentionDays),
     }),
   ),
@@ -1524,10 +1429,6 @@ export const ServerSettingsPatch = Schema.Struct({
   responseStreamingMode: Schema.optionalKey(ResponseStreamingMode),
   enableProviderUpdateChecks: Schema.optionalKey(Schema.Boolean),
   continueThreadsAfterServerUpdate: Schema.optionalKey(Schema.Boolean),
-  enableAgentBrowserAccess: Schema.optionalKey(Schema.Boolean),
-  projectAgentBrowserAccessOverrides: Schema.optionalKey(
-    Schema.Record(ProjectId, Schema.NullOr(Schema.Boolean)),
-  ),
   defaultAutoPull: Schema.optionalKey(Schema.Boolean),
   defaultProjectScripts: Schema.optionalKey(Schema.Array(ProjectScript)),
   projectScriptOverrides: Schema.optionalKey(
@@ -1684,18 +1585,6 @@ export const ClientSettingsPatch = Schema.Struct({
   loadBalancingWeights: Schema.optionalKey(LoadBalancingWeights),
   appearanceContrast: Schema.optionalKey(AppearanceContrast),
   panelAnimationDurationMs: Schema.optionalKey(PanelAnimationDurationMs),
-  browserDefaultViewport: Schema.optionalKey(PreviewViewportSetting),
-  browserDefaultZoomFactor: Schema.optionalKey(PreviewZoomFactor),
-  browserDefaultAppearance: Schema.optionalKey(PreviewAppearancePreference),
-  browserRecordingFrameRate: Schema.optionalKey(BrowserRecordingFrameRate),
-  browserRecordingShowKeyPresses: Schema.optionalKey(Schema.Boolean),
-  browserRecordingShowMousePresses: Schema.optionalKey(Schema.Boolean),
-  browserLinkTarget: Schema.optionalKey(BrowserLinkTarget),
-  browserSearchEngine: Schema.optionalKey(BrowserSearchEngine),
-  browserCustomSearchUrl: Schema.optionalKey(BrowserCustomSearchUrl),
-  browserAutoShowFloatingPreview: Schema.optionalKey(Schema.Boolean),
-  browserProfiles: Schema.optionalKey(Schema.Array(BrowserProfile)),
-  browserDefaultProfileId: Schema.optionalKey(BrowserProfileId),
   confirmQuit: Schema.optionalKey(QuitConfirmationMode),
   confirmThreadArchive: Schema.optionalKey(Schema.Boolean),
   confirmThreadDelete: Schema.optionalKey(Schema.Boolean),

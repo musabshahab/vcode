@@ -108,7 +108,7 @@ import { DiffFileLoadingBoundary } from "./diffs/DiffFileLoadingBoundary";
 import { DiffFileStatus } from "./diffs/DiffFileStatus";
 import { useThreadRouteRef } from "../hooks/useThreadRouteTarget";
 import { projectCommitUrl } from "@t3tools/client-runtime/change-request-links";
-import { useOpenLink } from "../browser/useOpenLink";
+import { openExternalLink } from "~/lib/openExternalLink";
 
 type DiffThemeType = "light" | "dark";
 const AUTOMATIC_BASE_REF = "__automatic_base_ref__";
@@ -454,14 +454,13 @@ export default function DiffPanel({
     headerCommitSha !== null
       ? projectCommitUrl(activeProject?.repositoryIdentity, headerCommitSha)
       : null;
-  const openLink = useOpenLink(routeThreadRef);
   // A SHA link goes to the code host; it must not route back into this pane's commit selection.
   const openCommitUrl = (event: MouseEvent<HTMLElement>, url: string) => {
     event.stopPropagation();
     if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button === 1)
       return;
     event.preventDefault();
-    void openLink(url, { event });
+    void openExternalLink(url).catch(() => undefined);
   };
   const refreshPreviewQuery = branchDiffPreview.refresh;
   const refreshDiffFromUserAction = refreshPreviewQuery;

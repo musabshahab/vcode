@@ -19,7 +19,6 @@ import type {
   EnvironmentId,
   ModelSelection,
   ProjectId,
-  PreviewAnnotationPayload,
   ThreadContextRecord,
   EnvironmentContextRecord,
   ResolvedKeybindingsConfig,
@@ -158,8 +157,6 @@ import {
 import {
   attachmentContextRecord,
   uploadedAttachmentContextRecord,
-  previewAnnotationContextId,
-  previewAnnotationContextRecord,
   reviewCommentContextId,
   reviewCommentContextReference,
   reviewCommentContextRecord,
@@ -300,7 +297,6 @@ export interface ChatComposerHandle {
     images: ComposerImageAttachment[];
     files: ComposerFileAttachment[];
     terminalContexts: TerminalContextDraft[];
-    previewAnnotations: PreviewAnnotationPayload[];
     reviewComments: ReviewCommentContext[];
     threadContexts: ThreadContextRecord[];
     environmentContexts: EnvironmentContextRecord[];
@@ -627,16 +623,9 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     inlineFileIdSet,
   );
   const composerTerminalContexts = composerDraft.terminalContexts;
-  const composerPreviewAnnotations = composerDraft.previewAnnotations;
   const composerReviewComments = composerDraft.reviewComments;
   const composerThreadContexts = attachmentDraft.threadContexts;
   const composerEnvironmentContexts = composerDraft.environmentContexts;
-  const previewAnnotationIds = new Set(
-    composerPreviewAnnotations.map((annotation) => annotation.id),
-  );
-  const standaloneComposerImages = composerImages.filter(
-    (image) => !previewAnnotationIds.has(image.id),
-  );
   const preparingComposerImages = usePreparingComposerImages(attachmentTargetKey);
   const nonPersistedComposerImageIds = attachmentDraft.nonPersistedImageIds;
   const uploadsByImageId = useAttachmentUploadStore((state) => state.uploadsByImageId);
@@ -680,7 +669,6 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
   const composerContextRecords = composerContextRecordsFromDraft({
     terminalContexts: composerTerminalContexts,
     reviewComments: composerReviewComments,
-    previewAnnotations: composerPreviewAnnotations,
     threadContexts: composerThreadContexts,
     environmentContexts: composerEnvironmentContexts,
     images: composerImages,
@@ -727,9 +715,6 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
   );
   const setComposerDraftTerminalContexts = useComposerDraftStore(
     (store) => store.setTerminalContexts,
-  );
-  const removeComposerDraftPreviewAnnotation = useComposerDraftStore(
-    (store) => store.removePreviewAnnotation,
   );
   const removeComposerDraftReviewComment = useComposerDraftStore(
     (store) => store.removeReviewComment,
@@ -995,7 +980,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     imageCount: composerImages.length + composerFiles.length,
     existingAttachmentCount: editingQueuedAttachments?.length ?? 0,
     terminalContexts: composerTerminalContexts,
-    elementContextCount: composerPreviewAnnotations.length + composerReviewComments.length,
+    elementContextCount: composerReviewComments.length,
   });
   const composerTriggerKind = composerTrigger?.kind ?? null;
   const compactSlashCommandAvailable =
@@ -1006,7 +991,6 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     composerImages.length + composerFiles.length === 0 &&
     composerDraft.persistedAttachments.length === 0 &&
     composerTerminalContexts.length === 0 &&
-    composerPreviewAnnotations.length === 0 &&
     composerReviewComments.length === 0;
   const {
     items: composerMenuItems,
@@ -1171,9 +1155,6 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
   };
 
   const addComposerDraftReviewComment = useComposerDraftStore((store) => store.addReviewComment);
-  const addComposerDraftPreviewAnnotation = useComposerDraftStore(
-    (store) => store.addPreviewAnnotation,
-  );
   const addComposerDraftThreadContexts = useComposerDraftStore((store) => store.addThreadContexts);
   const setComposerDraftThreadContexts = useComposerDraftStore((store) => store.setThreadContexts);
   const addComposerDraftEnvironmentContexts = useComposerDraftStore(
@@ -1185,14 +1166,6 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
   const buildContextClipboardFragment = (contextIds: ReadonlyArray<string>): string | null => {
     const wanted = new Set(contextIds);
     const copiedFiles = new Map<string, File>();
-    for (const annotation of composerPreviewAnnotations) {
-      if (
-        wanted.has(previewAnnotationContextId(annotation.id)) &&
-        composerImages.some((image) => image.id === annotation.id)
-      ) {
-        wanted.add(toKindScopedComposerContextId("image", annotation.id));
-      }
-    }
     const records: ComposerContextRecord[] = [
       ...composerTerminalContexts
         .filter((c) => wanted.has(terminalContextReference(c).contextId))
@@ -1202,15 +1175,6 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
       ...composerReviewComments
         .filter((c) => wanted.has(reviewCommentContextId(c.id)))
         .map(reviewCommentContextRecord),
-      ...composerPreviewAnnotations
-        .filter((a) => wanted.has(previewAnnotationContextId(a.id)))
-        .map((annotation) =>
-          previewAnnotationContextRecord(annotation, {
-            screenshotContextId: composerImages.some((image) => image.id === annotation.id)
-              ? annotation.id
-              : undefined,
-          }),
-        ),
       ...[...composerImages, ...composerFiles]
         .filter((attachment) =>
           wanted.has(toKindScopedComposerContextId(attachment.type, attachment.id)),
@@ -1254,7 +1218,6 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     questionAttachmentTarget,
     pendingUserInputs,
     composerContextRecords,
-    composerImages,
     composerFilesRef,
     promptRef,
     pendingThreadImportsRef,
@@ -1285,7 +1248,6 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
   }
 
   const providerInputInputs = [
-    composerPreviewAnnotations,
     composerReviewComments,
     composerTerminalContexts,
     prompt,
@@ -1572,19 +1534,8 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     const attachmentChanges = reconcileAttachmentContextReferences({
       referencedContextIds: referenced,
       files: composerFiles,
-      images: composerImages,
-      previewAnnotations: composerPreviewAnnotations,
       retained: retainedContextPayloads,
     });
-    for (const annotationId of attachmentChanges.annotationIdsToRemove) {
-      removeComposerDraftPreviewAnnotation(composerDraftTarget, annotationId);
-    }
-    for (const restored of attachmentChanges.annotationsToRestore) {
-      if (restored.image) addComposerDraftImages(attachmentDraftTarget, [restored.image]);
-      addComposerDraftPreviewAnnotation(composerDraftTarget, restored.annotation, {
-        appendReference: false,
-      });
-    }
     for (const fileId of attachmentChanges.filesToRemove) {
       removeComposerDraftFile(attachmentDraftTarget, fileId);
     }
@@ -2123,7 +2074,6 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
       composerImagesRef,
       composerFilesRef,
       composerTerminalContextsRef,
-      composerPreviewAnnotations,
       composerReviewComments,
       composerEditorRef,
       composerMenuOpenRef,
@@ -2168,7 +2118,6 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     prompt,
     composerMenuOpen,
     isComposerCollapsedMobile,
-    composerPreviewAnnotations,
     composerReviewComments,
     composerThreadContexts,
     attachmentTargetKey,
@@ -2190,9 +2139,9 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     setIsComposerModelPickerOpen(false);
   }
   const collapsedComposerImagePreviews =
-    standaloneComposerImages.length > 0 ? (
+    composerImages.length > 0 ? (
       <ComposerRestingImagePreviews
-        images={standaloneComposerImages}
+        images={composerImages}
         allImages={composerImages}
         resolvedTheme={resolvedTheme}
         onExpandImage={onExpandImage}
@@ -2865,7 +2814,6 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
         images: composerImagesRef.current,
         files: composerFilesRef.current,
         terminalContexts: composerTerminalContextsRef.current,
-        previewAnnotations: composerPreviewAnnotations,
         reviewComments: composerReviewComments,
         threadContexts: composerThreadContexts,
         environmentContexts: composerEnvironmentContexts,
@@ -2917,7 +2865,6 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
       composerImagesRef,
       composerFilesRef,
       composerTerminalContextsRef,
-      composerPreviewAnnotations,
       composerReviewComments,
       composerThreadContexts,
       composerEnvironmentContexts,
@@ -2953,11 +2900,11 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
   const composerAttachmentMediaRow =
     !isComposerCollapsedMobile &&
     (composerVideos.length > 0 ||
-      standaloneComposerImages.length > 0 ||
+      composerImages.length > 0 ||
       preparingComposerImages.length > 0) ? (
       <ComposerAttachmentMediaRow
         images={composerImages}
-        expandedImages={standaloneComposerImages}
+        expandedImages={composerImages}
         preparingImages={preparingComposerImages}
         videos={composerVideos}
         nonPersistedImageIds={nonPersistedComposerImageIds}

@@ -88,8 +88,6 @@ export interface NewProjectScriptInput {
   stopOnSettle?: boolean;
   /** Omit to preserve the current shortcut when the form did not edit it. */
   keybinding?: string | null;
-  previewUrl: string | null;
-  autoOpenPreview: boolean;
 }
 
 export type ProjectScriptActionResult = AtomCommandResult<void, unknown>;
@@ -103,8 +101,6 @@ export const EMPTY_PROJECT_SCRIPT_INPUT: NewProjectScriptInput = {
   runOnSettle: false,
   stopOnSettle: false,
   keybinding: null,
-  previewUrl: null,
-  autoOpenPreview: false,
 };
 
 export interface ProjectScriptEditorRequest {
@@ -128,8 +124,6 @@ export function editorRequestForScript(
       runOnSettle: script.runOnSettle ?? false,
       stopOnSettle: script.stopOnSettle ?? false,
       keybinding: keybindingValueForCommand(keybindings, commandForProjectScript(script.id)),
-      previewUrl: script.previewUrl ?? null,
-      autoOpenPreview: script.autoOpenPreview ?? false,
     },
   };
 }
@@ -280,8 +274,6 @@ function ProjectScriptEditorForm({
   const [runOnSettle, setRunOnSettle] = useState(request.initial.runOnSettle);
   const [stopOnSettle, setStopOnSettle] = useState(request.initial.stopOnSettle ?? false);
   const [keybinding, setKeybinding] = useState(request.initial.keybinding ?? "");
-  const [previewUrl, setPreviewUrl] = useState(request.initial.previewUrl ?? "");
-  const [autoOpenPreview, setAutoOpenPreview] = useState(request.initial.autoOpenPreview);
   const [isSaving, setIsSaving] = useState(false);
   const pendingSubmissionRef = useRef<object | null>(null);
   // A save that settles after this form is replaced must not close or error
@@ -355,7 +347,6 @@ function ProjectScriptEditorForm({
         keybinding,
         command: commandForProjectScript(scriptIdForValidation),
       });
-      const trimmedPreviewUrl = previewUrl.trim();
       payload = {
         name: trimmedName,
         command: trimmedCommand,
@@ -367,8 +358,6 @@ function ProjectScriptEditorForm({
         ...((request.scriptId === null && canChangeKeybinding) || changesKeybinding
           ? { keybinding: keybindingRule?.key ?? null }
           : {}),
-        previewUrl: trimmedPreviewUrl.length > 0 ? trimmedPreviewUrl : null,
-        autoOpenPreview: trimmedPreviewUrl.length > 0 ? autoOpenPreview : false,
       } satisfies NewProjectScriptInput;
     } catch (error) {
       setValidationError(error instanceof Error ? error.message : "Failed to save action.");
@@ -488,18 +477,6 @@ function ProjectScriptEditorForm({
                 onChange={(event) => setCommand(event.target.value)}
               />
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="script-preview-url">Preview URL (optional)</Label>
-              <Input
-                id="script-preview-url"
-                placeholder="http://localhost:5173"
-                value={previewUrl}
-                onChange={(event) => setPreviewUrl(event.target.value)}
-              />
-              <p className="text-xs text-muted-foreground">
-                Open this URL in the in-app preview when this action runs.
-              </p>
-            </div>
             <label className="flex items-center justify-between gap-3 rounded-md border border-border/70 px-3 py-2 text-sm dark:border-transparent dark:bg-white/[0.035]">
               <span>Run automatically on worktree creation</span>
               <Switch
@@ -531,18 +508,6 @@ function ProjectScriptEditorForm({
               <Switch
                 checked={stopOnSettle}
                 onCheckedChange={(checked) => setStopOnSettle(Boolean(checked))}
-              />
-            </label>
-            <label
-              className={`flex items-center justify-between gap-3 rounded-md border border-border/70 px-3 py-2 text-sm dark:border-transparent dark:bg-white/[0.035] ${
-                previewUrl.trim().length === 0 ? "opacity-60" : ""
-              }`}
-            >
-              <span>Open preview automatically when this action runs</span>
-              <Switch
-                checked={autoOpenPreview}
-                disabled={previewUrl.trim().length === 0}
-                onCheckedChange={(checked) => setAutoOpenPreview(Boolean(checked))}
               />
             </label>
             {validationError && <p className="text-sm text-destructive">{validationError}</p>}

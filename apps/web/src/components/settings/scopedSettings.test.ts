@@ -329,7 +329,7 @@ describe("scoped settings writes", () => {
   it("writes project overrides into each member's entry on its environment", () => {
     const withExisting = environment("Server", {
       settings: {
-        projectSettingsOverrides: { [projectId]: { enableAgentBrowserAccess: false } },
+        projectSettingsOverrides: { [projectId]: { newWorktreesStartFromOrigin: false } },
       },
     });
     const plan = planScopedSettingsPatch(project, [laptop, withExisting], {
@@ -343,7 +343,7 @@ describe("scoped settings writes", () => {
         previous: expect.anything(),
         patch: {
           projectSettingsOverrides: {
-            [projectId]: { enableAgentBrowserAccess: false, defaultAutoPull: true },
+            [projectId]: { newWorktreesStartFromOrigin: false, defaultAutoPull: true },
           },
         },
       },
@@ -439,7 +439,7 @@ describe("scoped settings writes", () => {
     });
     expect(
       planScopedSettingsPatch(project, [machine, customized], {
-        storageCleanup: { browserArtifactsAfterDays: 8 },
+        storageCleanup: { logsAfterDays: 8 },
       }).serverWrites,
     ).toEqual([]);
   });
@@ -457,7 +457,7 @@ describe("scoped settings writes", () => {
     const withOverrides = environment("Server", {
       settings: {
         projectSettingsOverrides: {
-          [projectId]: { defaultAutoPull: true, enableAgentBrowserAccess: false },
+          [projectId]: { defaultAutoPull: true, newWorktreesStartFromOrigin: false },
         },
       },
     });
@@ -467,21 +467,25 @@ describe("scoped settings writes", () => {
         environmentId: server.environmentId,
         label: server.label,
         previous: expect.anything(),
-        patch: { projectSettingsOverrides: { [projectId]: { enableAgentBrowserAccess: false } } },
+        patch: {
+          projectSettingsOverrides: { [projectId]: { newWorktreesStartFromOrigin: false } },
+        },
       },
     ]);
     expect(
       planScopedSettingsClear(
         checkout,
         [laptop, withOverrides],
-        ["defaultAutoPull", "enableAgentBrowserAccess"],
+        ["defaultAutoPull", "newWorktreesStartFromOrigin"],
       ).serverWrites[0]?.patch,
     ).toEqual({ projectSettingsOverrides: { [projectId]: null } });
   });
 
   it("never substitutes an environment-default write for an invalid scope", () => {
     const scope = resolveSettingsScope({ machine: "removed" }, [group], environments);
-    const plan = planScopedSettingsPatch(scope, environments, { enableAgentBrowserAccess: false });
+    const plan = planScopedSettingsPatch(scope, environments, {
+      newWorktreesStartFromOrigin: false,
+    });
     expect(plan.serverWrites).toEqual([]);
     expect(plan.hasClientWrite).toBe(false);
     expect(plan.unavailableReason).not.toBeNull();
@@ -507,7 +511,7 @@ describe("scoped settings writes", () => {
       .mockRejectedValueOnce(new Error("Disconnected during save"))
       .mockResolvedValueOnce({ _tag: "Success" });
     const result = await persistScopedSettingsPatch(
-      planScopedSettingsPatch(scope, selected, { enableAgentBrowserAccess: false }),
+      planScopedSettingsPatch(scope, selected, { newWorktreesStartFromOrigin: false }),
       persistServer,
       vi.fn(),
     );

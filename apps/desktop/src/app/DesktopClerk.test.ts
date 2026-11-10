@@ -60,7 +60,6 @@ const layerDesktopClerk = (
   }),
   shell: ElectronShell.ElectronShell["Service"] = {
     openExternal: () => Effect.succeed(true),
-    openSystemSettings: () => Effect.succeed(false),
     copyText: () => Effect.void,
   },
   listeners = new Map<string, (...args: unknown[]) => void>(),
@@ -387,7 +386,6 @@ it.effect.each(["startup", "open-url", "early-second-instance"] as const)(
             delivered.resolve(response.headers.get("location")!);
             return true;
           }),
-        openSystemSettings: () => Effect.succeed(false),
         copyText: () => Effect.void,
       });
       const listeners = new Map<string, (...args: unknown[]) => void>();
@@ -427,7 +425,7 @@ it.effect.each(["startup", "open-url", "early-second-instance"] as const)(
     }).pipe(Effect.scoped),
 );
 
-it.effect("hands web and app links to the renderer and leaves other links alone", () =>
+it.effect("hands app links to the renderer and leaves other links alone", () =>
   Effect.gen(function* () {
     storageMock.mockReturnValue(storageAdapter);
     createClerkBridgeMock.mockReturnValue({ cleanup: vi.fn(), isPrimaryInstance: true });
@@ -449,8 +447,7 @@ it.effect("hands web and app links to the renderer and leaves other links alone"
         listeners.get("open-url")!(event, url);
         return event.preventDefault.mock.calls.length;
       };
-      assert.strictEqual(open("https://example.com/page"), 1);
-      assert.strictEqual(open("http://localhost:3000/"), 1);
+      assert.strictEqual(open("https://example.com/page"), 0);
       assert.strictEqual(open("t3code://new?prompt=hi"), 1);
       assert.strictEqual(open("t3code://threads/env-1/thread-1"), 1);
       assert.strictEqual(open(pairLink), 1);
@@ -459,8 +456,6 @@ it.effect("hands web and app links to the renderer and leaves other links alone"
       assert.strictEqual(open("t3code://somewhere-else"), 0);
       yield* Effect.yieldNow;
       assert.deepStrictEqual(received, [
-        "https://example.com/page",
-        "http://localhost:3000/",
         "t3code://new?prompt=hi",
         "t3code://threads/env-1/thread-1",
         pairLink,

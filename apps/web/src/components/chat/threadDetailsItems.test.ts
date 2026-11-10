@@ -7,7 +7,7 @@ import {
 } from "./threadDetailsItems";
 
 const usage = THREAD_DETAILS_ITEMS.find((item) => item.id === "usage")!;
-const servers = THREAD_DETAILS_ITEMS.find((item) => item.id === "servers")!;
+const lineage = THREAD_DETAILS_ITEMS.find((item) => item.id === "lineage")!;
 
 describe("thread details items", () => {
   it.each([
@@ -22,7 +22,7 @@ describe("thread details items", () => {
     });
     expect(visibility.usage).toBe(row.usage);
     expect(visibility.context).toBe(row.context);
-    expect(visibility.servers).toBe(true);
+    expect(visibility.lineage).toBe(true);
   });
 
   it("stores only choices that differ from the default", () => {
@@ -30,7 +30,7 @@ describe("thread details items", () => {
     expect(setThreadDetailsItem(legacyOn, usage, false)).toEqual({ usage: false });
     expect(setThreadDetailsItem(legacyOn, usage, true)).toEqual({});
 
-    const hidden = { threadDetailsItems: { servers: false }, threadDetailsUsageEnabled: false };
-    expect(setThreadDetailsItem(hidden, servers, true)).toEqual({});
+    const hidden = { threadDetailsItems: { lineage: false }, threadDetailsUsageEnabled: false };
+    expect(setThreadDetailsItem(hidden, lineage, true)).toEqual({});
   });
 });

@@ -48,8 +48,6 @@ it.each([
   { kind: "file", edit: "cached" },
   { kind: "file", edit: "question" },
   { kind: "image", edit: "question" },
-  { kind: "image", edit: "annotation" },
-  { kind: "image", edit: "delete-annotation" },
 ] as const)("settles a delayed $kind import after $edit", async ({ kind, edit }) => {
   const target = DraftId.make(`clipboard-${kind}-${edit}`);
   const store = useComposerDraftStore.getState();
@@ -79,7 +77,6 @@ it.each([
     questionAttachmentTarget: edit === "question" ? target : null,
     pendingUserInputs: [],
     composerContextRecords: new Map(),
-    composerImages: [],
     composerFilesRef: { current: [] },
     pendingThreadImportsRef: { current: new Map() },
     promptRef,
@@ -119,30 +116,13 @@ it.each([
       ? { ...attachmentFields, kind: "file" as const }
       : { ...attachmentFields, kind: "image" as const }
   ) satisfies ComposerContextRecord;
-  const annotation = {
-    version: 1,
-    kind: "preview-annotation",
-    contextId: ComposerContextId.make("preview-annotation_source"),
-    label: "Page annotation",
-    annotationId: "source",
-    pageUrl: "http://localhost/page",
-    pageTitle: "Page",
-    comment: "Check this",
-    targetSummary: "Page",
-    styleChanges: [],
-    screenshotContextId: contextId,
-  } satisfies ComposerContextRecord;
-  const annotated = edit === "annotation" || edit === "delete-annotation";
   let pastedPrompt = "";
   await act(async () => {
-    const remapped = importer.importContextRecords(
-      annotated ? [attachment, annotation] : [attachment],
-      sourceEnvironmentId,
-    );
+    const remapped = importer.importContextRecords([attachment], sourceEnvironmentId);
     pastedPrompt = formatInlineContextReference({
-      kind: annotated ? "preview-annotation" : kind,
-      contextId: remapped.get(annotated ? annotation.contextId : contextId)!,
-      label: annotated ? "Page annotation" : "notes.txt",
+      kind,
+      contextId: remapped.get(contextId)!,
+      label: "notes.txt",
     });
     if (edit === "question") pastedPrompt = "Question answer";
     promptRef.current = pastedPrompt;
@@ -151,13 +131,7 @@ it.each([
   });
   if (edit !== "cached") expect(pendingDraftWork.has(target)).toBe(true);
   await act(() => {
-    if (
-      edit !== "annotation" &&
-      edit !== "retain" &&
-      edit !== "cached" &&
-      edit !== "question" &&
-      edit !== "switch"
-    ) {
+    if (edit !== "retain" && edit !== "cached" && edit !== "question" && edit !== "switch") {
       promptRef.current = "Keep this edit";
       store.setPrompt(target, promptRef.current);
     }
@@ -176,11 +150,7 @@ it.each([
   expect(draft.prompt).toBe(promptRef.current);
   const attachments = kind === "file" ? draft.files : draft.images;
   expect(attachments.map((file) => file.name)).toEqual(
-    edit === "undo" ||
-      edit === "retain" ||
-      edit === "annotation" ||
-      edit === "cached" ||
-      edit === "question"
+    edit === "undo" || edit === "retain" || edit === "cached" || edit === "question"
       ? ["notes.txt"]
       : [],
   );

@@ -221,7 +221,7 @@ it.layer(Layer.mergeAll(NodeServices.layer, NodeCrypto.layer))("server settings"
         config.settingsPath,
         `{
           "responseStreamingMode": "token",
-          "enableAgentBrowserAccess": false,
+          "enableProviderUpdateChecks": false,
           "projectSettingsOverrides": {
             "legacy": { "responseStreamingMode": "token", "defaultAutoPull": true },
             "buffered": { "responseStreamingMode": "turn" },
@@ -232,7 +232,7 @@ it.layer(Layer.mergeAll(NodeServices.layer, NodeCrypto.layer))("server settings"
 
       const settings = yield* service.getSettings;
       assert.equal(settings.responseStreamingMode, "paragraph");
-      assert.isFalse(settings.enableAgentBrowserAccess);
+      assert.isFalse(settings.enableProviderUpdateChecks);
       assert.deepEqual(settings.projectSettingsOverrides, {
         [ProjectId.make("legacy")]: { responseStreamingMode: "paragraph", defaultAutoPull: true },
         [ProjectId.make("buffered")]: { responseStreamingMode: "turn" },
@@ -1912,7 +1912,7 @@ it.layer(Layer.mergeAll(NodeServices.layer, NodeCrypto.layer))("server settings"
       }
       yield* fileSystem.writeFileString(
         serverConfig.settingsPath,
-        `{"projectAgentBrowserAccessOverrides":{"${legacyProject}":false},"projectAutoPullOverrides":{"${scriptedProject}":true},"projectScriptOverrides":{"${legacyProject}":null}}`,
+        `{"projectAutoPullOverrides":{"${scriptedProject}":true},"projectScriptOverrides":{"${legacyProject}":null}}`,
       );
 
       const settings = yield* serverSettings.getSettings;
@@ -1921,7 +1921,6 @@ it.layer(Layer.mergeAll(NodeServices.layer, NodeCrypto.layer))("server settings"
         settings.projectSettingsOverrides,
         {
           [legacyProject]: {
-            enableAgentBrowserAccess: false,
             defaultModelSelection: model,
             defaultThreadEnvMode: "worktree",
             defaultAutoPull: true,

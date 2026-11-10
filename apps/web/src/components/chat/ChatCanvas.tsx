@@ -1,7 +1,6 @@
 import { useLayoutEffect, useRef, useState, type ComponentProps, type CSSProperties } from "react";
 import { useStore } from "zustand";
 import { ChatCanvasContext } from "./ChatCanvasContext";
-import type { ChatCanvasPreview } from "./chatCanvasLayout";
 import { resolveChatCanvasModel, type ChatCanvasStore } from "./canvasStore";
 import { selectThreadPanelOpen, useRightPanelStore } from "../../rightPanelStore";
 import { observeResize } from "../../lib/observeResize";
@@ -10,8 +9,6 @@ import type { ScopedThreadRef } from "@t3tools/contracts";
 export function ChatCanvas({
   store,
   threadRef,
-  preview,
-  composerOverlayElement,
   detailsCardTopInset = 0,
   children,
   ...props
@@ -19,9 +16,6 @@ export function ChatCanvas({
   store: ChatCanvasStore;
   /** The thread whose details card sits on the canvas; other threads' measurements are stale. */
   threadRef: ScopedThreadRef | null;
-  /** The thread's mini player while it renders on this canvas. */
-  preview: ChatCanvasPreview | null;
-  composerOverlayElement: HTMLElement | null;
   detailsCardTopInset?: number;
 }) {
   const elementRef = useRef<HTMLDivElement | null>(null);
@@ -54,7 +48,6 @@ export function ChatCanvas({
         padding: Number.parseFloat(styles.paddingLeft),
         maxChatWidth: Number.parseFloat(styles.width),
         minChatWidth: Number.parseFloat(styles.minWidth),
-        composerHeight: composerOverlayElement?.getBoundingClientRect().height ?? 0,
         timelineGutter: timelineElement
           ? (timelineElement.offsetWidth - timelineElement.clientWidth) / 2
           : 0,
@@ -63,10 +56,9 @@ export function ChatCanvas({
     measure();
     const observed: Element[] = [element, probe];
     if (findBar) observed.push(findBar);
-    if (composerOverlayElement) observed.push(composerOverlayElement);
     if (timelineElement) observed.push(timelineElement);
     return observeResize(observed, measure);
-  }, [store, composerOverlayElement, timelineElement, detailsCardTopInset]);
+  }, [store, timelineElement, detailsCardTopInset]);
   const detailsCardInlineOpen = useRightPanelStore((state) =>
     threadRef === null
       ? false
@@ -76,14 +68,12 @@ export function ChatCanvas({
     measurements,
     detailsCardMeasurement,
     threadRef,
-    preview,
     detailsCardInlineOpen,
   });
   const context = {
     container: model.container,
     lane: model.lane,
     layout: model.layout,
-    previewKey: preview?.key ?? null,
     registerTimeline,
     measureDetailsCard: store.getState().measureDetailsCard,
     detailsCardTopInset: model.detailsCardTopInset,
@@ -97,7 +87,6 @@ export function ChatCanvas({
         {...props}
         ref={elementRef}
         data-chat-canvas
-        data-preview-overlaps-chat={layout.overlapsChat || undefined}
         className="relative flex min-h-0 min-w-0 flex-1 flex-col"
         style={
           {

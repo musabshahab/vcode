@@ -172,31 +172,3 @@ export const resolveHostCliCommand = Effect.fn("invocation.resolveHostCliCommand
   const call = platform === "win32" ? `& ${quoted}` : quoted;
   return { command: withArgs(`${call} ${subcommand}`), launcher: true };
 });
-
-/**
- * `sudo` resets PATH on most distributions, which drops a user-installed Node
- * (nvm, fnm, a tarball) and with it `npx` or a global `t3`, so the command
- * carries PATH through unless Node is on root's PATH too. An absolute launcher
- * needs neither.
- */
-export const resolveRootCliCommand = Effect.fn("invocation.resolveRootCliCommand")(function* (
-  subcommand: string,
-  args: ReadonlyArray<string> = [],
-) {
-  const { command, launcher } = yield* resolveHostCliCommand(subcommand, args);
-  if (launcher) return `sudo ${command}`;
-  const executablePath = yield* HostProcess.ExecutablePath;
-  const systemNode = ROOT_PATH_DIRECTORIES.some((directory) =>
-    executablePath.startsWith(`${directory}/`),
-  );
-  return systemNode ? `sudo ${command}` : `sudo env "PATH=$PATH" ${command}`;
-});
-
-const ROOT_PATH_DIRECTORIES = [
-  "/usr/local/sbin",
-  "/usr/local/bin",
-  "/usr/sbin",
-  "/usr/bin",
-  "/sbin",
-  "/bin",
-];

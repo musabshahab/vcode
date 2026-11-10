@@ -2,7 +2,6 @@ import {
   type ComposerContextId,
   ComposerContextRecord,
   type ElementContextRecord,
-  type PreviewAnnotationContextRecord,
   ReviewCommentContextRecord,
   type TerminalContextRecord,
 } from "@t3tools/contracts";
@@ -152,66 +151,6 @@ function elementRecord(entry: ParsedEntry, index: number): ElementContextRecord 
   };
 }
 
-function previewRecord(body: string, index: number): PreviewAnnotationContextRecord | null {
-  const lines = body.split("\n");
-  // Preserve multiline comments, including blank lines and markup, until the next field or context block.
-  const FIELD_PREFIXES = ["Preview annotation:", "Id: ", "Page: ", "Comment: ", "Targets: "];
-  const BLOCK_DELIMITER =
-    /^<\/?(?:terminal_context|element_context|preview_annotation|review_comment)\b/;
-  const isFieldStart = (line: string) =>
-    FIELD_PREFIXES.some((candidate) => line.startsWith(candidate)) ||
-    line === "Requested visual changes:" ||
-    BLOCK_DELIMITER.test(line) ||
-    line === "The attached screenshot is the annotated preview crop.";
-  const read = (prefix: string) => {
-    const start = lines.findIndex((line) => line.startsWith(prefix));
-    if (start < 0) return "";
-    let end = start + 1;
-    while (end < lines.length && !isFieldStart(lines[end]!)) end += 1;
-    return [lines[start]!.slice(prefix.length), ...lines.slice(start + 1, end)].join("\n").trim();
-  };
-  const styleHeading = lines.indexOf("Requested visual changes:");
-  const styleChanges: string[] = [];
-  if (styleHeading >= 0) {
-    for (const line of lines.slice(styleHeading + 1)) {
-      if (!line.startsWith("- ")) break;
-      styleChanges.push(line.slice(2));
-    }
-  }
-  const page = read("Page: ");
-  const pageIsUrl = /^https?:\/\//i.test(page);
-  const elements: NonNullable<PreviewAnnotationContextRecord["elements"]>[number][] = [];
-  for (const match of body.matchAll(/<element_context>\n([\s\S]*?)\n<\/element_context>/g)) {
-    const entries = parseEntries(match[1] ?? "");
-    if (entries === null) return null;
-    for (const entry of entries) {
-      const record = elementRecord(entry, elements.length + 1);
-      if (record === null) return null;
-      const {
-        version: _version,
-        contextId: _contextId,
-        kind: _kind,
-        label: _label,
-        ...details
-      } = record;
-      elements.push(details);
-    }
-  }
-  return {
-    version: 1,
-    contextId: legacyId("preview-annotation", index),
-    kind: "preview-annotation",
-    label: page || "Preview annotation",
-    annotationId: read("Id: "),
-    pageUrl: pageIsUrl ? page : (elements[0]?.pageUrl ?? ""),
-    pageTitle: pageIsUrl ? null : page || null,
-    comment: read("Comment: "),
-    targetSummary: read("Targets: "),
-    styleChanges,
-    ...(elements.length > 0 ? { elements } : {}),
-  };
-}
-
 function unescapeAttribute(value: string): string {
   return value
     .replace(/&lt;/g, "<")
@@ -310,7 +249,6 @@ export function upgradeLegacyContextMessage(text: string): UpgradedLegacyContext
 
   const terminalEntries: ParsedEntry[] = [];
   const elementEntries: ParsedEntry[] = [];
-  const previewBodies: string[] = [];
   const reviews: ReviewCommentContextRecord[] = [];
 
   // A literal private-use token in the message must never be mistaken for our placeholder.
@@ -343,12 +281,8 @@ export function upgradeLegacyContextMessage(text: string): UpgradedLegacyContext
     }
   }
   for (;;) {
-    const preview = stripTrailing(rest, TRAILING_PREVIEW);
-    if (preview) {
-      rest = preview.text;
-      previewBodies.unshift(preview.match[1] ?? "");
-      continue;
-    }
+    // Browser preview annotations have no record any more; such a message stays as sent.
+    if (TRAILING_PREVIEW.test(rest)) return { text, records: [] };
     const element = stripTrailing(rest, TRAILING_ELEMENT);
     if (element) {
       const entries = parseEntries(element.match[1] ?? "");
@@ -376,12 +310,6 @@ export function upgradeLegacyContextMessage(text: string): UpgradedLegacyContext
   const elements = elementEntries
     .map((entry, index) => elementRecord(entry, index + 1))
     .filter((record) => record !== null);
-  const previews: PreviewAnnotationContextRecord[] = [];
-  for (const [index, previewBody] of previewBodies.entries()) {
-    const record = previewRecord(previewBody, index + 1);
-    if (record === null) return { text, records: [] };
-    previews.push(record);
-  }
   const appendedReviews = trailingReviewTokens.map((index) => reviews[index]!);
 
   let body = rest.replace(reviewTokenPattern, (_whole, index: string) =>
@@ -419,7 +347,6 @@ export function upgradeLegacyContextMessage(text: string): UpgradedLegacyContext
   const appended = [
     ...terminals.filter((record) => !placedTerminals.has(record)),
     ...elements,
-    ...previews,
     ...appendedReviews,
   ].map((record) => formatComposerContextReference(record));
   const upgradedText =
@@ -429,7 +356,7 @@ export function upgradeLegacyContextMessage(text: string): UpgradedLegacyContext
         ? `${body}\n\n${appended.join(" ")}`
         : appended.join(" ");
 
-  const records = [...terminals, ...elements, ...previews, ...reviews];
+  const records = [...terminals, ...elements, ...reviews];
   // Conversion is atomic: keep the source if any record would be dropped on the wire.
   if (!isLegacyContextRecords(records)) return { text, records: [] };
   return {

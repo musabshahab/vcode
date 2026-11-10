@@ -637,8 +637,6 @@ describe("composer context undo lifetime", () => {
           const changes = reconcileAttachmentContextReferences({
             referencedContextIds: new Set(contextIds),
             files: draft.files,
-            images: [],
-            previewAnnotations: [],
             retained: payloads,
           });
           setDrafts({

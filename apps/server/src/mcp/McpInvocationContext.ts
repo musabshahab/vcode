@@ -3,7 +3,6 @@ import {
   type EnvironmentId,
   McpCapabilityUnavailableError,
   OrchestratorMcpFailure,
-  PreviewAutomationUnavailableError,
   type ProviderInstanceId,
   type ProviderInteractionMode,
   type RuntimeMode,
@@ -14,7 +13,7 @@ import * as Effect from "effect/Effect";
 import * as Fiber from "effect/Fiber";
 import { formatThreadLink, hostedThreadLink } from "@t3tools/shared/threadLinks";
 
-const ALL_MCP_CAPABILITIES = ["preview", "orchestration", "worktree", "pull-requests"] as const;
+const ALL_MCP_CAPABILITIES = ["orchestration", "worktree", "pull-requests"] as const;
 export type McpCapability = (typeof ALL_MCP_CAPABILITIES)[number];
 
 export interface McpThreadCaller {
@@ -127,10 +126,6 @@ export const hiddenFromSubagents = (): boolean => {
   return scope?.thread?.subagent !== true;
 };
 
-export type McpCapabilityError<C extends McpCapability> = C extends "preview"
-  ? PreviewAutomationUnavailableError
-  : McpCapabilityUnavailableError;
-
 const capabilityErrorFields = (invocation: McpInvocationScope) => ({
   environmentId: invocation.environmentId,
   ...(invocation.thread === undefined
@@ -142,40 +137,14 @@ const capabilityErrorFields = (invocation: McpInvocationScope) => ({
       }),
 });
 
-const missingCapability = (
-  invocation: McpInvocationScope,
+export const requireMcpCapability = (
   capability: McpCapability,
-): PreviewAutomationUnavailableError | McpCapabilityUnavailableError => {
-  const fields = capabilityErrorFields(invocation);
-  return capability === "preview"
-    ? new PreviewAutomationUnavailableError({ capability, ...fields })
-    : new McpCapabilityUnavailableError({ capability, ...fields });
-};
-
-export const requireMcpCapability = <const C extends McpCapability>(
-  capability: C,
-): Effect.Effect<McpInvocationScope, McpCapabilityError<C>, McpInvocationContext> =>
+): Effect.Effect<McpInvocationScope, McpCapabilityUnavailableError, McpInvocationContext> =>
   McpInvocationContext.pipe(
     Effect.filterOrFail(
       (invocation) => invocation.capabilities.has(capability),
-      (invocation) => missingCapability(invocation, capability) as McpCapabilityError<C>,
-    ),
-    Effect.withSpan("mcp.requireCapability"),
-  );
-
-export const requireThreadMcpCapability = (
-  capability: "preview",
-): Effect.Effect<
-  McpThreadInvocationScope,
-  PreviewAutomationUnavailableError,
-  McpInvocationContext
-> =>
-  McpInvocationContext.pipe(
-    Effect.filterOrFail(
-      (invocation): invocation is McpThreadInvocationScope =>
-        invocation.capabilities.has(capability) && invocation.thread !== undefined,
       (invocation) =>
-        new PreviewAutomationUnavailableError({ capability, ...capabilityErrorFields(invocation) }),
+        new McpCapabilityUnavailableError({ capability, ...capabilityErrorFields(invocation) }),
     ),
     Effect.withSpan("mcp.requireCapability"),
   );

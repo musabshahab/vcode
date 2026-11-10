@@ -21,7 +21,6 @@ import {
   Trash2,
 } from "lucide-react";
 import {
-  AuthPreviewOperateScope,
   AuthFilesystemReadScope,
   AuthOrchestrationOperateScope,
   AuthTerminalOperateScope,
@@ -47,7 +46,6 @@ import {
 import { Popover, PopoverPopup, PopoverTrigger } from "~/components/ui/popover";
 import { Button } from "~/components/ui/button";
 import { PanelTabCloseButton } from "~/components/ui/panel-tab-close-button";
-import { stackedThreadToast, toastManager } from "~/components/ui/toast";
 import { readTextFromClipboard, writeTextToClipboard } from "~/hooks/useCopyToClipboard";
 import { cn } from "~/lib/utils";
 import { type TerminalContextSelection } from "~/lib/terminalContext";
@@ -88,11 +86,9 @@ import { useLocalStorage } from "../hooks/useLocalStorage";
 import { attachedTerminalSessionAtom } from "../state/terminalSessions";
 import { appAtomRegistry } from "../rpc/atomRegistry";
 import { serverEnvironment } from "../state/server";
-import { previewEnvironment } from "../state/preview";
 import { readEnvironmentScope } from "../state/session";
 import { terminalEnvironment } from "../state/terminal";
 import { useEnvironmentScope } from "../state/session";
-import { openTerminalLinkInPreview } from "./preview/openTerminalLinkInPreview";
 import { useAtomCommand } from "../state/use-atom-command";
 import { preventTerminalCloseShortcut } from "../lib/terminalCloseShortcut";
 import { observeResize } from "../lib/observeResize";
@@ -576,9 +572,6 @@ function TerminalSessionViewport({
     serverConfig?.availableEditors ?? [],
   );
   const openTerminalPath = useEffectEvent((target: string) => openInPreferredEditor(target));
-  const openPreview = useAtomCommand(previewEnvironment.open, {
-    reportFailure: false,
-  });
   const runTerminalWrite = useAtomCommand(terminalEnvironment.write, {
     reportFailure: false,
   });
@@ -664,10 +657,6 @@ function TerminalSessionViewport({
       }
       if (version > 0) synchronizedStatusRef.current = status;
     },
-  );
-  const openLinkInPreview = useEffectEvent(
-    (url: string, forceBrowser: boolean, fallbackToBrowser: () => void) =>
-      openTerminalLinkInPreview({ url, threadRef, openPreview, fallbackToBrowser, forceBrowser }),
   );
 
   // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- sets the terminal input's readOnly from the operate grant and consumes a pending focus request
@@ -1038,7 +1027,7 @@ function TerminalSessionViewport({
         return false;
       }
 
-      function handleLinkActivate(text: string, event: MouseEvent): void {
+      function handleLinkActivate(text: string, _event: MouseEvent): void {
         if (
           !isTerminalUrl(text) &&
           !readEnvironmentScope(environmentId, AuthOrchestrationOperateScope)
@@ -1051,29 +1040,12 @@ function TerminalSessionViewport({
             writeSystemMessage(latestTerminal, "Opening links is unavailable in this browser.");
             return;
           }
-          const fallbackToBrowser = () => {
-            void localApi.shell.openExternal(text).catch((error: unknown) => {
-              writeSystemMessage(
-                latestTerminal,
-                error instanceof Error ? error.message : "Unable to open link",
-              );
-            });
-          };
-          if (!readEnvironmentScope(environmentId, AuthPreviewOperateScope)) {
-            fallbackToBrowser();
-            return;
-          }
-          void openLinkInPreview(text, event.metaKey || event.ctrlKey, fallbackToBrowser).catch(
-            (error: unknown) => {
-              toastManager.add(
-                stackedThreadToast({
-                  type: "error",
-                  title: "Unable to open link",
-                  description: error instanceof Error ? error.message : "An error occurred.",
-                }),
-              );
-            },
-          );
+          void localApi.shell.openExternal(text).catch((error: unknown) => {
+            writeSystemMessage(
+              latestTerminal,
+              error instanceof Error ? error.message : "Unable to open link",
+            );
+          });
           return;
         }
         const target = resolvePathLinkTarget(text, cwd);

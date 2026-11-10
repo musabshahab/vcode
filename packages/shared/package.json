@@ -299,13 +299,9 @@
       "types": "./src/relayTracing.ts",
       "import": "./src/relayTracing.ts"
     },
-    "./preview": {
-      "types": "./src/preview.ts",
-      "import": "./src/preview.ts"
-    },
-    "./previewViewport": {
-      "types": "./src/previewViewport.ts",
-      "import": "./src/previewViewport.ts"
+    "./loopbackHost": {
+      "types": "./src/loopbackHost.ts",
+      "import": "./src/loopbackHost.ts"
     },
     "./mediaPreview": {
       "types": "./src/mediaPreview.ts",

@@ -270,16 +270,16 @@ describe("projectSettingsOverrides patches", () => {
   it("replaces a project's entry, removes it with null, and drops empty entries", () => {
     const first = applyServerSettingsPatch(DEFAULT_SERVER_SETTINGS, {
       projectSettingsOverrides: {
-        [projectId]: { defaultAutoPull: true, enableAgentBrowserAccess: false },
+        [projectId]: { defaultAutoPull: true, newWorktreesStartFromOrigin: false },
         [otherProjectId]: { defaultAutoPull: false },
       },
     });
     expect(hasProjectSettingsOverrides(first)).toBe(true);
     const replaced = applyServerSettingsPatch(first, {
-      projectSettingsOverrides: { [projectId]: { enableAgentBrowserAccess: false } },
+      projectSettingsOverrides: { [projectId]: { newWorktreesStartFromOrigin: false } },
     });
     expect(replaced.projectSettingsOverrides[projectId]).toEqual({
-      enableAgentBrowserAccess: false,
+      newWorktreesStartFromOrigin: false,
     });
     expect(replaced.projectSettingsOverrides[otherProjectId]).toEqual({ defaultAutoPull: false });
     const emptied = applyServerSettingsPatch(replaced, {
@@ -298,26 +298,25 @@ describe("projectSettingsOverrides patches", () => {
   it("derives the legacy per-key maps from the generic record", () => {
     const settings = applyServerSettingsPatch(DEFAULT_SERVER_SETTINGS, {
       projectSettingsOverrides: {
-        [projectId]: { defaultAutoPull: true, enableAgentBrowserAccess: false },
+        [projectId]: { defaultAutoPull: true, newWorktreesStartFromOrigin: false },
         [otherProjectId]: { defaultProjectScripts: [] },
       },
     });
     expect(settings.projectAutoPullOverrides).toEqual({ [projectId]: true });
-    expect(settings.projectAgentBrowserAccessOverrides).toEqual({ [projectId]: false });
     expect(settings.projectScriptOverrides).toEqual({ [otherProjectId]: [] });
   });
 
   it("translates legacy per-key patches into the generic record", () => {
     const written = applyServerSettingsPatch(DEFAULT_SERVER_SETTINGS, {
       projectAutoPullOverrides: { [projectId]: true },
-      projectAgentBrowserAccessOverrides: { [projectId]: false, [otherProjectId]: true },
+      projectScriptOverrides: { [projectId]: [], [otherProjectId]: [] },
     });
     expect(written.projectSettingsOverrides).toEqual({
-      [projectId]: { defaultAutoPull: true, enableAgentBrowserAccess: false },
-      [otherProjectId]: { enableAgentBrowserAccess: true },
+      [projectId]: { defaultAutoPull: true, defaultProjectScripts: [] },
+      [otherProjectId]: { defaultProjectScripts: [] },
     });
     const cleared = applyServerSettingsPatch(written, {
-      projectAgentBrowserAccessOverrides: { [projectId]: null, [otherProjectId]: null },
+      projectScriptOverrides: { [projectId]: null, [otherProjectId]: null },
     });
     expect(cleared.projectSettingsOverrides).toEqual({ [projectId]: { defaultAutoPull: true } });
   });

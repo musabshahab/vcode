@@ -44,13 +44,13 @@ describe("resolveT3McpToolPresentation", () => {
 describe("resolveT3McpToolDefinition", () => {
   it("labels an action tool call as the action it ran", () => {
     expect(
-      resolveT3McpToolDefinition("mcp__t3-code__preview_act", { action: "type" })?.labels,
-    ).toEqual(resolveT3McpToolDefinition("preview_type")?.labels);
+      resolveT3McpToolDefinition("mcp__t3-code__t3_queue", { action: "edit" })?.labels,
+    ).toEqual(resolveT3McpToolDefinition("t3_queue_edit")?.labels);
     expect(resolveT3McpToolDefinition("t3_thread_transfer", { action: "fork" })?.displayName).toBe(
       resolveT3McpToolDefinition("t3_thread_fork")?.displayName,
     );
-    expect(resolveT3McpToolDefinition("preview_act", { action: "unknown" })?.labels[2]).toBe(
-      "Used",
+    expect(resolveT3McpToolDefinition("t3_queue", { action: "unknown" })?.labels[2]).toBe(
+      "Managed",
     );
   });
 });

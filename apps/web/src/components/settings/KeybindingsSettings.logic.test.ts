@@ -207,10 +207,10 @@ describe("KeybindingsSettings.logic", () => {
         },
       },
     });
-    const previewOpenDraft = parseWhenExpressionDraft("previewOpen && !previewFocus");
-    assert(previewOpenDraft.ok);
-    expect(unknownWhenVariables(previewOpenDraft.value)).toEqual([]);
-    expect(buildWhenVariableOptions()).toContain("previewOpen");
+    const terminalOpenDraft = parseWhenExpressionDraft("terminalOpen && !terminalFocus");
+    assert(terminalOpenDraft.ok);
+    expect(unknownWhenVariables(terminalOpenDraft.value)).toEqual([]);
+    expect(buildWhenVariableOptions()).toContain("terminalOpen");
     expect(parseWhenExpressionDraft("editorFocus &&")).toEqual({
       ok: false,
       message: "Use variables with !, &&, ||, and parentheses.",

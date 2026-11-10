@@ -3,8 +3,8 @@
 > For maintainers. Using T3 Code? See [docs/user](../user/).
 
 Inline context references let a user message point at a typed payload from an exact position in
-its prose: an image, a file, a terminal excerpt, a picked page element, a preview annotation, a
-review comment, a file mention, or a skill. This document covers the wire contract and the pure
+its prose: an image, a file, a terminal excerpt, a picked page element, a review comment, a file
+mention, or a skill. This document covers the wire contract and the pure
 codecs. Editor, rendering, and clipboard behaviour land in later PRs and get their own sections
 here as they arrive.
 
@@ -127,18 +127,17 @@ The composer sends `message.text` as canonical prose with reference links and
 The server projects provider text at turn start (`projectComposerContextForProvider`), so the persisted
 message stays readable and the provider receives markers plus one envelope.
 
-Review comments and preview annotations enter the draft through store mutators. A mounted composer
-registers a context insertion handler so panel-originated references land at its current or
-last-known caret; when no composer is mounted, the store appends them. Terminal excerpts and
-attachments use the same caret-first behavior. Removing a chip in the editor removes the record;
-removing a preview screenshot thumbnail removes its annotation and chip.
+Review comments enter the draft through store mutators. A mounted composer registers a context
+insertion handler so panel-originated references land at its current or last-known caret; when no
+composer is mounted, the store appends them. Terminal excerpts and attachments use the same
+caret-first behavior. Removing a chip in the editor removes the record.
 
 The transcript resolves a message with `resolveUserMessageContext`: structured context is used as
 is, older messages are upgraded in memory. `ChatMarkdown` renders `t3-context://` links through
 `renderContextReference`, which the timeline maps to chips through the web context-presentation
 registry. The registry declares compact, details, and expanded capabilities for every known kind,
 rejects duplicate surface handlers, and provides the unresolved fallback. Terminal excerpts,
-elements, review comments, and preview annotations open structured details popovers; images and
+elements and review comments open structured details popovers; images and
 videos use the shared media modal. Mobile renders context links as their labels.
 
 Pull-request summaries currently travel as review-comment records with optional typed
@@ -178,8 +177,8 @@ links through `data-markdown-copy`; the whole-message button writes both through
 and falls back to plain text.
 
 On paste the composer decodes the fragment before the plain text. Records the draft does not
-already hold are imported: terminal excerpts and review comments as they are, preview
-annotations rebuilt from their record, and images or files re-fetched through the source
+already hold are imported: terminal excerpts and review comments as they are, and images or
+files re-fetched through the source
 environment's asset URL and attached under a fresh local id, with the pasted link rewritten to
 that id. A pasted binary reads as an unresolved chip until its bytes arrive; a fragment from
 another environment leaves binaries unresolved. Rendered chips and sent messages are never
@@ -194,13 +193,10 @@ the chip stays unresolved.
 
 Producers keep their own id grammars; `toComposerContextId` folds anything outside
 `[a-z0-9_-]` into a slug plus a hash, deterministically, at the reference and record boundary.
-A preview annotation's context id is derived from `annotation-<id>` so it stays distinct from its
-screenshot image, whose attachment id is the annotation id; the record links the two through
-`screenshotContextId`.
 
 `projection_thread_messages.context_json` persists records, so a restart or projection reload
-keeps chips resolvable. Prompt stash entries carry `records` for terminal excerpts, review
-comments, and preview annotations; stashing moves them out of the draft and restoring imports
+keeps chips resolvable. Prompt stash entries carry `records` for terminal excerpts and review
+comments; stashing moves them out of the draft and restoring imports
 them back through the same importer the paste path uses.
 
 Context produced by other panels reaches the caret through `setContextInsertionHandler`: a

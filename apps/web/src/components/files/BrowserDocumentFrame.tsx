@@ -6,6 +6,9 @@ import type { PdfViewState } from "./PdfViewer";
 export const isPdfPreviewFile = (path: string): boolean =>
   /\.pdf$/i.test(path.split(/[?#]/, 1)[0] ?? "");
 
+export const isHtmlPreviewFile = (path: string): boolean =>
+  /\.html?$/i.test(path.split(/[?#]/, 1)[0] ?? "");
+
 const PdfViewer = lazy(() => import("./PdfViewer"));
 
 // The document stays mounted while each revision gets a fresh PDF.js document.

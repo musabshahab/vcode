@@ -28,8 +28,6 @@ export function toolGroupSummaryIconName(
       return "terminal";
     case "thread-create":
       return "t3-code";
-    case "browser":
-      return "browser";
     case "search":
       return "globe";
     case "code-search":

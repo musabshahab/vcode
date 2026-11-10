@@ -39,10 +39,6 @@
       "types": "./src/handoff.ts",
       "default": "./src/handoff.ts"
     },
-    "./preview/server-browser-stream": {
-      "types": "./src/preview/serverBrowserStream.ts",
-      "default": "./src/preview/serverBrowserStream.ts"
-    },
     "./worktree-setup": {
       "types": "./src/worktreeSetup.ts",
       "default": "./src/worktreeSetup.ts"
@@ -203,10 +199,6 @@
       "types": "./src/state/presentation.ts",
       "default": "./src/state/presentation.ts"
     },
-    "./state/mediaStreamAccess": {
-      "types": "./src/state/mediaStreamAccess.ts",
-      "default": "./src/state/mediaStreamAccess.ts"
-    },
     "./state/environmentHttpAuth": {
       "types": "./src/state/environmentHttpAuth.ts",
       "default": "./src/state/environmentHttpAuth.ts"
@@ -214,10 +206,6 @@
     "./state/peerPairingCode": {
       "types": "./src/state/peerPairingCode.ts",
       "default": "./src/state/peerPairingCode.ts"
-    },
-    "./state/preview": {
-      "types": "./src/state/preview.ts",
-      "default": "./src/state/preview.ts"
     },
     "./state/projects": {
       "types": "./src/state/projects.ts",

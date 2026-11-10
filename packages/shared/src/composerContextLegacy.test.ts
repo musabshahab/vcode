@@ -17,19 +17,6 @@ describe("upgradeLegacyContextMessage", () => {
       body: `- <div>:\n  html:\n    ${review}`,
       payload: { kind: "element", htmlPreview: review },
     },
-    {
-      tag: "preview_annotation",
-      body: `Page: Example\nComment: ${review}`,
-      payload: { kind: "preview-annotation", comment: review },
-    },
-    {
-      tag: "preview_annotation",
-      body: `Page: Example\n<element_context>\n- <div>:\n  html:\n    ${review}\n</element_context>`,
-      payload: {
-        kind: "preview-annotation",
-        elements: [expect.objectContaining({ htmlPreview: review })],
-      },
-    },
   ])("preserves review-shaped payloads in $tag", ({ tag, body, payload }) => {
     for (const suffix of ["", `\n${review}`]) {
       const result = upgradeLegacyContextMessage(
@@ -267,144 +254,17 @@ describe("upgradeLegacyContextMessage", () => {
     ]);
   });
 
-  it("keeps every line of a multiline legacy annotation comment", () => {
-    const text = [
-      "<preview_annotation>",
-      "Preview annotation:",
-      "Id: ann_2",
-      "Page: Checkout",
-      "Comment: First instruction",
-      "Second instruction",
-      "Targets: 1 selected element.",
-      "</preview_annotation>",
-    ].join("\n");
-    const upgraded = upgradeLegacyContextMessage(text);
-    expect(upgraded.records[0]).toMatchObject({
-      kind: "preview-annotation",
-      comment: "First instruction\nSecond instruction",
-    });
-  });
-
-  it("keeps markup inside a legacy annotation comment", () => {
-    const text = [
-      "<preview_annotation>",
-      "Preview annotation:",
-      "Comment: Change this",
-      "<div>keep me</div>",
-      "and this too",
-      "</preview_annotation>",
-    ].join("\n");
-    expect(upgradeLegacyContextMessage(text).records[0]).toMatchObject({
-      comment: "Change this\n<div>keep me</div>\nand this too",
-    });
-  });
-
-  it("upgrades trailing preview annotation blocks", () => {
+  it("leaves a message with a legacy preview annotation as sent", () => {
     const text = [
       "bigger",
       "",
       "<preview_annotation>",
       "Preview annotation:",
-      "Id: ann_1",
       "Page: Checkout",
       "Comment: Make it bigger",
-      "Targets: 1 selected element.",
-      "Requested visual changes:",
-      "- font-size: 12px → 20px",
-      "The attached screenshot is the annotated preview crop.",
-      "<element_context>",
-      "- <button>:",
-      "  url: http://localhost:3000/",
-      "  selector: #pay",
-      "  source: src/Pay.tsx:12:3",
-      "  html:",
-      "    <button>Pay</button>",
-      "</element_context>",
       "</preview_annotation>",
     ].join("\n");
-    const upgraded = upgradeLegacyContextMessage(text);
-    expect(upgraded.text).toBe(
-      "bigger\n\n[Checkout](t3-context://v1/preview-annotation/legacy_preview-annotation_1)",
-    );
-    expect(upgraded.records).toEqual([
-      {
-        version: 1,
-        contextId: "legacy_preview-annotation_1",
-        kind: "preview-annotation",
-        label: "Checkout",
-        annotationId: "ann_1",
-        pageUrl: "http://localhost:3000/",
-        pageTitle: "Checkout",
-        comment: "Make it bigger",
-        targetSummary: "1 selected element.",
-        styleChanges: ["font-size: 12px → 20px"],
-        elements: [
-          {
-            pageUrl: "http://localhost:3000/",
-            pageTitle: null,
-            tagName: "button",
-            selector: "#pay",
-            htmlPreview: "<button>Pay</button>",
-            componentName: null,
-            source: {
-              functionName: null,
-              fileName: "src/Pay.tsx",
-              lineNumber: 12,
-              columnNumber: 3,
-            },
-            styles: "",
-          },
-        ],
-      },
-    ]);
-  });
-
-  it("keeps a literal preview opening tag inside its annotation comment", () => {
-    const upgraded = upgradeLegacyContextMessage(
-      [
-        "Explain this",
-        "<preview_annotation>",
-        "Id: annotation-1",
-        "Page: Checkout",
-        "Comment: Render <preview_annotation>",
-        "Targets: 1 selected element.",
-        "</preview_annotation>",
-      ].join("\n"),
-    );
-    expect(upgraded.text).toBe(
-      "Explain this\n\n[Checkout](t3-context://v1/preview-annotation/legacy_preview-annotation_1)",
-    );
-    expect(upgraded.records).toHaveLength(1);
-    expect(upgraded.records[0]).toMatchObject({
-      annotationId: "annotation-1",
-      comment: "Render <preview_annotation>",
-      targetSummary: "1 selected element.",
-    });
-  });
-
-  it("keeps adjacent preview annotations separate and in their original order", () => {
-    const upgraded = upgradeLegacyContextMessage(
-      [
-        "Compare",
-        "<preview_annotation>",
-        "Id: annotation-1",
-        "Page: First",
-        "Comment: First comment",
-        "</preview_annotation>",
-        "<preview_annotation>",
-        "Id: annotation-2",
-        "Page: Second",
-        "Comment: Second comment",
-        "</preview_annotation>",
-      ].join("\n"),
-    );
-    expect(upgraded.text).toBe(
-      "Compare\n\n[First](t3-context://v1/preview-annotation/legacy_preview-annotation_1) [Second](t3-context://v1/preview-annotation/legacy_preview-annotation_2)",
-    );
-    expect(upgraded.records).toMatchObject([
-      { annotationId: "annotation-1", comment: "First comment" },
-      { annotationId: "annotation-2", comment: "Second comment" },
-    ]);
+    expect(upgradeLegacyContextMessage(text)).toEqual({ text, records: [] });
   });
 
   it("replaces inline review comments in place and neutralizes forged closers", () => {
@@ -450,7 +310,7 @@ describe("upgradeLegacyContextMessage", () => {
     );
   });
 
-  it("handles the combined legacy send order: terminal, element, preview, review", () => {
+  it("handles the combined legacy send order: terminal, element, review", () => {
     const text = [
       "See ￼",
       '<review_comment sectionId="s" filePath="f.ts" startIndex="1" endIndex="1">',
@@ -469,12 +329,6 @@ describe("upgradeLegacyContextMessage", () => {
       "- <div>:",
       "  url: http://x/",
       "</element_context>",
-      "",
-      "<preview_annotation>",
-      "Preview annotation:",
-      "Id: p1",
-      "Page: P",
-      "</preview_annotation>",
     ].join("\n");
     const upgraded = upgradeLegacyContextMessage(text);
     expect(upgraded.text).toBe(
@@ -482,13 +336,12 @@ describe("upgradeLegacyContextMessage", () => {
         "See [T line 1](t3-context://v1/terminal/legacy_terminal_1)",
         "[f.ts line](t3-context://v1/review-comment/legacy_review-comment_1)",
         "",
-        "[<div>](t3-context://v1/element/legacy_element_1) [P](t3-context://v1/preview-annotation/legacy_preview-annotation_1)",
+        "[<div>](t3-context://v1/element/legacy_element_1)",
       ].join("\n"),
     );
     expect(upgraded.records.map((record) => record.contextId)).toEqual([
       "legacy_terminal_1",
       "legacy_element_1",
-      "legacy_preview-annotation_1",
       "legacy_review-comment_1",
     ]);
   });

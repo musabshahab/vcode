@@ -28,10 +28,6 @@ import {
   type RightPanelSurface,
   useRightPanelStore,
 } from "../../rightPanelStore";
-import { isPreviewSupportedInRuntime } from "../../previewStateStore";
-import { openUrlInPreview } from "../../browser/openFileInPreview";
-import { resolveDiscoveredServerUrl } from "../../browser/browserTargetResolver";
-import { stackedThreadToast, toastManager } from "../ui/toast";
 import { confirmTerminalClose } from "../../lib/terminalCloseConfirm";
 import { findReusableProjectScriptTerminal } from "../../lib/projectScriptTerminal";
 import { type TerminalContextSelection } from "../../lib/terminalContext";
@@ -47,9 +43,7 @@ import {
   makeThreadErrorSetter,
 } from "../ChatView.logic";
 import { useLocalStorage } from "~/hooks/useLocalStorage";
-import { previewEnvironment } from "../../state/preview";
 import { readEnvironmentScope } from "../../state/session";
-import { useAtomCommand } from "../../state/use-atom-command";
 import type { ChatShortcutCommands } from "./useChatShortcuts";
 const SCRIPT_TERMINAL_COLS = 120;
 const SCRIPT_TERMINAL_ROWS = 30;
@@ -102,7 +96,6 @@ export function useChatTerminalActions(input: ChatTerminalActionsInput) {
     setTerminalUiLaunchContext,
     setThreadError,
   } = input;
-  const openPreview = useAtomCommand(previewEnvironment.open, { reportFailure: false });
 
   const hasTerminalWriteAccess = () =>
     readEnvironmentScope(environmentId, AuthTerminalOperateScope);
@@ -289,23 +282,6 @@ export function useChatTerminalActions(input: ChatTerminalActionsInput) {
         );
       }
       return;
-    }
-    if (script.autoOpenPreview && script.previewUrl && isPreviewSupportedInRuntime()) {
-      const previewResult = await openUrlInPreview({
-        threadRef: activeThreadRef,
-        url: resolveDiscoveredServerUrl(activeThreadRef.environmentId, script.previewUrl),
-        openPreview,
-      });
-      if (previewResult._tag === "Failure" && !isAtomCommandInterrupted(previewResult)) {
-        const error = squashAtomCommandFailure(previewResult);
-        toastManager.add(
-          stackedThreadToast({
-            type: "error",
-            title: "Could not open preview",
-            description: error instanceof Error ? error.message : "An unexpected error occurred.",
-          }),
-        );
-      }
     }
   };
   const runProjectScriptStable = useStableCallback(runProjectScript);

@@ -1,5 +1,4 @@
 import { createClerkBridge } from "@clerk/electron";
-import * as NodeURL from "node:url";
 import { storage } from "@clerk/electron/storage";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
@@ -217,22 +216,9 @@ export const make = Effect.gen(function* () {
       };
       const args = yield* HostProcess.Arguments;
       args.some((value) => startProviderAuthHandoff(value) || openAppLink(value));
-      const openWebLink = (url: string) => {
-        if (!DesktopWebLinks.isWebLink(url)) return false;
-        void runPromise(webLinks.receive(url));
-        return true;
-      };
       handleOpenUrl = (url) =>
-        startProviderAuthHandoff(url) ||
-        resumeProviderAuth(url) ||
-        openWebLink(url) ||
-        openAppLink(url);
+        startProviderAuthHandoff(url) || resumeProviderAuth(url) || openAppLink(url);
       for (const url of pendingOpenUrls.splice(0)) handleOpenUrl(url);
-      yield* electronApp.on("open-file", (event: { preventDefault: () => void }, path: string) => {
-        if (!DesktopWebLinks.isWebPageFile(path)) return;
-        event.preventDefault();
-        void runPromise(webLinks.receive(NodeURL.pathToFileURL(path).href));
-      });
       handleSecondInstance = (argv) => {
         if (
           argv?.some(

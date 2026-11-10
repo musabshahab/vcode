@@ -17,7 +17,6 @@ import { getProviderModelCapabilities } from "../providerModels";
 import { sanitizeThreadErrorMessage } from "@t3tools/client-runtime/errors";
 import type { EnvironmentThread, ThreadStructure } from "@t3tools/client-runtime/state/shell";
 import {
-  PROVIDER_SEND_TURN_MAX_ATTACHMENTS,
   type AssetCreateUrlInput,
   type AssetCreateUrlResult,
   type ChatFileAttachment,
@@ -28,7 +27,6 @@ import {
   type MessageId,
   type ModelSelection,
   type OrchestrationMessageContext,
-  type PreviewAnnotationPayload,
   ProviderDriverKind,
   type ProviderInstanceId,
   type ServerProvider,
@@ -80,18 +78,12 @@ import {
   removeInlineContextReference,
   stripInlineContextReferences,
 } from "~/lib/composerContextReferences";
-import {
-  previewAnnotationContextLabel,
-  reviewCommentContextLabel,
-  terminalContextReference,
-} from "../lib/composerContextRecords";
+import { reviewCommentContextLabel, terminalContextReference } from "../lib/composerContextRecords";
 import type { ComposerDispatchMode } from "@t3tools/client-runtime/state/composer-dispatch";
 import type { DraftThreadEnvMode } from "../composerDraftStore";
 import { type ComposerSubmissionIntent } from "../composer-logic";
 import type { ReviewCommentContext } from "../reviewCommentContext";
 import { derivePhase, type TimelineEntry } from "../session-logic";
-import type { PreviewMiniPlayerSource } from "../previewMiniPlayerStore";
-import type { DesktopPreviewOverlay } from "../previewStateStore";
 import type { RightPanelSurface } from "../rightPanelStore";
 import {
   NO_PROVIDER_MODEL_SELECTION,
@@ -106,40 +98,6 @@ export const LAST_INVOKED_SCRIPT_BY_PROJECT_KEY = "t3code:last-invoked-script-by
 export const MAX_HIDDEN_MOUNTED_TERMINAL_THREADS = 10;
 
 export const ENVIRONMENT_RECONNECT_WARNING_GRACE_MS = 2_000;
-
-export function agentControlledBrowserCloseConfirmation(
-  surfaces: readonly RightPanelSurface[],
-  desktopByTabId: Readonly<Record<string, Pick<DesktopPreviewOverlay, "controller"> | undefined>>,
-): string | null {
-  const activeBrowserCount = surfaces.filter(
-    (surface) =>
-      surface.kind === "preview" &&
-      surface.resourceId !== null &&
-      desktopByTabId[surface.resourceId]?.controller === "agent",
-  ).length;
-  if (activeBrowserCount === 0) return null;
-  if (activeBrowserCount === 1) {
-    return [
-      "Close browser while the agent is using it?",
-      "The agent is actively controlling this browser. Closing it may interrupt the current browser action.",
-    ].join("\n");
-  }
-  return [
-    `Close ${activeBrowserCount} browsers while the agent is using them?`,
-    "The agent is actively controlling these browsers. Closing them may interrupt the current browser actions.",
-  ].join("\n");
-}
-
-export function shouldRenderPreviewMiniPlayer(
-  source: PreviewMiniPlayerSource | null,
-  renderedRightPanelSurface: RightPanelSurface | null,
-): boolean {
-  if (source === null) return false;
-  return !(
-    renderedRightPanelSurface?.kind === "preview" &&
-    renderedRightPanelSurface.resourceId === source.tabId
-  );
-}
 
 export function shouldOpenProactivePullRequest(
   previousTargetKey: string | null | undefined,
@@ -1062,47 +1020,6 @@ export function shouldRefocusComposerOnWindowFocus(
   );
 }
 
-/** Includes the annotation screenshot only within the attachment cap; exceeding it rejects the whole turn. */
-export function mergeDirectPreviewAnnotation(input: {
-  readonly images: ReadonlyArray<ComposerImageAttachment>;
-  readonly fileCount: number;
-  readonly previewAnnotations: ReadonlyArray<PreviewAnnotationPayload>;
-  readonly direct:
-    | {
-        readonly annotation: PreviewAnnotationPayload;
-        readonly image: ComposerImageAttachment | null;
-      }
-    | undefined;
-}): {
-  readonly images: ReadonlyArray<ComposerImageAttachment>;
-  readonly previewAnnotations: ReadonlyArray<PreviewAnnotationPayload>;
-} {
-  const { direct } = input;
-  if (!direct) return { images: input.images, previewAnnotations: input.previewAnnotations };
-  const imageAlreadyAttached =
-    direct.image !== null && input.images.some((image) => image.id === direct.image?.id);
-  const imageAppended =
-    direct.image !== null &&
-    !imageAlreadyAttached &&
-    input.images.length + input.fileCount < PROVIDER_SEND_TURN_MAX_ATTACHMENTS;
-  const images = direct.image && imageAppended ? [...input.images, direct.image] : input.images;
-  const previewAnnotations = input.previewAnnotations.some(
-    (annotation) => annotation.id === direct.annotation.id,
-  )
-    ? input.previewAnnotations
-    : [
-        ...input.previewAnnotations,
-        {
-          ...direct.annotation,
-          screenshot:
-            direct.annotation.screenshot && (imageAppended || imageAlreadyAttached)
-              ? { ...direct.annotation.screenshot, dataUrl: "" }
-              : null,
-        },
-      ];
-  return { images, previewAnnotations };
-}
-
 export { isThreadWokeUnseen } from "@t3tools/client-runtime/state/thread-settled";
 
 export function formatOutgoingPrompt(params: {
@@ -1204,14 +1121,13 @@ export function makeModelDisabledReason(
   };
 }
 
-/** What the composer held when the user pressed send, after a direct annotation merged in. */
+/** What the composer held when the user pressed send. */
 export interface ComposerSendContents {
   readonly prompt: string;
   readonly images: ReadonlyArray<ComposerImageAttachment>;
   readonly files: ReadonlyArray<ComposerFileAttachment>;
   readonly terminalContexts: ReadonlyArray<TerminalContextDraft>;
   readonly sendableTerminalContexts: ReadonlyArray<TerminalContextDraft>;
-  readonly previewAnnotations: ReadonlyArray<PreviewAnnotationPayload>;
   readonly reviewComments: ReadonlyArray<ReviewCommentContext>;
   readonly threadContexts: ReadonlyArray<ThreadContextRecord>;
   readonly environmentContexts: ReadonlyArray<EnvironmentContextRecord>;
@@ -1231,7 +1147,6 @@ export function snapshotComposerSend(contents: ComposerSendContents) {
     files,
     attachments: [...images, ...files],
     terminalContexts,
-    previewAnnotations: [...contents.previewAnnotations],
     reviewComments: [...contents.reviewComments],
     threadContexts: [...contents.threadContexts],
     environmentContexts: [...contents.environmentContexts],
@@ -1348,11 +1263,9 @@ export function optimisticMessageAttachments(
 export function sendTitleFallbackLabels(snapshot: ComposerSendSnapshot) {
   const terminalContext = snapshot.terminalContexts[0];
   const reviewComment = snapshot.reviewComments[0];
-  const previewAnnotation = snapshot.previewAnnotations[0];
   return [
     terminalContext ? formatTerminalContextLabel(terminalContext) : undefined,
     reviewComment ? `Review: ${reviewCommentContextLabel(reviewComment)}` : undefined,
-    previewAnnotation ? previewAnnotationContextLabel(previewAnnotation) : undefined,
   ];
 }
 

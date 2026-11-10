@@ -226,7 +226,7 @@ describe("pull request toolkit handlers", () => {
     Effect.gen(function* () {
       const harness = yield* makeHarness();
       const error = yield* harness
-        .call("list_thread_pull_requests", {}, ["preview"])
+        .call("list_thread_pull_requests", {}, ["worktree"])
         .pipe(Effect.flip);
       expect(error).toMatchObject({
         _tag: "McpCapabilityUnavailableError",

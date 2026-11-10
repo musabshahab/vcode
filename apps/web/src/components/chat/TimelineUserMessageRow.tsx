@@ -71,10 +71,7 @@ import { WorkflowOpeningBlock } from "./WorkflowOpeningBlock";
 import { TimelineRowCtx, TimelineRowActivityCtx, type TimelineRow } from "./timelineRowContext";
 import { MESSAGE_HEADING_LEVEL, MessageAuthorHeading } from "./TimelineRowParts";
 import { UserMessageContextReferenceChip } from "./UserMessageContextChips";
-import {
-  resolvePreviewAnnotationImage,
-  userMessageFileLabel,
-} from "./TimelineUserMessageRow.logic";
+import { userMessageFileLabel } from "./TimelineUserMessageRow.logic";
 
 // Drawn inside the media so dark screenshots keep an edge on the dark background.
 const MEDIA_EDGE_CLASS_NAME =
@@ -347,7 +344,6 @@ function UserTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "message" 
   );
   const senderLabel = senderShell?.title.trim() || "Agent";
   const resolvedContext = resolveUserMessageContext({ ...row.message, text: userMessage.text });
-  const previewImages = userImages.filter((image) => image.name.startsWith("preview-annotation-"));
   const revertTurnCount = row.revertTurnCount;
   const attachmentReferences = collectComposerContextReferences(resolvedContext.text).flatMap(
     (occurrence) => {
@@ -366,7 +362,6 @@ function UserTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "message" 
   const chippedAttachmentIds = new Set(
     attachmentReferences.map((reference) => reference.attachmentId),
   );
-  const regularImages = userImages.filter((image) => !image.name.startsWith("preview-annotation-"));
   const unchippedFiles = otherUserFiles.filter((file) => !chippedAttachmentIds.has(file.id));
   // Images or videos sent without words show as media, not as a bubble around them.
   const mediaOnly =
@@ -375,18 +370,18 @@ function UserTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "message" 
     userAudio.length === 0 &&
     unchippedFiles.length === 0 &&
     unknownAttachments.length === 0 &&
-    regularImages.length + userVideos.length > 0;
+    userImages.length + userVideos.length > 0;
   // Media sent with words sits above the bubble as its own shape, like a chat app.
-  const mediaAboveText = !folded && !mediaOnly && regularImages.length + userVideos.length > 0;
+  const mediaAboveText = !folded && !mediaOnly && userImages.length + userVideos.length > 0;
   const standaloneMedia = mediaOnly || mediaAboveText;
   // A lone image keeps its own shape; a 4:3 crop hides most of a wide screenshot.
-  const loneImage = standaloneMedia && userVideos.length === 0 && regularImages.length === 1;
+  const loneImage = standaloneMedia && userVideos.length === 0 && userImages.length === 1;
   // Several images share one rounded shape, split by hairlines.
   const collage =
     standaloneMedia &&
     userVideos.length === 0 &&
-    regularImages.length > 1 &&
-    regularImages.every((image) => image.source?.kind !== "snap-shot");
+    userImages.length > 1 &&
+    userImages.every((image) => image.source?.kind !== "snap-shot");
   // Corners that touch the bubble or a neighbouring message tighten, like the bubble's.
   const mediaCornerClassName = cn(
     row.groupedWithPrevious && "rounded-tr-md",
@@ -396,7 +391,7 @@ function UserTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "message" 
   const fileCardsOnly =
     !folded &&
     otherUserFiles.length > 0 &&
-    regularImages.length + userVideos.length + userAudio.length + unknownAttachments.length === 0 &&
+    userImages.length + userVideos.length + userAudio.length + unknownAttachments.length === 0 &&
     replaceComposerContextReferences(resolvedContext.text, (reference) =>
       attachmentReferences.some(
         (attached) =>
@@ -409,7 +404,7 @@ function UserTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "message" 
   const audioOnly =
     !folded &&
     userAudio.length > 0 &&
-    regularImages.length + userVideos.length + otherUserFiles.length + unknownAttachments.length ===
+    userImages.length + userVideos.length + otherUserFiles.length + unknownAttachments.length ===
       0 &&
     replaceComposerContextReferences(resolvedContext.text, (reference) =>
       attachmentReferences.some(
@@ -420,9 +415,6 @@ function UserTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "message" 
         ? ""
         : reference.label,
     ).trim() === "";
-  const annotationRecordIds = resolvedContext.records
-    .filter((record) => record.kind === "preview-annotation")
-    .map((record) => record.contextId);
   const plainText = replaceComposerContextReferences(
     resolvedContext.text,
     (reference) => reference.label,
@@ -437,7 +429,7 @@ function UserTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "message" 
     ? resolvedContext.records.flatMap((record) => {
         const known = asKnownContextRecord(record);
         return (known?.kind === "image" || known?.kind === "file") &&
-          (regularImages.some((image) => image.id === known.attachmentId) ||
+          (userImages.some((image) => image.id === known.attachmentId) ||
             userVideos.some((file) => file.id === known.attachmentId))
           ? [known]
           : [];
@@ -498,16 +490,6 @@ function UserTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "message" 
     const record = asKnownContextRecord(resolvedContext.recordsById.get(reference.contextId));
     if (record?.kind === "file" && userAudio.some((file) => file.id === record.attachmentId))
       return null;
-    const annotationImage =
-      record?.kind === "preview-annotation"
-        ? resolvePreviewAnnotationImage({
-            record,
-            recordsById: resolvedContext.recordsById,
-            userImages,
-            previewImages,
-            annotationRecordIds,
-          })
-        : null;
     const attachment =
       record?.kind === "image"
         ? (userImages.find((image) => image.id === record.attachmentId) ?? null)
@@ -519,7 +501,6 @@ function UserTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "message" 
         <UserMessageContextReferenceChip
           reference={reference}
           record={record}
-          annotationImage={annotationImage}
           attachment={attachment}
           onExpandImage={(image) => {
             const preview = buildExpandedImagePreview(userImages, image.id);
@@ -536,7 +517,7 @@ function UserTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "message" 
   };
 
   const mediaBlock =
-    regularImages.length > 0 || userVideos.length > 0 ? (
+    userImages.length > 0 || userVideos.length > 0 ? (
       <div
         className={cn(
           "grid",
@@ -549,18 +530,18 @@ function UserTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "message" 
                     MEDIA_EDGE_CLASS_NAME,
                     "w-80 max-w-full gap-px overflow-hidden rounded-2xl bg-black/9 dark:bg-white/12",
                     mediaCornerClassName,
-                    regularImages.length === 2
+                    userImages.length === 2
                       ? "auto-rows-[12rem] grid-cols-2"
-                      : regularImages.length === 3
+                      : userImages.length === 3
                         ? "auto-rows-[calc(6rem-0.5px)] grid-cols-[3fr_2fr]"
                         : "auto-rows-[6rem] grid-cols-2",
                   )
-                : regularImages.length + userVideos.length === 1
+                : userImages.length + userVideos.length === 1
                   ? "w-80 max-w-full"
                   : "w-80 max-w-full grid-cols-2 gap-2",
         )}
       >
-        {regularImages.map((image, index) => (
+        {userImages.map((image, index) => (
           <div
             key={image.id}
             className={cn(
@@ -581,10 +562,10 @@ function UserTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "message" 
                   : collage
                     ? cn(
                         "overflow-hidden bg-background",
-                        regularImages.length === 3 && index === 0 && "row-span-2",
-                        regularImages.length > 3 &&
-                          regularImages.length % 2 === 1 &&
-                          index === regularImages.length - 1 &&
+                        userImages.length === 3 && index === 0 && "row-span-2",
+                        userImages.length > 3 &&
+                          userImages.length % 2 === 1 &&
+                          index === userImages.length - 1 &&
                           "col-span-2",
                       )
                     : standaloneMedia
@@ -598,7 +579,7 @@ function UserTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "message" 
                 className="block h-full w-full cursor-zoom-in"
                 aria-label={`Preview ${image.name}`}
                 onClick={() => {
-                  const preview = buildExpandedImagePreview(regularImages, image.id);
+                  const preview = buildExpandedImagePreview(userImages, image.id);
                   if (!preview) return;
                   ctx.onImageExpand(preview);
                 }}
@@ -643,7 +624,7 @@ function UserTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "message" 
             file={file}
             standalone={standaloneMedia}
             cornerClassName={
-              regularImages.length + userVideos.length === 1 ? mediaCornerClassName : undefined
+              userImages.length + userVideos.length === 1 ? mediaCornerClassName : undefined
             }
           />
         ))}

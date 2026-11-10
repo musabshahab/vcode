@@ -276,10 +276,10 @@ its progress.
 ## Context in your message
 
 Context you attach lands where your cursor is, as a chip inside your text: a terminal excerpt,
-a review comment from a diff or file, a preview annotation, or a file. You can type before and
+a review comment from a diff or file, or a file. You can type before and
 after a chip, move it by cutting and pasting, and delete it like a character. Hover a chip for
 its brief details. Select a terminal excerpt to open its captured output, or select a review
-comment, picked element, or preview annotation to open its full details. Chips read as "Terminal
+comment or picked element to open its full details. Chips read as "Terminal
 excerpt, Terminal 1 lines 3-4" and similar to screen readers.
 
 A pull request appears as its icon and number. Its color reflects whether it was open, draft,

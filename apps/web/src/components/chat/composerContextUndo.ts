@@ -1,23 +1,13 @@
-import type {
-  EnvironmentContextRecord,
-  PreviewAnnotationPayload,
-  ThreadContextRecord,
-} from "@t3tools/contracts";
+import type { EnvironmentContextRecord, ThreadContextRecord } from "@t3tools/contracts";
 import { useEffect, useState } from "react";
 
-import type { ComposerFileAttachment, ComposerImageAttachment } from "../../composerDraftStore";
-import { fileContextReference, previewAnnotationContextId } from "../../lib/composerContextRecords";
+import type { ComposerFileAttachment } from "../../composerDraftStore";
+import { fileContextReference } from "../../lib/composerContextRecords";
 import type { TerminalContextDraft } from "../../lib/terminalContext";
 import type { ReviewCommentContext } from "../../reviewCommentContext";
 
-interface RetainedPreviewAnnotation {
-  annotation: PreviewAnnotationPayload;
-  image: ComposerImageAttachment | undefined;
-}
-
 export interface RetainedAttachmentContextPayloads {
   files: Map<string, ComposerFileAttachment>;
-  previewAnnotations: Map<string, RetainedPreviewAnnotation>;
 }
 
 export interface RetainedContextPayloads extends RetainedAttachmentContextPayloads {
@@ -34,7 +24,6 @@ function createRetainedContextPayloads(): RetainedContextPayloads {
     threads: new Map(),
     environments: new Map(),
     files: new Map(),
-    previewAnnotations: new Map(),
   };
 }
 
@@ -61,14 +50,10 @@ export function useRetainedContextPayloads(draftTargetKey: string): RetainedCont
 export function reconcileAttachmentContextReferences(input: {
   referencedContextIds: ReadonlySet<string>;
   files: ReadonlyArray<ComposerFileAttachment>;
-  images: ReadonlyArray<ComposerImageAttachment>;
-  previewAnnotations: ReadonlyArray<PreviewAnnotationPayload>;
   retained: RetainedAttachmentContextPayloads;
 }): {
   filesToRemove: string[];
   filesToRestore: ComposerFileAttachment[];
-  annotationIdsToRemove: string[];
-  annotationsToRestore: RetainedPreviewAnnotation[];
 } {
   const liveFileContextIds = new Set<string>(
     input.files.map((file) => fileContextReference(file).contextId),
@@ -86,25 +71,5 @@ export function reconcileAttachmentContextReferences(input: {
     return file ? [file] : [];
   });
 
-  const imagesById = new Map(input.images.map((image) => [image.id, image]));
-  const liveAnnotationContextIds = new Set<string>(
-    input.previewAnnotations.map((annotation) => previewAnnotationContextId(annotation.id)),
-  );
-  const annotationIdsToRemove: string[] = [];
-  for (const annotation of input.previewAnnotations) {
-    const contextId = previewAnnotationContextId(annotation.id);
-    if (input.referencedContextIds.has(contextId)) continue;
-    input.retained.previewAnnotations.set(contextId, {
-      annotation,
-      image: imagesById.get(annotation.id),
-    });
-    annotationIdsToRemove.push(annotation.id);
-  }
-  const annotationsToRestore = [...input.referencedContextIds].flatMap((contextId) => {
-    if (liveAnnotationContextIds.has(contextId)) return [];
-    const retained = input.retained.previewAnnotations.get(contextId);
-    return retained ? [retained] : [];
-  });
-
-  return { filesToRemove, filesToRestore, annotationIdsToRemove, annotationsToRestore };
+  return { filesToRemove, filesToRestore };
 }

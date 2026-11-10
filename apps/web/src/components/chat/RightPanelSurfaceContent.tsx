@@ -1,7 +1,6 @@
 import type {
   EditorId,
   EnvironmentId,
-  PreviewAnnotationPayload,
   ProjectId,
   ResolvedKeybindingsConfig,
   ScopedThreadRef,
@@ -11,7 +10,7 @@ import type {
 import { scopedThreadKey } from "@t3tools/client-runtime/environment";
 import { lazy, Suspense } from "react";
 import SideChatPane from "./SideChatPane";
-import type { ComposerImageAttachment, DraftId } from "../../composerDraftStore";
+import type { DraftId } from "../../composerDraftStore";
 import type { ShortcutMatchContext } from "../../keybindings";
 import type { SideChatParentPanel } from "../../lib/sideChatPane";
 import { type RightPanelSurface, useRightPanelStore } from "../../rightPanelStore";
@@ -25,9 +24,6 @@ import { PullRequestDetailGhost } from "../pullRequest/PullRequestGhosts";
 import { PullRequestsUnavailableState } from "../pullRequest/PullRequestsUnavailableState";
 import { ThreadPullRequestsPanel } from "../pullRequest/ThreadPullRequestsPanel";
 
-const PreviewPanel = lazy(() =>
-  import("../preview/PreviewPanel").then((module) => ({ default: module.PreviewPanel })),
-);
 const DiffPanel = lazy(() => import("../DiffPanel"));
 const FilePreviewPanel = lazy(() => import("../files/FilePreviewPanel"));
 
@@ -63,13 +59,8 @@ export function RightPanelSurfaceContent(props: {
   readonly visible: boolean;
   readonly composerDraftTarget: ScopedThreadRef | DraftId;
   readonly keybindings: ResolvedKeybindingsConfig;
-  readonly configuredPreviewUrls: ReadonlyArray<string>;
   readonly workspaceMutationId: string | null;
   readonly getShortcutContext: () => ShortcutMatchContext;
-  readonly onSendAnnotation: (
-    annotation: PreviewAnnotationPayload,
-    image: ComposerImageAttachment | null,
-  ) => void;
   readonly onCloseSurface: (surface: RightPanelSurface) => void;
   readonly terminal: RightPanelTerminalProps;
   readonly pullRequest: RightPanelPullRequestProps;
@@ -79,19 +70,6 @@ export function RightPanelSurfaceContent(props: {
   const { surface, threadRef, visible, onCloseSurface } = props;
   if (surface === null) return null;
   switch (surface.kind) {
-    case "preview":
-      return (
-        <Suspense fallback={null}>
-          <PreviewPanel
-            mode="embedded"
-            threadRef={threadRef}
-            tabId={surface.resourceId}
-            configuredUrls={props.configuredPreviewUrls}
-            visible={visible}
-            onSendAnnotation={props.onSendAnnotation}
-          />
-        </Suspense>
-      );
     case "terminal":
       return (
         <PersistentThreadTerminalPanel

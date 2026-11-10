@@ -2,7 +2,6 @@ import type {
   BackgroundActivityProfile,
   BackgroundActivitySettings,
   ProviderInstanceConfig,
-  PreviewViewportSetting,
   ProviderInstanceId,
   ServerSettings,
   SidebarProjectGroupingMode,
@@ -101,69 +100,6 @@ export function getChangedTypographySettingLabels(settings: TypographySettings):
     ...(settings.fontFamilyTerminal !== DEFAULT_UNIFIED_SETTINGS.fontFamilyTerminal ||
     settings.fontSizeTerminal !== DEFAULT_UNIFIED_SETTINGS.fontSizeTerminal
       ? ["Terminal font"]
-      : []),
-  ];
-}
-
-export type BrowserDefaultSettings = Pick<
-  UnifiedSettings,
-  | "browserDefaultViewport"
-  | "browserDefaultZoomFactor"
-  | "browserDefaultAppearance"
-  | "browserRecordingFrameRate"
-  | "browserRecordingShowKeyPresses"
-  | "browserRecordingShowMousePresses"
-  | "browserLinkTarget"
-  | "browserSearchEngine"
-  | "browserCustomSearchUrl"
-  | "browserAutoShowFloatingPreview"
-  | "pullRequestLinksOpenInApp"
->;
-
-function isSamePreviewViewport(
-  left: PreviewViewportSetting,
-  right: PreviewViewportSetting,
-): boolean {
-  if (left._tag !== right._tag) return false;
-  if (left._tag === "fill" || right._tag === "fill") return true;
-  if (left.width !== right.width || left.height !== right.height) return false;
-  return left._tag === "preset" && right._tag === "preset"
-    ? left.presetId === right.presetId
-    : true;
-}
-
-export function getChangedBrowserSettingLabels(settings: BrowserDefaultSettings): string[] {
-  return [
-    ...(isSamePreviewViewport(
-      settings.browserDefaultViewport,
-      DEFAULT_UNIFIED_SETTINGS.browserDefaultViewport,
-    )
-      ? []
-      : ["Browser viewport"]),
-    ...(settings.browserDefaultZoomFactor !== DEFAULT_UNIFIED_SETTINGS.browserDefaultZoomFactor
-      ? ["Browser zoom"]
-      : []),
-    ...(settings.browserDefaultAppearance !== DEFAULT_UNIFIED_SETTINGS.browserDefaultAppearance
-      ? ["Browser appearance"]
-      : []),
-    ...(settings.browserRecordingFrameRate !== DEFAULT_UNIFIED_SETTINGS.browserRecordingFrameRate
-      ? ["Recording frame rate"]
-      : []),
-    ...(settings.browserRecordingShowKeyPresses ? ["Recording key presses"] : []),
-    ...(settings.browserRecordingShowMousePresses ? ["Recording mouse presses"] : []),
-    ...(settings.browserLinkTarget !== DEFAULT_UNIFIED_SETTINGS.browserLinkTarget
-      ? ["Open links in"]
-      : []),
-    ...(settings.browserSearchEngine !== DEFAULT_UNIFIED_SETTINGS.browserSearchEngine ||
-    settings.browserCustomSearchUrl !== DEFAULT_UNIFIED_SETTINGS.browserCustomSearchUrl
-      ? ["Search engine"]
-      : []),
-    ...(settings.browserAutoShowFloatingPreview !==
-    DEFAULT_UNIFIED_SETTINGS.browserAutoShowFloatingPreview
-      ? ["Floating preview"]
-      : []),
-    ...(settings.pullRequestLinksOpenInApp !== DEFAULT_UNIFIED_SETTINGS.pullRequestLinksOpenInApp
-      ? ["Open pull requests in T3 Code"]
       : []),
   ];
 }

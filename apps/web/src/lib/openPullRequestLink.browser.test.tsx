@@ -8,7 +8,7 @@ import { act, render, stubGlobal } from "../../test/render";
 
 const state = vi.hoisted(() => ({ preview: vi.fn(), openLink: vi.fn() }));
 vi.mock("../state/use-atom-query-runner", () => ({ useAtomQueryRunner: () => state.preview }));
-vi.mock("../browser/useOpenLink", () => ({ useOpenLink: () => state.openLink }));
+vi.mock("./openExternalLink", () => ({ openExternalLink: state.openLink }));
 vi.mock(import("../state/environments"), async (original) => ({
   ...(await original()),
   usePrimaryEnvironmentId: () => EnvironmentId.make("local"),
@@ -71,7 +71,6 @@ function setup() {
   __setClientSettingsForTests({
     ...DEFAULT_CLIENT_SETTINGS,
     pullRequestLinksOpenInApp: true,
-    browserLinkTarget: "system",
   });
   useDiffPanelStore.setState({
     byThreadKey: {},
@@ -108,35 +107,24 @@ it.each([
   expect(useRightPanelStore.getState().byThreadKey).toEqual({});
 });
 
-it.each(["system", "app"] as const)(
-  "offers the original unavailable commit URL when web popups are blocked (%s)",
-  async (browserLinkTarget) => {
-    setup();
-    // Without preview access, the "app" preference opens a popup too.
-    __setClientSettingsForTests({
-      ...DEFAULT_CLIENT_SETTINGS,
-      pullRequestLinksOpenInApp: true,
-      browserLinkTarget,
-    });
-    using _desktop = stubGlobal("desktopBridge", undefined);
-    await using screen = await render(
-      <AppAtomRegistryProvider>
-        <ToastProvider>
-          <CommitLink />
-        </ToastProvider>
-      </AppAtomRegistryProvider>,
-    );
-    using open = vi.spyOn(window, "open").mockReturnValue(null);
-    await screen.getByRole("link", { name: "Commit" }).click();
-    await expect
-      .element(page.getByRole("button", { name: "Open link", exact: true }))
-      .toBeVisible();
-    expect(open).not.toHaveBeenCalled();
-    await page.getByRole("button", { name: "Open link", exact: true }).click();
-    expect(open).toHaveBeenCalledExactlyOnceWith(commitUrl, "_blank", "noopener,noreferrer");
-    expect(state.openLink).not.toHaveBeenCalled();
-  },
-);
+it("offers the original unavailable commit URL when web popups are blocked", async () => {
+  setup();
+  using _desktop = stubGlobal("desktopBridge", undefined);
+  await using screen = await render(
+    <AppAtomRegistryProvider>
+      <ToastProvider>
+        <CommitLink />
+      </ToastProvider>
+    </AppAtomRegistryProvider>,
+  );
+  using open = vi.spyOn(window, "open").mockReturnValue(null);
+  await screen.getByRole("link", { name: "Commit" }).click();
+  await expect.element(page.getByRole("button", { name: "Open link", exact: true })).toBeVisible();
+  expect(open).not.toHaveBeenCalled();
+  await page.getByRole("button", { name: "Open link", exact: true }).click();
+  expect(open).toHaveBeenCalledExactlyOnceWith(commitUrl, "_blank", "noopener,noreferrer");
+  expect(state.openLink).not.toHaveBeenCalled();
+});
 
 it("opens an available commit in the closed Diff pane without the pane resetting it", async () => {
   setup();

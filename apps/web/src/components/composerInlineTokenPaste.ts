@@ -42,14 +42,6 @@ export function readPastedComposerContext(
   );
   const records = new Map<string, ComposerContextRecord>();
   for (const record of [...(decodedFragment?.records ?? []), ...threads.records]) {
-    if (
-      record.kind === "preview-annotation" &&
-      !("payload" in record) &&
-      pastedIds.has(record.contextId) &&
-      record.screenshotContextId
-    ) {
-      pastedIds.add(record.screenshotContextId);
-    }
     records.set(record.contextId, record);
   }
   return {
@@ -77,11 +69,7 @@ export function importPastedComposerText(
   const text = replaceComposerContextReferences(pastedText, (occurrence) => {
     const contextId = nextId(occurrence.contextId);
     return contextId
-      ? formatComposerContextReference({
-          ...occurrence,
-          contextId,
-          kind: occurrence.kind === "element" ? "preview-annotation" : occurrence.kind,
-        })
+      ? formatComposerContextReference({ ...occurrence, contextId })
       : occurrence.source;
   });
   // A thread the import refused, on a machine this agent cannot read, stays the link it was.

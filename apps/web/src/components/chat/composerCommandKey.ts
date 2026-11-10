@@ -17,7 +17,6 @@ import {
   composerSubmissionIntentForKey,
 } from "../../composer-logic";
 import { type PendingUserInput } from "../../session-logic";
-import { type PreviewAnnotationPayload } from "@t3tools/contracts";
 import { type ReviewCommentContext } from "../../reviewCommentContext";
 import { composerTargetKey } from "../../composerDraftStore";
 import {
@@ -53,7 +52,6 @@ export function composerCommandKeyHandler(input: {
   readonly composerImagesRef: ChatComposerProps["composerImagesRef"];
   readonly composerFilesRef: ChatComposerProps["composerFilesRef"];
   readonly composerTerminalContextsRef: ChatComposerProps["composerTerminalContextsRef"];
-  readonly composerPreviewAnnotations: ReadonlyArray<PreviewAnnotationPayload>;
   readonly composerReviewComments: ReadonlyArray<ReviewCommentContext>;
   readonly composerEditorRef: RefObject<ComposerPromptEditorHandle | null>;
   readonly composerMenuOpenRef: RefObject<boolean>;
@@ -103,7 +101,6 @@ export function composerCommandKeyHandler(input: {
     composerImagesRef,
     composerFilesRef,
     composerTerminalContextsRef,
-    composerPreviewAnnotations,
     composerReviewComments,
     composerEditorRef,
     composerMenuOpenRef,
@@ -149,7 +146,6 @@ export function composerCommandKeyHandler(input: {
       composerImagesRef.current.length > 0 ||
       composerFilesRef.current.length > 0 ||
       composerTerminalContextsRef.current.length > 0 ||
-      composerPreviewAnnotations.length > 0 ||
       composerReviewComments.length > 0
     ) {
       return false;

@@ -121,7 +121,7 @@ interface HarnessOptions {
 
 const makeHarness = (options: HarnessOptions = {}) => {
   const thread = options.thread === undefined ? {} : options.thread;
-  const scope = makeScope(options.capabilities ?? new Set(["preview", "worktree"]));
+  const scope = makeScope(options.capabilities ?? new Set(["worktree"]));
   const dispatch = vi.fn((_: unknown) =>
     (options.dispatchGate ?? Effect.void).pipe(
       Effect.andThen(

@@ -111,7 +111,7 @@ import {
 import { getSourceControlPresentation, sourceControlIcon } from "~/sourceControlPresentation";
 import { sourceControlClients } from "@t3tools/client-runtime/source-control-clients";
 import { formatDiffCount } from "@t3tools/client-runtime/diff-count";
-import { useOpenLink } from "~/browser/useOpenLink";
+import { openExternalLink } from "~/lib/openExternalLink";
 
 interface GitActionsControlProps {
   gitCwd: string | null;
@@ -429,7 +429,6 @@ interface PublishRepositoryDialogProps {
 }
 
 function PublishRepositoryDialog(props: PublishRepositoryDialogProps) {
-  const openLink = useOpenLink(props.threadRef);
   const navigate = useNavigate();
   const sourceControlDiscovery = useEnvironmentQuery(
     props.environmentId === null
@@ -865,7 +864,7 @@ function PublishRepositoryDialog(props: PublishRepositoryDialogProps) {
                   size="sm"
                   className="w-full"
                   onClick={() => {
-                    void openLink(publishResult.repository.url).catch(() => undefined);
+                    void openExternalLink(publishResult.repository.url).catch(() => undefined);
                   }}
                 >
                   Open on {publishProviderLabel}

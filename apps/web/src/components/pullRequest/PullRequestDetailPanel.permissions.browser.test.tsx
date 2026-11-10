@@ -121,8 +121,6 @@ const panel = (attach = false) => (
     getShortcutContext={() => ({
       terminalFocus: false,
       terminalOpen: false,
-      previewFocus: false,
-      previewOpen: false,
       isWeb: true,
       isDesktop: false,
     })}

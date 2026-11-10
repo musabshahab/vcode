@@ -11,8 +11,6 @@ import { useChatShortcuts } from "./useChatShortcuts";
 const shortcutContext = {
   terminalFocus: false,
   terminalOpen: false,
-  previewFocus: false,
-  previewOpen: false,
   isWeb: true,
   isDesktop: false,
   modelPickerOpen: false,

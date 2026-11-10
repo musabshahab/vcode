@@ -1,5 +1,5 @@
 import * as Electron from "electron";
-import { sourceDimensions } from "../preview/FaviconCapture.ts";
+import { sourceDimensions } from "./ImageDimensions.ts";
 
 const MAX_IMAGE_BYTES = 32 * 1024 * 1024;
 

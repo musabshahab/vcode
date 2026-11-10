@@ -2,7 +2,6 @@ import { expect, it } from "@effect/vitest";
 import {
   EnvironmentId,
   McpCapabilityUnavailableError,
-  PreviewAutomationUnavailableError,
   ProviderInstanceId,
   ThreadId,
 } from "@t3tools/contracts";
@@ -10,7 +9,7 @@ import * as Effect from "effect/Effect";
 
 import * as McpInvocationContext from "./McpInvocationContext.ts";
 
-it.effect("reports other missing capabilities with the neutral error", () => {
+it.effect("reports a missing capability with the neutral error", () => {
   const invocation: McpInvocationContext.McpInvocationScope = {
     environmentId: EnvironmentId.make("environment-1"),
     requestNamespace: "provider-session-1",
@@ -20,7 +19,7 @@ it.effect("reports other missing capabilities with the neutral error", () => {
       providerInstanceId: ProviderInstanceId.make("codex"),
     },
     client: undefined,
-    capabilities: new Set(["preview"]),
+    capabilities: new Set(["worktree"]),
     issuedAt: 1,
   };
 
@@ -36,30 +35,9 @@ it.effect("reports other missing capabilities with the neutral error", () => {
       threadId: invocation.thread?.threadId,
     });
 
-    const scope = yield* McpInvocationContext.requireMcpCapability("preview").pipe(
+    const scope = yield* McpInvocationContext.requireMcpCapability("worktree").pipe(
       Effect.provideService(McpInvocationContext.McpInvocationContext, invocation),
     );
     expect(scope).toBe(invocation);
-  });
-});
-
-it.effect("refuses thread-owned capabilities to a caller signed in from outside a thread", () => {
-  const invocation: McpInvocationContext.McpInvocationScope = {
-    environmentId: EnvironmentId.make("environment-1"),
-    requestNamespace: "client:session-1",
-    thread: undefined,
-    client: { sessionId: "session-1", label: "Claude Code", access: "auto" },
-    capabilities: new Set(["preview", "orchestration"]),
-    issuedAt: 1,
-  };
-
-  return Effect.gen(function* () {
-    const error = yield* McpInvocationContext.requireThreadMcpCapability("preview").pipe(
-      Effect.provideService(McpInvocationContext.McpInvocationContext, invocation),
-      Effect.flip,
-    );
-    expect(error).toBeInstanceOf(PreviewAutomationUnavailableError);
-    expect(error).toMatchObject({ capability: "preview", environmentId: "environment-1" });
-    expect(error.threadId).toBeUndefined();
   });
 });

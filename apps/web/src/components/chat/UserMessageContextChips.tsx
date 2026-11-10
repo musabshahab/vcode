@@ -24,9 +24,8 @@ import { PREFERRED_HIGHLIGHTER } from "../../lib/syntaxHighlighting";
 import ChatMarkdown from "../ChatMarkdown";
 import { EnvironmentContextChip } from "../EnvironmentContextChip";
 import { ThreadContextChip } from "../ThreadContextChip";
-import { MessageCircleIcon, MousePointerClickIcon, PaintbrushIcon } from "lucide-react";
+import { MessageCircleIcon, MousePointerClickIcon } from "lucide-react";
 import type { ComposerContextId, KnownComposerContextRecord } from "@t3tools/contracts";
-import { buildExpandedImagePreview } from "./ExpandedImagePreview";
 import { WorkspaceEntryIcon, WorkspaceEntryTooltip } from "./WorkspaceEntryIcon";
 import { TerminalContextInlineChip } from "./TerminalContextInlineChip";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
@@ -139,91 +138,6 @@ function UserMessagePullRequestContextChip(props: {
   );
 }
 
-function UserMessagePreviewAnnotationDetails(props: {
-  record: Extract<KnownComposerContextRecord, { kind: "preview-annotation" }>;
-  image: ChatImageAttachment | null;
-}) {
-  const ctx = use(TimelineRowCtx);
-  const visibleElements = props.record.elements ?? [];
-  return (
-    <div className="max-w-full overflow-hidden rounded-lg border border-border/70 bg-background/70">
-      {props.image?.previewUrl ? (
-        <button
-          type="button"
-          className="block max-h-64 w-full cursor-zoom-in overflow-hidden border-b border-border/70 bg-muted"
-          aria-label={`Preview ${props.image.name}`}
-          onClick={() => {
-            if (!props.image) return;
-            const preview = buildExpandedImagePreview([props.image], props.image.id);
-            if (preview) ctx.onImageExpand(preview);
-          }}
-        >
-          <img
-            src={props.image.previewUrl}
-            alt="Annotated preview crop"
-            className="max-h-64 w-full object-contain"
-          />
-        </button>
-      ) : (
-        <div className="border-b border-border/70 bg-muted/40 px-3 py-2 text-secondary-label text-xs">
-          Screenshot unavailable
-        </div>
-      )}
-      <div className="min-w-0 px-3 py-2.5">
-        <div className="text-message-foreground text-xs font-medium">
-          {props.record.pageTitle?.trim() || props.record.pageUrl || "Preview annotation"}
-        </div>
-        {props.record.comment ? (
-          <div className="mt-1 whitespace-pre-wrap wrap-break-word text-sm">
-            {props.record.comment}
-          </div>
-        ) : null}
-        <div className="mt-1 flex items-center gap-2 text-secondary-label text-3xs">
-          {props.record.targetSummary ? (
-            <span className="truncate">{props.record.targetSummary}</span>
-          ) : null}
-          {(props.record.styleChanges?.length ?? 0) > 0 ? (
-            <span className="inline-flex shrink-0 items-center gap-1">
-              <PaintbrushIcon className="size-3" />
-              {props.record.styleChanges?.length ?? 0}
-            </span>
-          ) : null}
-        </div>
-        {visibleElements.length > 0 ? (
-          <div className="mt-2 space-y-2 border-t border-border/60 pt-2">
-            {visibleElements.map((element) => {
-              const source = element.source;
-              const sourceLabel = source?.fileName
-                ? `${source.fileName}${source.lineNumber === null ? "" : `:${source.lineNumber}`}`
-                : null;
-              return (
-                <div
-                  key={`${element.selector}\u0000${element.tagName}\u0000${sourceLabel ?? ""}\u0000${element.htmlPreview}`}
-                  className="min-w-0"
-                >
-                  <div className="flex min-w-0 items-center gap-2 text-xs">
-                    <code className="truncate text-message-foreground">
-                      {element.selector || `<${element.tagName}>`}
-                    </code>
-                    {sourceLabel ? (
-                      <span className="ml-auto shrink-0 text-secondary-label">{sourceLabel}</span>
-                    ) : null}
-                  </div>
-                  {element.htmlPreview?.trim() ? (
-                    <pre className="mt-1 max-h-24 overflow-auto whitespace-pre-wrap rounded bg-muted/60 px-2 py-1.5 text-3xs leading-relaxed">
-                      {element.htmlPreview.trim()}
-                    </pre>
-                  ) : null}
-                </div>
-              );
-            })}
-          </div>
-        ) : null}
-      </div>
-    </div>
-  );
-}
-
 function UserMessageElementDetails({
   record,
 }: {
@@ -267,7 +181,6 @@ function UserMessageElementDetails({
 interface UserMessageContextRenderContext {
   environmentId: import("@t3tools/contracts").EnvironmentId;
   reference: ChatMarkdownContextReference;
-  annotationImage: ChatImageAttachment | null;
   attachment: ChatImageAttachment | ChatFileAttachment | null;
   resolvedTheme: "light" | "dark";
   copyMarkdown: string;
@@ -486,24 +399,6 @@ const userMessageContextPresentationRegistry = createContextPresentationRegistry
         );
       },
     },
-    {
-      kind: "preview-annotation",
-      canRender: (record) => record.kind === "preview-annotation",
-      render: (record, context) =>
-        record.kind === "preview-annotation" ? (
-          <UserMessageContextPopover
-            copyMarkdown={context.copyMarkdown}
-            accessibleLabel={`Preview annotation, ${record.label}`}
-            kind="preview-annotation"
-            icon={<MousePointerClickIcon />}
-            label={record.label}
-          >
-            <UserMessagePreviewAnnotationDetails record={record} image={context.annotationImage} />
-          </UserMessageContextPopover>
-        ) : (
-          <UnavailableUserMessageContextChip {...context} />
-        ),
-    },
   ],
   fallback: (_kind, _record, context) => <UnavailableUserMessageContextChip {...context} />,
 });
@@ -511,7 +406,6 @@ const userMessageContextPresentationRegistry = createContextPresentationRegistry
 export function UserMessageContextReferenceChip(props: {
   reference: ChatMarkdownContextReference;
   record: KnownComposerContextRecord | undefined;
-  annotationImage: ChatImageAttachment | null;
   attachment: ChatImageAttachment | ChatFileAttachment | null;
   onExpandImage: (image: ChatImageAttachment) => void;
   onExpandVideo: (file: ChatFileAttachment) => void;
@@ -526,7 +420,6 @@ export function UserMessageContextReferenceChip(props: {
   return userMessageContextPresentationRegistry.render(props.reference.kind, props.record, {
     environmentId: activeThreadEnvironmentId,
     reference: props.reference,
-    annotationImage: props.annotationImage,
     attachment: props.attachment,
     resolvedTheme,
     copyMarkdown,

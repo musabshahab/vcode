@@ -141,16 +141,6 @@ function dataUrlLength(blob: Blob): number {
   );
 }
 
-export function dataUrlToFile(dataUrl: string, name: string, mimeType: string): File {
-  const payload = dataUrl.slice(dataUrl.indexOf(",") + 1);
-  const binary = atob(payload);
-  const bytes = new Uint8Array(binary.length);
-  for (let index = 0; index < binary.length; index += 1) {
-    bytes[index] = binary.charCodeAt(index);
-  }
-  return new File([bytes], name, { type: mimeType });
-}
-
 function fileNameForMimeType(name: string, mimeType: string): string {
   const extension = mimeType === "image/webp" ? ".webp" : ".jpg";
   const dotIndex = name.lastIndexOf(".");

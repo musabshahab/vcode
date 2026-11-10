@@ -333,21 +333,6 @@ export function waitForThreadShell(ref: ScopedThreadRef, timeoutMs = 5_000): Pro
   });
 }
 
-export function useEnvironmentSupportsServerBrowser(environmentId: EnvironmentId | null): boolean {
-  const configs = useServerConfigs();
-  return (
-    environmentId !== null &&
-    configs.get(environmentId)?.environment.capabilities.serverBrowser === true
-  );
-}
-
-export function readEnvironmentSupportsServerBrowser(environmentId: EnvironmentId): boolean {
-  return (
-    appAtomRegistry.get(environmentServerConfigsAtom).get(environmentId)?.environment.capabilities
-      .serverBrowser === true
-  );
-}
-
 export function readEnvironmentServerConfigLoaded(environmentId: EnvironmentId): boolean {
   return appAtomRegistry.get(environmentServerConfigsAtom).has(environmentId);
 }

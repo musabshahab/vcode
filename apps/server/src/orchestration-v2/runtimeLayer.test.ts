@@ -82,7 +82,6 @@ import { CodexProviderCapabilitiesV2 } from "./Adapters/CodexAdapterV2.ts";
 import * as ThreadManagementService from "./ThreadManagementService.ts";
 import * as ManagedProjectFolders from "../project/ManagedProjectFolders.ts";
 import * as ScratchThreadPromotion from "../project/ScratchThreadPromotion.ts";
-import * as PreviewManager from "../preview/Manager.ts";
 import * as TerminalManager from "../terminal/Manager.ts";
 import * as ResourceCleanupService from "./ResourceCleanupService.ts";
 import * as ThreadCommandExecutor from "./ThreadCommandExecutor.ts";
@@ -321,10 +320,7 @@ const layerLegacyImportTest = Layer.merge(RuntimeLayer.layer, layerProjectionRep
 
 const layerResourceCleanupTest = ResourceCleanupService.layer.pipe(
   Layer.provide(
-    Layer.mergeAll(
-      Layer.mock(PreviewManager.PreviewManager)({ close: () => Effect.void }),
-      Layer.mock(TerminalManager.TerminalManager)({ close: () => Effect.void }),
-    ),
+    Layer.mergeAll(Layer.mock(TerminalManager.TerminalManager)({ close: () => Effect.void })),
   ),
 );
 

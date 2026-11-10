@@ -1259,7 +1259,6 @@ const make = Effect.gen(function* () {
     root: string,
     days: number | null,
     now: number,
-    rotatedLogs: boolean,
     removed: { files: number; bytes: number },
   ) {
     if (days === null || !(yield* fs.exists(root))) return removed;
@@ -1274,14 +1273,12 @@ const make = Effect.gen(function* () {
         const target = path.join(directory, name);
         if ((yield* fs.realPath(target)) !== target || !inside(realRoot, target)) continue;
         const stat = yield* fs.stat(target);
-        if (stat.type === "Directory" && rotatedLogs) {
+        if (stat.type === "Directory") {
           yield* visit(target);
-        } else if (stat.type === "File" && (!rotatedLogs || /\.(?:log|ndjson)\.\d+$/.test(name))) {
+        } else if (stat.type === "File" && /\.(?:log|ndjson)\.\d+$/.test(name)) {
           const modified = Option.getOrNull(stat.mtime);
           if (modified !== null && modified.getTime() < now - days * DAY_MS) {
-            const current = (yield* settingsService.getSettings).storageCleanup;
-            if ((rotatedLogs ? current.logsAfterDays : current.browserArtifactsAfterDays) !== days)
-              return;
+            if ((yield* settingsService.getSettings).storageCleanup.logsAfterDays !== days) return;
             yield* fs.remove(target);
             removed.files++;
             removed.bytes += Number(stat.size);
@@ -1332,12 +1329,6 @@ const make = Effect.gen(function* () {
     sweptDeletions = deletionsAtStart;
     for (const category of [
       {
-        kind: "browser-artifacts" as const,
-        root: config.browserArtifactsDir,
-        days: settings.browserArtifactsAfterDays,
-        label: "browser artifacts",
-      },
-      {
         kind: "logs" as const,
         root: config.logsDir,
         days: settings.logsAfterDays,
@@ -1346,7 +1337,7 @@ const make = Effect.gen(function* () {
     ]) {
       if (category.days === null) continue;
       const removed = { files: 0, bytes: 0 };
-      yield* cleanFiles(category.root, category.days, now, category.kind === "logs", removed).pipe(
+      yield* cleanFiles(category.root, category.days, now, removed).pipe(
         Effect.map(({ files, bytes }) =>
           entries.push({
             kind: category.kind,

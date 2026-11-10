@@ -72,8 +72,6 @@ const input: NewProjectScriptInput = {
   runOnWorktreeCreate: false,
   waitForSetup: false,
   runOnSettle: false,
-  previewUrl: null,
-  autoOpenPreview: false,
 };
 
 type ProjectScriptSettings = ReturnType<typeof useProjectScriptSettings>;

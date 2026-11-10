@@ -1,7 +1,6 @@
 import type { ContextMenuItem } from "@t3tools/contracts";
 
 type ExternalLinkContextMenuAction =
-  | "open-in-preview"
   | "open-external"
   | "copy-link"
   | "link-to-thread"
@@ -9,14 +8,12 @@ type ExternalLinkContextMenuAction =
 
 type ExternalLinkContextMenuFailureOperation =
   | "show-link-context-menu"
-  | "open-link-in-preview"
   | "open-link-external"
   | "copy-link"
   | "link-pull-request-to-thread"
   | "unlink-pull-request-from-thread";
 
 const FAILURE_OPERATION_BY_ACTION = {
-  "open-in-preview": "open-link-in-preview",
   "open-external": "open-link-external",
   "copy-link": "copy-link",
   "link-to-thread": "link-pull-request-to-thread",
@@ -24,18 +21,14 @@ const FAILURE_OPERATION_BY_ACTION = {
 } as const satisfies Record<ExternalLinkContextMenuAction, ExternalLinkContextMenuFailureOperation>;
 
 const EXTERNAL_LINK_CONTEXT_MENU_ITEMS = [
-  { id: "open-in-preview", label: "Open in integrated browser" },
   { id: "open-external", label: "Open in system browser" },
   { id: "copy-link", label: "Copy Link" },
 ] as const satisfies readonly ContextMenuItem<ExternalLinkContextMenuAction>[];
 
 function externalLinkContextMenuItems(options: {
-  readonly canOpenInPreview: boolean;
   readonly threadLinkAction?: "link-to-thread" | "unlink-from-thread" | undefined;
 }): readonly ContextMenuItem<ExternalLinkContextMenuAction>[] {
-  const items = options.canOpenInPreview
-    ? EXTERNAL_LINK_CONTEXT_MENU_ITEMS
-    : EXTERNAL_LINK_CONTEXT_MENU_ITEMS.filter((item) => item.id !== "open-in-preview");
+  const items = EXTERNAL_LINK_CONTEXT_MENU_ITEMS;
   if (options.threadLinkAction === undefined) return items;
   return [
     {
@@ -50,13 +43,11 @@ function externalLinkContextMenuItems(options: {
 interface ShowExternalLinkContextMenuOptions {
   readonly href: string;
   readonly position: { readonly x: number; readonly y: number };
-  readonly canOpenInPreview?: boolean;
   readonly threadLinkAction?: "link-to-thread" | "unlink-from-thread" | undefined;
   readonly showContextMenu: (
     items: readonly ContextMenuItem<ExternalLinkContextMenuAction>[],
     position: { readonly x: number; readonly y: number },
   ) => Promise<ExternalLinkContextMenuAction | null>;
-  readonly openInPreview: (href: string) => Promise<void>;
   readonly openExternal: (href: string) => Promise<void>;
   readonly copyLink: (href: string) => Promise<unknown>;
   readonly updateThreadLink?: (href: string, linked: boolean) => Promise<void>;
@@ -88,10 +79,8 @@ export function resolveExternalWebLinkHost(href: string | undefined): string | n
 export async function showExternalLinkContextMenu({
   href,
   position,
-  canOpenInPreview = true,
   threadLinkAction,
   showContextMenu,
-  openInPreview,
   openExternal,
   copyLink,
   updateThreadLink,
@@ -99,19 +88,14 @@ export async function showExternalLinkContextMenu({
 }: ShowExternalLinkContextMenuOptions): Promise<void> {
   let action: ExternalLinkContextMenuAction | null;
   try {
-    action = await showContextMenu(
-      externalLinkContextMenuItems({ canOpenInPreview, threadLinkAction }),
-      position,
-    );
+    action = await showContextMenu(externalLinkContextMenuItems({ threadLinkAction }), position);
   } catch (cause) {
     reportFailure("show-link-context-menu", cause);
     return;
   }
 
   try {
-    if (action === "open-in-preview") {
-      await openInPreview(href);
-    } else if (action === "open-external") {
+    if (action === "open-external") {
       await openExternal(href);
     } else if (action === "copy-link") {
       await copyLink(href);

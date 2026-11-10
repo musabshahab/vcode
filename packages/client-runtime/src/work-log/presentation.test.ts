@@ -132,17 +132,17 @@ describe("resolveWorkEntryToolPresentation", () => {
     expect(workEntryDisplayIndicatesToolFailure(childFailure)).toBe(false);
   });
   it.each([
-    "mcp__t3-code__preview_click",
-    "mcp__t3_code__preview_click",
-    "mcp__t3code__preview_click",
-    "T3-code.preview_click",
-    "t3-code · preview_click completed",
-    "t3_code/preview_click",
-    "preview_click",
-  ])("recognizes browser tool names across providers: %s", (label) => {
+    "mcp__t3-code__t3_worktree_handoff",
+    "mcp__t3_code__t3_worktree_handoff",
+    "mcp__t3code__t3_worktree_handoff",
+    "T3-code.t3_worktree_handoff",
+    "t3-code · t3_worktree_handoff completed",
+    "t3_code/t3_worktree_handoff",
+    "t3_worktree_handoff",
+  ])("recognizes T3 tool names across providers: %s", (label) => {
     expect(resolveWorkEntryToolPresentation({ label })).toEqual({
-      displayName: "Clicking in the preview browser",
-      icon: "browser",
+      displayName: "Handing off thread to a git worktree",
+      icon: "t3-code",
     });
   });
 
@@ -150,28 +150,28 @@ describe("resolveWorkEntryToolPresentation", () => {
     expect(
       resolveWorkEntryToolPresentation({
         label: "Tool call complete",
-        toolTitle: "Inspect the current page",
-        toolData: { server: "t3-code", tool: "preview_snapshot", result: { title: "Example" } },
+        toolTitle: "Check the worktree",
+        toolData: { server: "t3-code", tool: "t3_worktree_status", result: { status: "ready" } },
       }),
-    ).toEqual({ displayName: "Taking a snapshot of the preview page", icon: "browser" });
+    ).toEqual({ displayName: "Getting thread worktree status", icon: "t3-code" });
   });
 
   it("uses the summary's state only when the provider omitted a lifecycle status", () => {
-    const entry = { label: "T3-code.preview_click" };
+    const entry = { label: "T3-code.t3_worktree_handoff" };
     expect(resolveWorkEntryToolPresentation(entry, "inProgress")?.displayName).toBe(
-      "Clicking in the preview browser",
+      "Handing off thread to a git worktree",
     );
     expect(resolveWorkEntryToolPresentation(entry, "completed")?.displayName).toBe(
-      "Clicked in the preview browser",
+      "Handed off thread to a git worktree",
     );
     expect(
       resolveWorkEntryToolPresentation({ ...entry, toolLifecycleStatus: "completed" }, "inProgress")
         ?.displayName,
-    ).toBe("Clicked in the preview browser");
+    ).toBe("Handed off thread to a git worktree");
     expect(
       resolveWorkEntryToolPresentation({ ...entry, toolLifecycleStatus: "failed" }, "completed")
         ?.displayName,
-    ).toBe("Failed to click in the preview browser");
+    ).toBe("Failed to hand off thread to a git worktree");
   });
 
   it("names a linked change request with its host's term", () => {
@@ -186,7 +186,7 @@ describe("resolveWorkEntryToolPresentation", () => {
 
   it("does not brand unknown tools or another server's matching tool name", () => {
     for (const label of [
-      "mcp__github__preview_click",
+      "mcp__github__t3_worktree_status",
       "t3-code.unknown_tool",
       "t3-code.toString",
       "Search files",
@@ -195,8 +195,8 @@ describe("resolveWorkEntryToolPresentation", () => {
     }
     expect(
       resolveWorkEntryToolPresentation({
-        label: "preview_click",
-        toolData: { server: "another-server", tool: "preview_click" },
+        label: "t3_worktree_status",
+        toolData: { server: "another-server", tool: "t3_worktree_status" },
       }),
     ).toBeNull();
   });

@@ -17,8 +17,6 @@ import type {
   KnownComposerContextRecord,
   MessageId,
   OrchestrationMessageContext,
-  PreviewAnnotationContextRecord,
-  PreviewAnnotationPayload,
   ReviewCommentContextRecord,
   TerminalContextRecord,
   ThreadContextRecord,
@@ -38,15 +36,12 @@ import {
 } from "./composerContextReferences";
 import type { ComposerFileAttachment, ComposerImageAttachment } from "~/composerDraftStore";
 import type { AttachmentUploadState } from "./attachmentUploadState";
-import { normalizeElementContextSelection } from "./elementContext";
 import {
   formatTerminalContextLabel,
   normalizeTerminalContextText,
   type TerminalContextDraft,
 } from "./terminalContext";
 import type { ReviewCommentContext } from "~/reviewCommentContext";
-
-const PREVIEW_LABEL_MAX_CHARS = 48;
 
 // Truncate selections to wire bounds before persistence to avoid send-time encoding failures.
 const TRUNCATION_MARKER = "\n… truncated …";
@@ -114,19 +109,6 @@ export function pullRequestContextKindLabel(comment: ReviewCommentPresentation):
   return `${capitalizeTerm(state)} ${term}`;
 }
 
-export function previewAnnotationContextLabel(annotation: PreviewAnnotationPayload): string {
-  const comment = annotation.comment.trim().replace(/\s+/g, " ");
-  if (comment) {
-    if (comment.length <= PREVIEW_LABEL_MAX_CHARS) return comment;
-    let end = PREVIEW_LABEL_MAX_CHARS - 1;
-    const previous = comment.charCodeAt(end - 1);
-    const next = comment.charCodeAt(end);
-    if (previous >= 0xd800 && previous <= 0xdbff && next >= 0xdc00 && next <= 0xdfff) end -= 1;
-    return `${comment.slice(0, end)}…`;
-  }
-  return annotation.pageTitle?.trim() || "Preview annotation";
-}
-
 export function terminalContextReference(context: TerminalContextDraft): ComposerContextReference {
   return {
     kind: "terminal",
@@ -139,10 +121,6 @@ export function reviewCommentContextId(commentId: string): ComposerContextId {
   return toKindScopedComposerContextId("review-comment", commentId);
 }
 
-export function previewAnnotationContextId(annotationId: string): ComposerContextId {
-  return toKindScopedComposerContextId("preview-annotation", annotationId);
-}
-
 export function reviewCommentContextReference(
   comment: ReviewCommentContext,
 ): ComposerContextReference {
@@ -150,16 +128,6 @@ export function reviewCommentContextReference(
     kind: "review-comment",
     contextId: reviewCommentContextId(comment.id),
     label: reviewCommentContextLabel(comment),
-  };
-}
-
-export function previewAnnotationContextReference(
-  annotation: PreviewAnnotationPayload,
-): ComposerContextReference {
-  return {
-    kind: "preview-annotation",
-    contextId: previewAnnotationContextId(annotation.id),
-    label: previewAnnotationContextLabel(annotation),
   };
 }
 
@@ -225,55 +193,6 @@ export function reviewCommentContextRecord(
   };
 }
 
-function previewAnnotationTargetSummary(annotation: PreviewAnnotationPayload): string {
-  const parts: string[] = [];
-  const plural = (count: number, noun: string) => `${count} ${noun}${count === 1 ? "" : "s"}`;
-  if (annotation.elements.length > 0)
-    parts.push(plural(annotation.elements.length, "selected element"));
-  if (annotation.regions.length > 0) parts.push(plural(annotation.regions.length, "marked region"));
-  if (annotation.strokes.length > 0) parts.push(plural(annotation.strokes.length, "drawing"));
-  return parts.join(", ");
-}
-
-export function previewAnnotationContextRecord(
-  annotation: PreviewAnnotationPayload,
-  options?: { screenshotContextId?: string | undefined },
-): PreviewAnnotationContextRecord {
-  const targets = annotation.elements.flatMap((target) => {
-    const element = normalizeElementContextSelection(target.element);
-    return element ? [{ id: target.id, element }] : [];
-  });
-  return {
-    version: 1,
-    contextId: previewAnnotationContextId(annotation.id),
-    kind: "preview-annotation",
-    label: sanitizeComposerContextLabel(
-      previewAnnotationContextLabel(annotation),
-      "preview-annotation",
-    ),
-    annotationId: annotation.id,
-    pageUrl: annotation.pageUrl,
-    pageTitle: annotation.pageTitle,
-    comment: annotation.comment.trim(),
-    targetSummary: previewAnnotationTargetSummary(annotation),
-    styleChanges: annotation.styleChanges.map(
-      (change) => `${change.property}: ${change.previousValue || "(unset)"} → ${change.value}`,
-    ),
-    ...(targets.length > 0
-      ? {
-          elements: targets.map((target) => target.element),
-          elementIds: targets.map((target) => target.id),
-        }
-      : {}),
-    styleChangeDetails: annotation.styleChanges.map((change) => ({ ...change })),
-    ...(annotation.regions.length > 0 ? { regionCount: annotation.regions.length } : {}),
-    ...(annotation.strokes.length > 0 ? { strokeCount: annotation.strokes.length } : {}),
-    ...(options?.screenshotContextId !== undefined
-      ? { screenshotContextId: toKindScopedComposerContextId("image", options.screenshotContextId) }
-      : {}),
-  };
-}
-
 export function imageContextReference(image: ComposerImageAttachment): ComposerContextReference {
   return {
     kind: "image",
@@ -328,26 +247,15 @@ export function attachmentContextRecord(
 export function buildMessageContext(input: {
   terminalContexts: ReadonlyArray<TerminalContextDraft>;
   reviewComments: ReadonlyArray<ReviewCommentContext>;
-  previewAnnotations: ReadonlyArray<PreviewAnnotationPayload>;
   threadContexts?: ReadonlyArray<ThreadContextRecord>;
   environmentContexts?: ReadonlyArray<EnvironmentContextRecord>;
   attachments?: ReadonlyArray<BoundComposerAttachment>;
 }): OrchestrationMessageContext | undefined {
-  const screenshotAttachmentIds = new Set(
-    (input.attachments ?? []).flatMap(({ attachment }) =>
-      attachment.type === "image" ? [attachment.id] : [],
-    ),
-  );
   const records: ComposerContextRecord[] = [
     ...input.terminalContexts.map(terminalContextRecord),
     ...input.reviewComments.map(reviewCommentContextRecord),
     ...(input.threadContexts ?? []),
     ...(input.environmentContexts ?? []),
-    ...input.previewAnnotations.map((annotation) =>
-      previewAnnotationContextRecord(annotation, {
-        screenshotContextId: screenshotAttachmentIds.has(annotation.id) ? annotation.id : undefined,
-      }),
-    ),
     ...(input.attachments ?? []).map(attachmentContextRecord),
   ];
   return records.length === 0 ? undefined : { version: 1, records };
@@ -444,52 +352,6 @@ export function reviewCommentFromRecord(record: ReviewCommentContextRecord): Rev
     diff: record.diff,
     ...(record.fenceLanguage !== undefined ? { fenceLanguage: record.fenceLanguage } : {}),
     ...(record.pullRequest !== undefined ? { pullRequest: record.pullRequest } : {}),
-  };
-}
-
-export function previewAnnotationFromRecord(
-  record: PreviewAnnotationContextRecord,
-): PreviewAnnotationPayload {
-  return {
-    id:
-      record.annotationId ||
-      producerIdFromComposerContextId("preview-annotation", record.contextId),
-    pageUrl: record.pageUrl,
-    pageTitle: record.pageTitle,
-    comment: record.comment,
-    elements: (record.elements ?? []).map((element, index) => ({
-      id: record.elementIds?.[index] ?? `${record.contextId}-element-${index + 1}`,
-      rect: { x: 0, y: 0, width: 0, height: 0 },
-      element: { ...element, stack: [], pickedAt: new Date().toISOString() },
-    })),
-    regions: Array.from({ length: record.regionCount ?? 0 }, (_unused, index) => ({
-      id: `${record.contextId}-region-${index + 1}`,
-      rect: { x: 0, y: 0, width: 0, height: 0 },
-    })),
-    strokes: Array.from({ length: record.strokeCount ?? 0 }, (_unused, index) => ({
-      id: `${record.contextId}-stroke-${index + 1}`,
-      color: "",
-      width: 0,
-      points: [],
-      bounds: { x: 0, y: 0, width: 0, height: 0 },
-    })),
-    styleChanges:
-      record.styleChangeDetails ??
-      record.styleChanges.flatMap((change) => {
-        const match = /^(.+?): ([\s\S]*?) → ([\s\S]*)$/.exec(change);
-        if (!match) return [];
-        return [
-          {
-            targetId: record.elementIds?.[0] ?? `${record.contextId}-element-1`,
-            selector: null,
-            property: match[1]!,
-            previousValue: match[2] === "(unset)" ? "" : match[2]!,
-            value: match[3]!,
-          },
-        ];
-      }),
-    screenshot: null,
-    createdAt: new Date().toISOString(),
   };
 }
 

@@ -1,9 +1,7 @@
 import type { EnvironmentId, ProjectId } from "@t3tools/contracts";
 
-import type { OpenPreviewMutation } from "./browser/openFileInPreview";
 import type { ClosedView, ClosedViewEntry } from "./closedViewStore";
 import type { PullRequestListPreferences } from "./components/pullRequest/pullRequestListPreferences";
-import { openPreviewSession } from "./components/preview/openPreviewSession";
 import {
   rightPanelHostRef,
   type RightPanelSurface,
@@ -39,11 +37,7 @@ export function planNextReopen(
       break;
     }
     const alreadyOpen =
-      entry.kind === "panel-tab"
-        ? owner.panel.isOpen && owner.panel.surfaces.some((s) => s.id === entry.surface.id)
-        : owner.panel.surfaces.some(
-            (s) => s.kind === "preview" && s.resourceId === entry.snapshot.tabId,
-          );
+      owner.panel.isOpen && owner.panel.surfaces.some((s) => s.id === entry.surface.id);
     if (alreadyOpen) {
       drop.push(entry);
       continue;
@@ -91,29 +85,13 @@ export function pullRequestsSearchForRestore<S extends PullRequestsSearchLike>(
   } as S & PullRequestListPreferences;
 }
 
-export async function reopenClosedView(
+export function reopenClosedView(
   view: ClosedView,
-  options: {
-    openPreview: OpenPreviewMutation;
-    workspaceAvailable: boolean;
-  },
-): Promise<boolean> {
+  options: { workspaceAvailable: boolean },
+): boolean {
   const panels = useRightPanelStore.getState();
   const ref = view.threadRef;
 
-  if (view.kind === "browser") {
-    const url = view.snapshot.navStatus._tag === "Idle" ? undefined : view.snapshot.navStatus.url;
-    const result = await openPreviewSession({
-      openPreview: options.openPreview,
-      threadRef: ref,
-      ...(url === undefined ? {} : { url }),
-      ...(view.snapshot.viewport === undefined ? {} : { viewport: view.snapshot.viewport }),
-      ...(view.snapshot.profileId === undefined ? {} : { profileId: view.snapshot.profileId }),
-    });
-    if (result._tag === "Failure") return false;
-    panels.openBrowser(ref, result.value.tabId);
-    return true;
-  }
   const surface = view.surface;
   if (
     !options.workspaceAvailable &&
@@ -121,10 +99,6 @@ export async function reopenClosedView(
   )
     return false;
   switch (surface.kind) {
-    case "preview":
-      if (surface.resourceId !== null) return false;
-      panels.openBrowser(ref, null);
-      break;
     case "file":
       if (surface.attachment) panels.openAttachment(ref, surface.attachment);
       else {

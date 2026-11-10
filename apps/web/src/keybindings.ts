@@ -32,8 +32,6 @@ export interface ShortcutEventLike extends SharedShortcutEventLike {
 export interface ShortcutMatchContext {
   terminalFocus: boolean;
   terminalOpen: boolean;
-  previewFocus: boolean;
-  previewOpen: boolean;
   isWeb: boolean;
   isDesktop: boolean;
   editableFocus?: boolean;
@@ -62,8 +60,6 @@ function resolveContext(options: ShortcutMatchOptions | undefined): ShortcutMatc
   return {
     terminalFocus: false,
     terminalOpen: false,
-    previewFocus: false,
-    previewOpen: false,
     isWeb: !isElectron,
     isDesktop: isElectron,
     editableFocus: false,

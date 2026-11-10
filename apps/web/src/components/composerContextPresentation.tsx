@@ -1,14 +1,10 @@
 import ChatMarkdown from "./ChatMarkdown";
 import { isSvgAttachment } from "@t3tools/shared/image";
 import { ReadOnlySourcePreview } from "./files/AttachmentFilePreview";
-import type {
-  EnvironmentContextRecord,
-  PreviewAnnotationPayload,
-  ThreadContextRecord,
-} from "@t3tools/contracts";
+import type { EnvironmentContextRecord, ThreadContextRecord } from "@t3tools/contracts";
 import { formatAttachmentSize } from "@t3tools/client-runtime/state/attachments";
 import { videoMimeType } from "@t3tools/shared/video";
-import { MessageCircleIcon, MousePointerClickIcon } from "lucide-react";
+import { MessageCircleIcon } from "lucide-react";
 import { createContext, type ReactElement, type ReactNode, use } from "react";
 import { ComposerContextActionsContext } from "./composerContextActions";
 
@@ -26,8 +22,6 @@ import {
   isPullRequestSummaryContext,
   pullRequestContextDisplayState,
   pullRequestContextKindLabel,
-  previewAnnotationContextId,
-  previewAnnotationContextLabel,
   reviewCommentContextId,
   reviewCommentContextLabel,
   terminalContextReference,
@@ -57,11 +51,6 @@ import {
 export type ComposerDraftContextRecord =
   | { kind: "terminal"; record: TerminalContextDraft }
   | { kind: "review-comment"; record: ReviewCommentContext }
-  | {
-      kind: "preview-annotation";
-      record: PreviewAnnotationPayload;
-      screenshot?: ComposerImageAttachment | undefined;
-    }
   | { kind: "image"; record: ComposerImageAttachment; upload?: AttachmentUploadState | undefined }
   | { kind: "file"; record: ComposerFileAttachment; upload?: AttachmentUploadState | undefined }
   | { kind: "thread"; record: ThreadContextRecord }
@@ -88,7 +77,6 @@ export const ComposerContextRecordsContext = createContext<ComposerDraftContextR
 export function composerContextRecordsFromDraft(input: {
   terminalContexts: ReadonlyArray<TerminalContextDraft>;
   reviewComments?: ReadonlyArray<ReviewCommentContext>;
-  previewAnnotations?: ReadonlyArray<PreviewAnnotationPayload>;
   threadContexts?: ReadonlyArray<ThreadContextRecord>;
   environmentContexts?: ReadonlyArray<EnvironmentContextRecord>;
   images?: ReadonlyArray<ComposerImageAttachment>;
@@ -115,14 +103,6 @@ export function composerContextRecordsFromDraft(input: {
   }
   for (const record of input.reviewComments ?? []) {
     records.set(reviewCommentContextId(record.id), { kind: "review-comment", record });
-  }
-  const imagesById = new Map((input.images ?? []).map((image) => [image.id, image]));
-  for (const record of input.previewAnnotations ?? []) {
-    records.set(previewAnnotationContextId(record.id), {
-      kind: "preview-annotation",
-      record,
-      screenshot: imagesById.get(record.id),
-    });
   }
   for (const record of input.threadContexts ?? []) {
     records.set(record.contextId, { kind: "thread", record });
@@ -266,21 +246,6 @@ function PullRequestContextChip(props: { record: ReviewCommentContext; kind: Con
   );
 }
 
-function previewAnnotationTooltip(annotation: PreviewAnnotationPayload): string {
-  const lines = [annotation.pageTitle?.trim() || annotation.pageUrl];
-  if (annotation.comment.trim()) lines.push("", annotation.comment.trim());
-  const targets: string[] = [];
-  const plural = (count: number, noun: string) => `${count} ${noun}${count === 1 ? "" : "s"}`;
-  if (annotation.elements.length > 0) targets.push(plural(annotation.elements.length, "element"));
-  if (annotation.regions.length > 0) targets.push(plural(annotation.regions.length, "region"));
-  if (annotation.strokes.length > 0) targets.push(plural(annotation.strokes.length, "drawing"));
-  if (annotation.styleChanges.length > 0) {
-    targets.push(plural(annotation.styleChanges.length, "style change"));
-  }
-  if (targets.length > 0) lines.push("", targets.join(", "));
-  return lines.join("\n");
-}
-
 function ComposerReviewCommentDetails({ comment }: { comment: ReviewCommentContext }) {
   return (
     <div className="space-y-2 overflow-hidden rounded-lg border border-border/70 bg-background/70 p-3">
@@ -296,35 +261,6 @@ function ComposerReviewCommentDetails({ comment }: { comment: ReviewCommentConte
           <ReadOnlySourcePreview name="review.diff" text={comment.diff} />
         </div>
       ) : null}
-    </div>
-  );
-}
-
-function ComposerPreviewAnnotationDetails({
-  annotation,
-  screenshot,
-}: {
-  annotation: PreviewAnnotationPayload;
-  screenshot: ComposerImageAttachment | undefined;
-}) {
-  const summary = previewAnnotationTooltip(annotation);
-  const screenshotUrl = annotation.screenshot?.dataUrl || screenshot?.previewUrl;
-  return (
-    <div className="overflow-hidden rounded-lg border border-border/70 bg-background/70">
-      {screenshotUrl ? (
-        <img
-          src={screenshotUrl}
-          alt="Annotated preview crop"
-          className="max-h-64 w-full border-border/70 border-b bg-muted object-contain"
-        />
-      ) : (
-        <div className="border-border/70 border-b bg-muted/40 px-3 py-2 text-secondary-label text-xs">
-          Screenshot unavailable
-        </div>
-      )}
-      <div className="whitespace-pre-wrap wrap-break-word px-3 py-2.5 text-sm text-foreground">
-        {summary}
-      </div>
     </div>
   );
 }
@@ -357,15 +293,7 @@ const composerContextPresentationRegistry = createContextPresentationRegistry<
   ComposerContextRenderContext,
   ReactElement
 >({
-  requiredKinds: [
-    "image",
-    "file",
-    "terminal",
-    "review-comment",
-    "preview-annotation",
-    "thread",
-    "environment",
-  ],
+  requiredKinds: ["image", "file", "terminal", "review-comment", "thread", "environment"],
   handlers: [
     {
       kind: "terminal",
@@ -428,28 +356,6 @@ const composerContextPresentationRegistry = createContextPresentationRegistry<
           />
         );
       },
-    },
-    {
-      kind: "preview-annotation",
-      canRender: (entry) => entry.kind === "preview-annotation",
-      render: (entry, context, definition) =>
-        entry.kind === "preview-annotation" ? (
-          <ContextChip
-            icon={<MousePointerClickIcon />}
-            label={previewAnnotationContextLabel(entry.record)}
-            kindLabel="Preview annotation"
-            details={
-              <ComposerPreviewAnnotationDetails
-                annotation={entry.record}
-                screenshot={entry.screenshot}
-              />
-            }
-            detailsMode={definition.capabilities.details}
-            kind="preview-annotation"
-          />
-        ) : (
-          <UnresolvedContextChip label={context.label} />
-        ),
     },
     {
       kind: "thread",

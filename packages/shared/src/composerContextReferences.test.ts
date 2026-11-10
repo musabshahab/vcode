@@ -161,41 +161,6 @@ describe("provider projection", () => {
     payload: { a: "<b>" },
   };
 
-  it("lists a preview annotation's elements in its payload", () => {
-    const annotation: ComposerContextRecord = {
-      version: 1,
-      contextId: ctx("ctx_p"),
-      kind: "preview-annotation",
-      label: "Checkout",
-      annotationId: "ann_1",
-      pageUrl: "http://localhost:3000/checkout",
-      pageTitle: "Checkout",
-      comment: "Bigger",
-      targetSummary: "1 selected element",
-      styleChanges: ["font-size: 12px → 20px"],
-      elements: [
-        {
-          pageUrl: "http://localhost:3000/checkout",
-          pageTitle: null,
-          tagName: "button",
-          selector: "#pay",
-          htmlPreview: "<button>Pay</button>",
-          componentName: null,
-          source: { functionName: null, fileName: "Pay.tsx", lineNumber: 3, columnNumber: null },
-          styles: "",
-        },
-      ],
-    };
-    const projected = projectComposerContextForProvider({
-      text: "[Checkout](t3-context://v1/preview-annotation/ctx_p)",
-      records: [annotation],
-    });
-    expect(projected).toContain("element 1:\n  url: http://localhost:3000/checkout");
-    expect(projected).toContain("  selector: #pay");
-    expect(projected).toContain("  source: Pay.tsx:3");
-    expect(projected).toContain("- font-size: 12px → 20px");
-  });
-
   it("uses the payload kind when a reference disagrees with its record", () => {
     const projected = projectComposerContextForProvider({
       text: "[log](t3-context://v1/image/ctx_t)",

@@ -44,7 +44,6 @@ export interface ServerDerivedPaths {
   readonly worktreesDir: string;
   readonly worktreeCheckoutCacheDir: string;
   readonly attachmentsDir: string;
-  readonly browserArtifactsDir: string;
   readonly logsDir: string;
   readonly serverTracePath: string;
   readonly providerLogsDir: string;
@@ -100,8 +99,6 @@ export class ServerConfig extends Context.Service<
     readonly shellEnvironmentPrepared?: boolean | undefined;
     readonly desktopTelemetryFd?: number | undefined;
     readonly desktopTelemetryControlFd?: number | undefined;
-    readonly desktopBrowserFd?: number | undefined;
-    readonly desktopBrowserControlFd?: number | undefined;
     readonly autoBootstrapProjectFromCwd: boolean;
     readonly logWebSocketEvents: boolean;
     readonly tailscaleServeEnabled: boolean;
@@ -160,7 +157,6 @@ export const deriveServerPaths = Effect.fn(function* (
     worktreesDir: join(baseDir, "worktrees"),
     worktreeCheckoutCacheDir: join(providerStatusCacheDir, "worktree-checkouts"),
     attachmentsDir,
-    browserArtifactsDir: join(stateDir, "browser-artifacts"),
     logsDir,
     serverTracePath: join(logsDir, "server.trace.ndjson"),
     providerLogsDir,
@@ -253,8 +249,6 @@ const makeTest = Effect.fn("ServerConfig.makeTest")(function* (
     desktopBootstrapToken: undefined,
     desktopTelemetryFd: undefined,
     desktopTelemetryControlFd: undefined,
-    desktopBrowserFd: undefined,
-    desktopBrowserControlFd: undefined,
     staticDir: undefined,
     devUrl,
     devAllowedOrigins: [],

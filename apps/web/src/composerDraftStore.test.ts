@@ -31,7 +31,6 @@ import {
   type OrchestrationV2ThreadShell,
   type OrchestrationV2ShellSnapshot,
   type ModelSelection,
-  type PreviewAnnotationPayload,
   type ProviderOptionSelection,
   type ScopedThreadRef,
 } from "@t3tools/contracts";
@@ -107,7 +106,6 @@ import {
 } from "./lib/copiedComposerAttachments";
 import { formatTerminalContextReference, type TerminalContextDraft } from "./lib/terminalContext";
 import { createDeferredStorage } from "./lib/storage";
-import { applyPreviewServerSnapshot, resetPreviewStateForTests } from "./previewStateStore";
 
 function makeImage(input: {
   id: string;
@@ -681,17 +679,16 @@ describe("composerDraftStore terminal contexts", () => {
 
 describe("composerDraftStore context persistence", () => {
   const threadRef = scopeThreadRef(TEST_ENVIRONMENT_ID, ThreadId.make("context-persistence"));
-  const annotation: PreviewAnnotationPayload = {
+  const reviewComment = {
     id: "retry-note",
-    pageUrl: "http://localhost:3000/checkout",
-    pageTitle: "Checkout",
-    comment: "Keep the cart after a failed payment",
-    elements: [],
-    regions: [{ id: "error-region", rect: { x: 10, y: 20, width: 100, height: 50 } }],
-    strokes: [],
-    styleChanges: [],
-    screenshot: null,
-    createdAt: "2026-09-06T10:00:00.000Z",
+    sectionId: "file:checkout.ts",
+    sectionTitle: "File comment",
+    filePath: "checkout.ts",
+    startIndex: 3,
+    endIndex: 3,
+    rangeLabel: "L4",
+    text: "Keep the cart after a failed payment",
+    diff: "const cart = [];",
   };
 
   beforeEach(resetComposerDraftStore);
@@ -703,9 +700,9 @@ describe("composerDraftStore context persistence", () => {
     };
     const store = useComposerDraftStore.getState();
     store.addTerminalContexts(threadRef, [terminal]);
-    store.addPreviewAnnotation(threadRef, annotation);
+    store.addReviewComment(threadRef, reviewComment);
     const terminalLink = formatTerminalContextReference(terminal);
-    const prompt = `Inspect ${terminalLink}. Apply [Retry note](t3-context://v1/preview-annotation/preview-annotation_retry-note). Compare ${terminalLink} again.`;
+    const prompt = `Inspect ${terminalLink}. Apply [checkout.ts L4](t3-context://v1/review-comment/review-comment_retry-note). Compare ${terminalLink} again.`;
     store.setPrompt(threadRef, prompt);
     let state = useComposerDraftStore.getState();
     const merge = useComposerDraftStore.persist.getOptions().merge!;
@@ -718,7 +715,7 @@ describe("composerDraftStore context persistence", () => {
       const draft = state.draftsByThreadKey[scopedThreadKey(threadRef)];
       expect(draft?.prompt).toBe(prompt);
       expect(draft?.terminalContexts).toEqual([terminal]);
-      expect(draft?.previewAnnotations).toEqual([annotation]);
+      expect(draft?.reviewComments).toEqual([reviewComment]);
     }
   });
 });
@@ -795,7 +792,6 @@ describe("composerDraftStore environment contexts", () => {
       buildMessageContext({
         terminalContexts: [],
         reviewComments: [],
-        previewAnnotations: [],
         environmentContexts: restored?.environmentContexts ?? [],
       })?.records,
     ).toEqual([
@@ -975,28 +971,6 @@ describe("composerDraftStore project draft thread mapping", () => {
     );
     expect(useComposerDraftStore.getState().getDraftThread(draftId)).toBeNull();
     expect(draftByKey(draftId)).toBeUndefined();
-  });
-
-  it("keeps a draft with an open page when remapping a project to a new draft thread", () => {
-    const store = useComposerDraftStore.getState();
-    store.setProjectDraftThreadId(projectRef, draftId, { threadId });
-    applyPreviewServerSnapshot(scopeThreadRef(TEST_ENVIRONMENT_ID, threadId), {
-      threadId,
-      tabId: "tab-link",
-      navStatus: { _tag: "Success", url: "https://example.com/", title: "Example" },
-      canGoBack: false,
-      canGoForward: false,
-      updatedAt: "2026-10-09T00:00:00.000Z",
-    });
-    try {
-      store.setProjectDraftThreadId(projectRef, otherDraftId, { threadId: otherThreadId });
-
-      expect(useComposerDraftStore.getState().getDraftThread(draftId)?.threadId).toBe(threadId);
-      const persisted = partializeComposerDraftStoreState(useComposerDraftStore.getState());
-      expect(persisted.draftThreadsByThreadKey[draftId]?.threadId).toBe(threadId);
-    } finally {
-      resetPreviewStateForTests();
-    }
   });
 
   it("keeps invested composer drafts alive unmapped when remapping a project to a new draft thread", () => {
@@ -2372,19 +2346,6 @@ describe("composerDraftStore inline context references", () => {
     diff: "const x = 1;",
   };
   const reviewLink = "[b.ts L4](t3-context://v1/review-comment/review-comment_rc-1)";
-  const annotation = {
-    id: "ann-1",
-    pageUrl: "http://localhost:3000/",
-    pageTitle: "Home",
-    comment: "Bigger",
-    elements: [],
-    regions: [],
-    strokes: [],
-    styleChanges: [],
-    screenshot: null,
-    createdAt: "2026-01-01T00:00:00.000Z",
-  };
-  const annotationLink = "[Bigger](t3-context://v1/preview-annotation/preview-annotation_ann-1)";
 
   beforeEach(() => {
     resetComposerDraftStore();
@@ -2459,13 +2420,10 @@ describe("composerDraftStore inline context references", () => {
   it("keeps links for retained context when clearing text and attachments", () => {
     const store = useComposerDraftStore.getState();
     store.addReviewComment(threadRef, reviewComment);
-    store.addPreviewAnnotation(threadRef, annotation);
     store.clearComposerPromptAndImages(threadRef);
     const draft = draftFor(threadId, TEST_ENVIRONMENT_ID);
     expect(draft?.prompt).toContain(reviewLink);
-    expect(draft?.prompt).toContain(annotationLink);
     expect(draft?.reviewComments).toEqual([reviewComment]);
-    expect(draft?.previewAnnotations).toEqual([annotation]);
   });
 });
 

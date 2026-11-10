@@ -72,13 +72,7 @@ vi.mock(import("./settingsLayout"), async (original) => ({
     <div>
       <h3>{title}</h3>
       {description}
-      {status && (
-        <div
-          data-testid={`${title === "Delete old browser artifacts" ? "artifact" : "logs"}-retention-status`}
-        >
-          {status}
-        </div>
-      )}
+      {status && <div data-testid="logs-retention-status">{status}</div>}
       {control}
       {children}
     </div>
@@ -102,7 +96,6 @@ function setup() {
       worktreeOnMerge: false,
       worktreeOnDelete: false,
       worktreeUnchanged: false,
-      browserArtifactsAfterDays: null,
       logsAfterDays: null,
     },
     projectSettingsOverrides: {},
@@ -116,18 +109,16 @@ function setup() {
 }
 
 function setRetentionValues(
-  artifactDays: ReadonlyArray<number | null>,
-  logDays: ReadonlyArray<number | null> = artifactDays.map(() => null),
+  logDays: ReadonlyArray<number | null>,
   environmentIds: readonly string[] = ["env-a", "env-b"],
 ) {
-  state.targets = artifactDays.map((browserArtifactsAfterDays, index) => ({
+  state.targets = logDays.map((logsAfterDays, index) => ({
     environmentId: environmentIds[index]!,
     settings: {
       ...state.settings,
       storageCleanup: {
         ...state.settings.storageCleanup,
-        browserArtifactsAfterDays,
-        logsAfterDays: logDays[index]!,
+        logsAfterDays,
       },
     },
   }));
@@ -154,84 +145,28 @@ it("keeps cleanup disabled when settled retention and all other rules are off", 
   expect(state.run).not.toHaveBeenCalled();
 });
 
-it("settles mixed retention statuses independently across selected machines", async () => {
+it("settles the mixed log retention status across selected machines", async () => {
   setup();
   using _timers = fakeTimers();
   await using screen = await render(panel());
   const advance = (ms: number) => act(() => vi.advanceTimersByTime(ms));
 
   await advance(300);
-  setRetentionValues([8, null], [8, null]);
+  setRetentionValues([8, null]);
   await screen.rerender(panel());
   await advance(125);
-  await expect.element(screen.getByTestId("artifact-retention-status")).not.toBeInTheDocument();
   await expect.element(screen.getByTestId("logs-retention-status")).not.toBeInTheDocument();
-  setRetentionValues([null, null], [8, null]);
-  await screen.rerender(panel());
-  await advance(8);
-  await expect.element(screen.getByTestId("logs-retention-status")).not.toBeInTheDocument();
-  await advance(117);
-  await expect.element(screen.getByTestId("logs-retention-status")).not.toBeInTheDocument();
-  setRetentionValues([null, null]);
-  await screen.rerender(panel());
-  await advance(300);
-  await expect.element(screen.getByTestId("artifact-retention-status")).not.toBeInTheDocument();
-  await expect.element(screen.getByTestId("logs-retention-status")).not.toBeInTheDocument();
-
-  setRetentionValues([8, null]);
-  await screen.rerender(panel());
-  await advance(300);
-  await expect
-    .element(screen.getByTestId("artifact-retention-status"))
-    .toHaveTextContent("Mixed across selected machines");
-  await expect.element(screen.getByTestId("logs-retention-status")).not.toBeInTheDocument();
-
-  setRetentionValues([null, null]);
-  await screen.rerender(panel());
-  await advance(75);
-  await expect
-    .element(screen.getByTestId("artifact-retention-status"))
-    .toHaveTextContent("Mixed across selected machines");
-  setRetentionValues([8, null]);
-  await screen.rerender(panel());
-  await advance(133);
-  await expect
-    .element(screen.getByTestId("artifact-retention-status"))
-    .toHaveTextContent("Mixed across selected machines");
-  setRetentionValues([null, null]);
-  await screen.rerender(panel());
-  await advance(133);
-  await expect
-    .element(screen.getByTestId("artifact-retention-status"))
-    .toHaveTextContent("Mixed across selected machines");
-  await advance(117);
-  await expect
-    .element(screen.getByTestId("artifact-retention-status"))
-    .toHaveTextContent("Mixed across selected machines");
-  setRetentionValues([8, null]);
-  await screen.rerender(panel());
-  await advance(300);
-  await expect
-    .element(screen.getByTestId("artifact-retention-status"))
-    .toHaveTextContent("Mixed across selected machines");
-
-  setRetentionValues([8], [null], ["env-c"]);
-  await screen.rerender(panel());
-  await expect.element(screen.getByTestId("artifact-retention-status")).not.toBeInTheDocument();
-
-  setRetentionValues([null, null], [null, null], ["env-c", "env-d"]);
-  await screen.rerender(panel());
-  await expect.element(screen.getByTestId("artifact-retention-status")).not.toBeInTheDocument();
-
-  setRetentionValues([null, null], [8, null]);
-  await screen.rerender(panel());
-  await advance(300);
-  await expect.element(screen.getByTestId("artifact-retention-status")).not.toBeInTheDocument();
+  await advance(175);
   await expect
     .element(screen.getByTestId("logs-retention-status"))
     .toHaveTextContent("Mixed across selected machines");
+
   setRetentionValues([null, null]);
   await screen.rerender(panel());
   await advance(300);
+  await expect.element(screen.getByTestId("logs-retention-status")).not.toBeInTheDocument();
+
+  setRetentionValues([8], ["env-c"]);
+  await screen.rerender(panel());
   await expect.element(screen.getByTestId("logs-retention-status")).not.toBeInTheDocument();
 });

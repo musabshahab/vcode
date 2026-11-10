@@ -14,7 +14,6 @@ import {
   planAttachmentClaim,
   parseThreadSegmentFromAttachmentId,
   sweepStalePendingAttachments,
-  threadToolOutputAttachmentIds,
 } from "./attachmentStore.ts";
 
 describe("attachmentStore", () => {
@@ -150,24 +149,5 @@ describe("attachmentStore", () => {
     } finally {
       NodeFS.rmSync(attachmentsDir, { recursive: true, force: true });
     }
-  });
-});
-
-describe("threadToolOutputAttachmentIds", () => {
-  it("returns recordings this thread stored and skips other threads' and failed calls", () => {
-    const own = createAttachmentId("thread-a", "webm")!;
-    const other = createAttachmentId("thread-b", "webm")!;
-    const stop = (id: string, extra = {}) => ({
-      toolName: "mcp__t3-code__preview_recording_stop",
-      output: [{ type: "text", text: JSON.stringify({ id, ...extra }) }],
-    });
-    expect(
-      threadToolOutputAttachmentIds("thread-a", [
-        stop(own),
-        stop(other),
-        stop(createAttachmentId("thread-a", "webm")!, { isError: true }),
-        { toolName: "mcp__t3-code__preview_snapshot", output: stop(own).output },
-      ]),
-    ).toEqual([own]);
   });
 });

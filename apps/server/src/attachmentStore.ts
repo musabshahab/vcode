@@ -4,7 +4,6 @@ import * as NodeFS from "node:fs";
 import * as NodePath from "node:path";
 
 import type { ChatAttachment } from "@t3tools/contracts";
-import { previewRecordingIdFromToolItem } from "@t3tools/shared/toolOutput";
 
 import {
   normalizeAttachmentRelativePath,
@@ -122,22 +121,6 @@ export function parseThreadSegmentFromAttachmentId(attachmentId: string): string
     return null;
   }
   return match[1]?.toLowerCase() ?? null;
-}
-
-/** Only this thread's ids qualify, preserving source files when deleting a fork. */
-export function threadToolOutputAttachmentIds(
-  threadId: string,
-  items: Iterable<{ readonly toolName: string | null | undefined; readonly output?: unknown }>,
-) {
-  const segment = toSafeThreadAttachmentSegment(threadId);
-  if (segment === null) return [];
-  return Array.from(items).flatMap((item) => {
-    const attachmentId = previewRecordingIdFromToolItem(item);
-    return attachmentId !== undefined &&
-      parseThreadSegmentFromAttachmentId(attachmentId) === segment
-      ? [attachmentId]
-      : [];
-  });
 }
 
 export function attachmentRelativePath(attachment: ChatAttachment): string | null {

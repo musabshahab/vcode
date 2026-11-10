@@ -118,9 +118,8 @@ Join modifiers and a key with `+`, such as `mod+shift+d` or `ctrl+l`.
 
 ## When conditions
 
-Available context keys are `terminalFocus`, `terminalOpen`, `previewFocus`,
-`previewOpen`, `rightPanelOpen`, `modelPickerOpen`, `usagePageOpen`, `composerFocus`,
-`draftThreadRoute`, `turnRunning`, `editableFocus`, `isWeb`, and `isDesktop`.
+Available context keys are `terminalFocus`, `terminalOpen`, `rightPanelOpen`,
+`modelPickerOpen`, `usagePageOpen`, `composerFocus`, `draftThreadRoute`, `turnRunning`, `editableFocus`, `isWeb`, and `isDesktop`.
 `rightPanelOpen` applies only to `rightPanel.new` and is true while the right panel is
 open; the default `mod+t` uses it to open the panel's new-tab menu.
 `draftThreadRoute` is true on a draft thread, including a restored draft, until it is first sent.
@@ -145,7 +144,7 @@ Combine keys with `!` for not, `&&` for and, `||` for or, and parentheses:
 `chat.find` searches conversation messages and proposed plans in the active thread. Entering a
 query searches the entire thread, including older messages. Thread search requires server support;
 update an older server to enable it. Select **Retry** if a search fails. It defaults to
-`mod+f` outside terminals and previews. Press **Enter** or **Shift+Enter** to move between matches,
+`mod+f` outside terminals. Press **Enter** or **Shift+Enter** to move between matches,
 and **Escape** to close find.
 
 ## Precedence

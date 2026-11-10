@@ -58,18 +58,6 @@ export const T3ProjectFileScript = Schema.Struct({
         "Only for runOnWorktreeCreate scripts. When true (the default), the agent starts while the script is still running. Set false to hold the agent until the script exits.",
     }),
   ),
-  previewUrl: Schema.optionalKey(
-    trimmedNonEmpty({
-      description:
-        "URL opened in the in-app browser preview when this script runs. Only honored on the desktop build.",
-    }),
-  ),
-  autoOpenPreview: Schema.optionalKey(
-    Schema.Boolean.annotate({
-      description:
-        "When true, automatically open the preview panel at `previewUrl` the moment the script starts.",
-    }),
-  ),
 }).annotate({
   description: "A project script that team members can import into T3 Code.",
 });

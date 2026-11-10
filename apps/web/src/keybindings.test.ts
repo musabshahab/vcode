@@ -158,10 +158,7 @@ const DEFAULT_BINDINGS = compile([
   {
     shortcut: modShortcut("f"),
     command: "chat.find",
-    whenAst: whenAnd(
-      whenNot(whenIdentifier("terminalFocus")),
-      whenNot(whenIdentifier("previewFocus")),
-    ),
+    whenAst: whenNot(whenIdentifier("terminalFocus")),
   },
   {
     shortcut: modShortcut("m", { shiftKey: true }),
@@ -204,7 +201,7 @@ const DEFAULT_BINDINGS = compile([
 ]);
 
 describe("effectiveShortcutsForCommand", () => {
-  it("passes only effective preview shortcuts to the desktop bridge", () => {
+  it("returns only the shortcuts effective in the given context", () => {
     const reopen = modShortcut("t", { shiftKey: true });
     const second = modShortcut("y", { shiftKey: true });
     const keybindings = compile([
@@ -212,25 +209,25 @@ describe("effectiveShortcutsForCommand", () => {
       {
         shortcut: second,
         command: "view.reopenClosed",
-        whenAst: whenIdentifier("previewFocus"),
+        whenAst: whenIdentifier("terminalFocus"),
       },
       {
         shortcut: reopen,
-        command: "preview.toggle",
-        whenAst: whenIdentifier("previewFocus"),
+        command: "sidebar.toggle",
+        whenAst: whenIdentifier("terminalFocus"),
       },
     ]);
     assert.deepEqual(
       effectiveShortcutsForCommand(keybindings, "view.reopenClosed", {
         platform: "MacIntel",
-        context: { previewFocus: true, previewOpen: true },
+        context: { terminalFocus: true },
       }),
       [second],
     );
     assert.deepEqual(
       effectiveShortcutsForCommand(keybindings, "view.reopenClosed", {
         platform: "MacIntel",
-        context: { previewFocus: false },
+        context: { terminalFocus: false },
       }),
       [reopen],
     );

@@ -1,6 +1,6 @@
 import { type CSSProperties, type ReactNode, useState } from "react";
 
-import { RightPanelResizeHandle } from "~/components/preview/RightPanelResizeHandle";
+import { RightPanelResizeHandle } from "~/components/RightPanelResizeHandle";
 import { RESIZABLE_WIDTH_PROPERTY, useResizableWidth } from "~/hooks/useResizableWidth";
 import { observeResize } from "~/lib/observeResize";
 import { cn } from "~/lib/utils";

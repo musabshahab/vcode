@@ -3,7 +3,6 @@ import {
   type ComposerContextRecord,
   type EnvironmentId,
   PROVIDER_SEND_TURN_MAX_ATTACHMENTS,
-  type PreviewAnnotationPayload,
   type ThreadContextRecord,
 } from "@t3tools/contracts";
 import {
@@ -32,11 +31,7 @@ import { compressImageForStash } from "../../lib/imageCompression";
 import { formatInlineContextReference } from "~/lib/composerContextReferences";
 import { isCommandPaletteOpen } from "../../commandPaletteBus";
 import { pendingDraftWork } from "./pendingDraftWork";
-import {
-  previewAnnotationContextRecord,
-  reviewCommentContextRecord,
-  terminalContextRecord,
-} from "~/lib/composerContextRecords";
+import { reviewCommentContextRecord, terminalContextRecord } from "~/lib/composerContextRecords";
 import { randomUUID } from "~/lib/utils";
 import {
   readAttachmentUpload,
@@ -81,7 +76,6 @@ export function useComposerStash(input: {
   readonly prompt: string;
   readonly composerMenuOpen: boolean;
   readonly isComposerCollapsedMobile: boolean;
-  readonly composerPreviewAnnotations: ReadonlyArray<PreviewAnnotationPayload>;
   readonly composerReviewComments: ReadonlyArray<ReviewCommentContext>;
   readonly composerThreadContexts: ReadonlyArray<ThreadContextRecord>;
   readonly attachmentTargetKey: string;
@@ -111,7 +105,6 @@ export function useComposerStash(input: {
     prompt,
     composerMenuOpen,
     isComposerCollapsedMobile,
-    composerPreviewAnnotations,
     composerReviewComments,
     composerThreadContexts,
     attachmentTargetKey,
@@ -128,9 +121,6 @@ export function useComposerStash(input: {
   const setComposerDraftPrompt = useComposerDraftStore((store) => store.setPrompt);
   const addComposerDraftImages = useComposerDraftStore((store) => store.addImages);
   const addComposerDraftFiles = useComposerDraftStore((store) => store.addFiles);
-  const removeComposerDraftPreviewAnnotation = useComposerDraftStore(
-    (store) => store.removePreviewAnnotation,
-  );
   const removeComposerDraftReviewComment = useComposerDraftStore(
     (store) => store.removeReviewComment,
   );
@@ -463,13 +453,6 @@ export function useComposerStash(input: {
       ...composerThreadContexts,
       ...readTerminalContexts().map(terminalContextRecord),
       ...composerReviewComments.map(reviewCommentContextRecord),
-      ...composerPreviewAnnotations.map((annotation) =>
-        previewAnnotationContextRecord(annotation, {
-          screenshotContextId: images.some((image) => image.id === annotation.id)
-            ? annotation.id
-            : undefined,
-        }),
-      ),
     ];
     if (prompt.length === 0 && images.length === 0 && files.length === 0) {
       const entries = usePromptStashStore.getState().entries;
@@ -566,10 +549,6 @@ export function useComposerStash(input: {
       setComposerDraftThreadContexts(stashTarget, []);
       for (const comment of composerReviewComments) {
         removeComposerDraftReviewComment(stashTarget, comment.id);
-      }
-      for (const annotation of composerPreviewAnnotations) {
-        releaseAttachmentUpload(annotation.id);
-        removeComposerDraftPreviewAnnotation(stashTarget, annotation.id);
       }
       setComposerDraftPrompt(stashTarget, "");
       for (const image of images) {

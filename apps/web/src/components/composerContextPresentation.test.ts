@@ -42,7 +42,6 @@ describe("composerContextRecordsFromDraft", () => {
     const message = buildMessageContext({
       terminalContexts: [terminal],
       reviewComments: [],
-      previewAnnotations: [],
       attachments: [
         { attachment: image, attachmentId: "uploaded-image" },
         { attachment: file, attachmentId: "uploaded-file" },

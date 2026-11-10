@@ -315,7 +315,6 @@ function CleanupSection() {
       rules.worktreeOnDelete ||
       rules.worktreeUnchanged;
     return (
-      settings.storageCleanup.browserArtifactsAfterDays !== null ||
       settings.storageCleanup.logsAfterDays !== null ||
       enabled(resolveWorktreeCleanup(settings, null)) ||
       Object.values(settings.projectSettingsOverrides).some(
@@ -699,31 +698,19 @@ export function WorktreeCleanupSection() {
   );
 }
 
-/** Retention for logs and captures, and the manual cleanup run, which covers worktrees too. */
+/** Retention for logs, and the manual cleanup run, which covers worktrees too. */
 export function StorageCleanupSections() {
   const { scope, connectedEnvironments, targets } = useSettingsScope();
   const scopedSettings = useScopedSettings();
   const updateSettings = useUpdateScopedSettings();
   const settings = scopedSettings.storageCleanup;
   const targetIdsKey = environmentIdsKey(targets.map((target) => target.environmentId).sort());
-  const artifactsMixed =
-    targets.length > 1 &&
-    targets.some(
-      (target) =>
-        target.settings.storageCleanup.browserArtifactsAfterDays !==
-        settings.browserArtifactsAfterDays,
-    );
   const logsMixed =
     targets.length > 1 &&
     targets.some(
       (target) => target.settings.storageCleanup.logsAfterDays !== settings.logsAfterDays,
     );
-  const settledArtifactsStatus = useDebouncedValue(`${targetIdsKey}:${artifactsMixed}`, 300);
   const settledLogsStatus = useDebouncedValue(`${targetIdsKey}:${logsMixed}`, 300);
-  const artifactsStatus =
-    targets.length > 1 && settledArtifactsStatus === `${targetIdsKey}:true`
-      ? "Mixed across selected machines"
-      : undefined;
   const logsStatus =
     targets.length > 1 && settledLogsStatus === `${targetIdsKey}:true`
       ? "Mixed across selected machines"
@@ -743,7 +730,7 @@ export function StorageCleanupSections() {
     return (
       <>
         {databaseStorageNotice}
-        <SettingsSection id="storage-artifacts" title="Artifacts and logs" variant="plain">
+        <SettingsSection id="storage-artifacts" title="Logs" variant="plain">
           <StorageCleanupScopeNotice />
         </SettingsSection>
       </>
@@ -753,22 +740,7 @@ export function StorageCleanupSections() {
   return (
     <>
       {databaseStorageNotice}
-      <SettingsSection id="storage-artifacts" title="Artifacts and logs">
-        <AnimatedHeight>
-          <SettingsRow
-            title="Delete old browser artifacts"
-            status={artifactsStatus}
-            description="Delete saved browser captures after this many days. Older capture links will no longer open."
-            serverScoped
-            control={
-              <RetentionControl
-                label="Delete old browser artifacts"
-                value={settings.browserArtifactsAfterDays}
-                onChange={(browserArtifactsAfterDays) => update({ browserArtifactsAfterDays })}
-              />
-            }
-          />
-        </AnimatedHeight>
+      <SettingsSection id="storage-artifacts" title="Logs">
         <AnimatedHeight>
           <SettingsRow
             title="Delete old rotated logs"

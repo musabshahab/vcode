@@ -12,8 +12,6 @@
 - [Appearance and themes](./user/appearance.md)
 - [Keyboard shortcuts](./user/keybindings.md)
 - [Text generation models](./user/text-generation.md)
-- [Import browser sessions](./user/browser-import.md)
-- [Use T3 Code as your default browser](./user/default-browser.md)
 - [Usage and limits](./user/usage.md)
 - [Secrets](./user/secrets.md)
 - [Diagnostics data](./user/telemetry.md)

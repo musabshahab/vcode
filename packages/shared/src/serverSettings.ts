@@ -272,17 +272,10 @@ function mergeProjectSettingsOverridesPatch(
 
 export function deriveLegacyProjectOverrides(
   settings: Pick<ServerSettings, "projectSettingsOverrides">,
-): Pick<
-  ServerSettings,
-  "projectAgentBrowserAccessOverrides" | "projectAutoPullOverrides" | "projectScriptOverrides"
-> {
-  const projectAgentBrowserAccessOverrides: Record<string, boolean> = {};
+): Pick<ServerSettings, "projectAutoPullOverrides" | "projectScriptOverrides"> {
   const projectAutoPullOverrides: Record<string, boolean> = {};
   const projectScriptOverrides: Record<string, ServerSettings["defaultProjectScripts"] | null> = {};
   for (const [projectId, entry] of Object.entries(settings.projectSettingsOverrides)) {
-    if (entry.enableAgentBrowserAccess !== undefined) {
-      projectAgentBrowserAccessOverrides[projectId] = entry.enableAgentBrowserAccess;
-    }
     if (entry.defaultAutoPull !== undefined) {
       projectAutoPullOverrides[projectId] = entry.defaultAutoPull;
     }
@@ -290,24 +283,15 @@ export function deriveLegacyProjectOverrides(
       projectScriptOverrides[projectId] = entry.defaultProjectScripts;
     }
   }
-  return { projectAgentBrowserAccessOverrides, projectAutoPullOverrides, projectScriptOverrides };
+  return { projectAutoPullOverrides, projectScriptOverrides };
 }
 
 function translateLegacyProjectOverridePatch(
   current: Pick<ServerSettings, "projectSettingsOverrides">,
   patch: ServerSettingsPatch,
 ): ServerSettingsPatch {
-  const {
-    projectAgentBrowserAccessOverrides,
-    projectAutoPullOverrides,
-    projectScriptOverrides,
-    ...rest
-  } = patch;
-  if (
-    projectAgentBrowserAccessOverrides === undefined &&
-    projectAutoPullOverrides === undefined &&
-    projectScriptOverrides === undefined
-  ) {
+  const { projectAutoPullOverrides, projectScriptOverrides, ...rest } = patch;
+  if (projectAutoPullOverrides === undefined && projectScriptOverrides === undefined) {
     return patch;
   }
   const currentEntries: Readonly<Record<string, ProjectSettingsOverrides>> =
@@ -335,7 +319,6 @@ function translateLegacyProjectOverridePatch(
       entries.set(projectId, Object.keys(entry).length === 0 ? null : entry);
     }
   };
-  applyKey(projectAgentBrowserAccessOverrides, "enableAgentBrowserAccess");
   applyKey(projectAutoPullOverrides, "defaultAutoPull");
   applyKey(projectScriptOverrides, "defaultProjectScripts");
   return {
@@ -386,7 +369,6 @@ export function applyServerSettingsPatch(
     usageModelAliases: usageModelAliasesPatch,
     // Entry replacement: deepMerge would keep keys the client meant to clear.
     projectSettingsOverrides: projectSettingsOverridesPatch,
-    projectAgentBrowserAccessOverrides: _legacyBrowserAccess,
     projectAutoPullOverrides: _legacyAutoPull,
     projectScriptOverrides: _legacyScripts,
     ...patchForMerge

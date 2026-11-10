@@ -4,8 +4,6 @@ import {
 } from "@t3tools/contracts";
 import * as Predicate from "effect/Predicate";
 
-import { resolveT3McpToolId } from "./t3McpToolPresentation.ts";
-
 const MAX_PARSED_BYTES = 16_384;
 const MAX_METADATA_BYTES = 8_192;
 const MAX_ID_LENGTH = 256;
@@ -161,21 +159,6 @@ export function compactDynamicToolOutput(value: unknown): CompactToolOutput | un
     delete output.status;
   }
   return Object.keys(output).length === 0 ? undefined : output;
-}
-
-/** The thread-owned file `preview_recording_stop` stored for the agent. */
-export function previewRecordingIdFromToolItem(item: {
-  readonly toolName: string | null | undefined;
-  readonly output?: unknown;
-}): string | undefined {
-  if (resolveT3McpToolId(item.toolName) !== "preview_recording_stop") return undefined;
-  const budget: ResultReadBudget = {
-    remainingBytes: MAX_PARSED_BYTES,
-    remainingNodes: MAX_ENVELOPE_NODES,
-    exceeded: false,
-  };
-  const result = readResult(item.output, budget);
-  return result.failed || budget.exceeded ? undefined : boundedId(result.data?.id);
 }
 
 /** Some providers report completion even when command output describes a failure. */

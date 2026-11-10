@@ -15,7 +15,6 @@ import {
 } from "@t3tools/contracts";
 import {
   type ComposerFileAttachment,
-  type ComposerImageAttachment,
   type DraftId,
   composerFileMatchesReattachMarker,
   composerFileNeedsReattach,
@@ -26,9 +25,6 @@ import {
   asKnownContextRecord,
   composerContextImportLookupIds,
   isSameComposerContextPayload,
-  previewAnnotationContextId,
-  previewAnnotationContextRecord,
-  previewAnnotationFromRecord,
   reviewCommentContextId,
   reviewCommentContextRecord,
   reviewCommentFromRecord,
@@ -40,7 +36,6 @@ import { assetEnvironment } from "~/state/assets";
 import { copiedComposerAttachmentFile } from "~/lib/copiedComposerAttachments";
 import { countQuestionAttachments, questionAttachmentDraftId } from "../../questionAttachments";
 import { collectInlineContextIds } from "../../lib/composerContextReferences";
-import { elementContextToPreviewAnnotation } from "../../lib/elementContext";
 import { orchestrationEnvironment } from "~/state/orchestration";
 import { pendingDraftWork } from "./pendingDraftWork";
 import { randomUUID } from "~/lib/utils";
@@ -71,7 +66,7 @@ async function downloadAttachmentBlob(url: string): Promise<Blob | null> {
 }
 
 /**
- * Imports copied composer context (terminal output, review comments, annotations, threads,
+ * Imports copied composer context (terminal output, review comments, threads,
  * images and files) into the open draft, and counts the attachment slots already spoken for.
  */
 export function useComposerContextImport(input: {
@@ -85,7 +80,6 @@ export function useComposerContextImport(input: {
   readonly questionAttachmentTarget: DraftId | null;
   readonly pendingUserInputs: ReadonlyArray<PendingUserInput>;
   readonly composerContextRecords: ComposerDraftContextRecords;
-  readonly composerImages: ReadonlyArray<ComposerImageAttachment>;
   readonly composerFilesRef: ChatComposerProps["composerFilesRef"];
   readonly promptRef: RefObject<string>;
   readonly pendingThreadImportsRef: RefObject<Map<string, number>>;
@@ -102,7 +96,6 @@ export function useComposerContextImport(input: {
     questionAttachmentTarget,
     pendingUserInputs,
     composerContextRecords,
-    composerImages,
     composerFilesRef,
     promptRef,
     pendingThreadImportsRef,
@@ -114,9 +107,6 @@ export function useComposerContextImport(input: {
     (store) => store.addTerminalContexts,
   );
   const addComposerDraftReviewComment = useComposerDraftStore((store) => store.addReviewComment);
-  const addComposerDraftPreviewAnnotation = useComposerDraftStore(
-    (store) => store.addPreviewAnnotation,
-  );
   const addComposerDraftThreadContexts = useComposerDraftStore((store) => store.addThreadContexts);
   const addComposerDraftEnvironmentContexts = useComposerDraftStore(
     (store) => store.addEnvironmentContexts,
@@ -192,18 +182,11 @@ export function useComposerContextImport(input: {
         fail("Downloading it from the source failed.");
         return;
       }
-      // Question attachments have no inline reference; annotations can own their screenshots.
+      // Question attachments have no inline reference.
       const references = new Set(collectInlineContextIds(promptRef.current));
       if (
         !questionAttachmentTarget &&
-        !references.has(toKindScopedComposerContextId(record.kind, localId)) &&
-        !(
-          record.kind === "image" &&
-          references.has(previewAnnotationContextId(localId)) &&
-          getComposerDraft(composerDraftTarget)?.previewAnnotations.some(
-            (annotation) => annotation.id === localId,
-          )
-        )
+        !references.has(toKindScopedComposerContextId(record.kind, localId))
       )
         return;
       file = new File([blob], record.name, { type: record.mimeType || blob.type });
@@ -231,26 +214,17 @@ export function useComposerContextImport(input: {
       return;
     }
     if (record.kind === "image") {
-      const accepted = addComposerDraftImages(
-        attachmentDraftTarget,
-        [
-          {
-            type: "image",
-            id: localId,
-            name: record.name,
-            mimeType: file.type,
-            sizeBytes: file.size,
-            previewUrl: URL.createObjectURL(file),
-            file,
-          },
-        ],
+      const accepted = addComposerDraftImages(attachmentDraftTarget, [
         {
-          allowDuplicates:
-            getComposerDraft(composerDraftTarget)?.previewAnnotations.some(
-              (annotation) => annotation.id === localId,
-            ) ?? false,
+          type: "image",
+          id: localId,
+          name: record.name,
+          mimeType: file.type,
+          sizeBytes: file.size,
+          previewUrl: URL.createObjectURL(file),
+          file,
         },
-      );
+      ]);
       if (!accepted.includes(localId))
         fail("The draft rejected this attachment (duplicate or attachment limit reached).");
     } else {
@@ -288,30 +262,16 @@ export function useComposerContextImport(input: {
     threadDraftTarget = attachmentDraftTarget,
   ): ReadonlyMap<string, string> => {
     const rewritten = new Map<string, string>();
-    const dependentAttachmentLocalIds = new Map<string, string>();
-    const skippedDependentAttachmentIds = new Set<string>();
-    // Resolve annotations before their dependent screenshot records even if a foreign
-    // clipboard producer emitted the records in a different order.
-    const orderedRecords = records.toSorted((left, right) =>
-      left.kind === "preview-annotation" && right.kind !== "preview-annotation"
-        ? -1
-        : right.kind === "preview-annotation" && left.kind !== "preview-annotation"
-          ? 1
-          : 0,
-    );
-    for (const candidate of orderedRecords) {
+    for (const candidate of records) {
       // Producer ids fold into context ids, so two different excerpts can collide. Only skip
       // when the draft already holds the same payload; a colliding but different record is
       // re-minted under a fresh id so both survive the paste.
       const record = asKnownContextRecord(candidate);
       if (!record) continue;
-      // A reminted annotation needs its screenshot under the new annotation id.
-      const existing = dependentAttachmentLocalIds.has(record.contextId)
-        ? undefined
-        : composerContextImportLookupIds(record).flatMap((contextId) => {
-            const found = composerContextRecords.get(contextId);
-            return found ? [found] : [];
-          })[0];
+      const existing = composerContextImportLookupIds(record).flatMap((contextId) => {
+        const found = composerContextRecords.get(contextId);
+        return found ? [found] : [];
+      })[0];
       // Upload completion can change the server id since copy; the local bytes still match.
       if (
         sourceEnvironmentId !== null &&
@@ -327,27 +287,16 @@ export function useComposerContextImport(input: {
           ? terminalContextRecord(existing.record)
           : existing?.kind === "review-comment"
             ? reviewCommentContextRecord(existing.record)
-            : existing?.kind === "preview-annotation"
-              ? previewAnnotationContextRecord(existing.record, {
-                  screenshotContextId: composerImages.some(
-                    (image) => image.id === existing.record.id,
-                  )
-                    ? existing.record.id
-                    : undefined,
-                })
-              : existing?.kind === "thread" || existing?.kind === "environment"
-                ? existing.record
-                : existing
-                  ? (uploadedContextRecordFromDraft(existing) ?? undefined)
-                  : undefined;
+            : existing?.kind === "thread" || existing?.kind === "environment"
+              ? existing.record
+              : existing
+                ? (uploadedContextRecordFromDraft(existing) ?? undefined)
+                : undefined;
       if (
         existingRecord &&
         isSameComposerContextPayload(existingRecord, record) &&
         (record.kind !== "thread" || threadDraftTarget === attachmentDraftTarget)
       ) {
-        if (record.kind === "preview-annotation" && record.screenshotContextId) {
-          skippedDependentAttachmentIds.add(record.screenshotContextId);
-        }
         continue;
       }
       const conflicts = existing !== undefined;
@@ -372,22 +321,6 @@ export function useComposerContextImport(input: {
           rewritten.set(record.contextId, reviewCommentContextId(comment.id));
           break;
         }
-        case "element":
-        case "preview-annotation": {
-          const imported =
-            record.kind === "element"
-              ? elementContextToPreviewAnnotation(record, randomUUID(), new Date().toISOString())
-              : previewAnnotationFromRecord(record);
-          const annotation = conflicts ? { ...imported, id: randomUUID() } : imported;
-          if (record.kind === "preview-annotation" && record.screenshotContextId) {
-            dependentAttachmentLocalIds.set(record.screenshotContextId, annotation.id);
-          }
-          addComposerDraftPreviewAnnotation(composerDraftTarget, annotation, {
-            appendReference: false,
-          });
-          rewritten.set(record.contextId, previewAnnotationContextId(annotation.id));
-          break;
-        }
         case "thread": {
           // The agent reads threads on its own server; a pasted thread from another machine is
           // dropped.
@@ -410,13 +343,12 @@ export function useComposerContextImport(input: {
         }
         case "image":
         case "file": {
-          if (skippedDependentAttachmentIds.has(record.contextId)) break;
           if (sourceEnvironmentId === null && !conflicts) {
             rewritten.set(record.contextId, record.contextId);
             break;
           }
           if (sourceEnvironmentId === null) break;
-          const localId = dependentAttachmentLocalIds.get(record.contextId) ?? randomUUID();
+          const localId = randomUUID();
           rewritten.set(record.contextId, toKindScopedComposerContextId(record.kind, localId));
           void importAttachmentRecord(record, localId, sourceEnvironmentId);
           break;

@@ -43,8 +43,6 @@ import * as Statement from "effect/sql/Statement";
 import { vi } from "vite-plus/test";
 
 import * as AssetSigner from "./assets/AssetSigner.ts";
-import * as PreviewAutomationBroker from "./mcp/PreviewAutomationBroker.ts";
-import * as ServerBrowser from "./preview/ServerBrowser.ts";
 import * as AgentSessionImporter from "./project/AgentSessionImporter.ts";
 import * as AgentSessionScanner from "./project/AgentSessionScanner.ts";
 import * as ProviderInstallation from "./provider/providerInstallation.ts";
@@ -65,8 +63,6 @@ import * as Orchestrator from "./orchestration-v2/Orchestrator.ts";
 import * as OtlpEndpointCheck from "./observability/OtlpEndpointCheck.ts";
 import * as PairingGrantStore from "./auth/PairingGrantStore.ts";
 import * as RpcAuthorization from "./auth/RpcAuthorization.ts";
-import * as PortScanner from "./preview/PortScanner.ts";
-import * as PreviewManager from "./preview/Manager.ts";
 import * as ProjectCloneTracker from "./project/ProjectCloneTracker.ts";
 import * as ProjectSetupScriptRunner from "./project/ProjectSetupScriptRunner.ts";
 import * as ProviderAuthService from "./provider/ProviderAuthService.ts";
@@ -770,8 +766,6 @@ const layerUnusedConfigRpcServices = Layer.mergeAll(
   Layer.mock(Orchestrator.OrchestratorV2)({}),
   Layer.mock(OtlpEndpointCheck.OtlpEndpointCheck)({}),
   Layer.mock(PairingGrantStore.PairingGrantStore)({}),
-  Layer.mock(PortScanner.PortDiscovery)({ trackAgent: () => () => undefined }),
-  Layer.mock(PreviewManager.PreviewManager)({}),
   Layer.mock(ProjectCloneTracker.ProjectCloneTracker)({}),
   Layer.mock(ProjectService.ProjectService)({}),
   Layer.mock(ProjectSetupScriptRunner.ProjectSetupScriptRunner)({}),
@@ -962,8 +956,6 @@ it.effect.each([
               method: "browser-session-cookie",
               scopes: [],
             },
-            yield* ServerBrowser.ServerBrowser,
-            () => Effect.void,
             { secretReferences: true },
           ).pipe(Layer.provide(configRpcServices)),
         ),
@@ -1070,16 +1062,7 @@ it.effect.each([
       }
       yield* server.write(0, { _tag: "Interrupt", requestId, interruptors: [] });
       if (direct) yield* Deferred.await(directStopped);
-    }).pipe(
-      Effect.provide(
-        Layer.mergeAll(
-          Layer.fresh(layerConfigSources),
-          Layer.mock(PreviewAutomationBroker.PreviewAutomationBroker)({}),
-          Layer.mock(ServerBrowser.ServerBrowser)({}),
-        ),
-      ),
-      Effect.scoped,
-    ),
+    }).pipe(Effect.provide(Layer.fresh(layerConfigSources)), Effect.scoped),
 );
 
 it.effect("on-demand clients get provider config without workspace snapshots", () =>
@@ -1203,8 +1186,6 @@ it.effect("on-demand clients get provider config without workspace snapshots", (
             method: "browser-session-cookie",
             scopes: [],
           },
-          yield* ServerBrowser.ServerBrowser,
-          () => Effect.void,
           { secretReferences: true },
         ).pipe(Layer.provide(configRpcServices)),
       ),
@@ -1303,16 +1284,7 @@ it.effect("on-demand clients get provider config without workspace snapshots", (
       },
     ]);
     yield* server.write(0, { _tag: "Interrupt", requestId: configRequest, interruptors: [] });
-  }).pipe(
-    Effect.provide(
-      Layer.mergeAll(
-        Layer.fresh(layerConfigSources),
-        Layer.mock(PreviewAutomationBroker.PreviewAutomationBroker)({}),
-        Layer.mock(ServerBrowser.ServerBrowser)({}),
-      ),
-    ),
-    Effect.scoped,
-  ),
+  }).pipe(Effect.provide(Layer.fresh(layerConfigSources)), Effect.scoped),
 );
 
 it.effect("a publish whose push fails still refreshes the new remote", () =>
@@ -1364,8 +1336,6 @@ it.effect("a publish whose push fails still refreshes the new remote", () =>
             method: "browser-session-cookie",
             scopes: [AuthSourceControlWriteScope],
           },
-          yield* ServerBrowser.ServerBrowser,
-          () => Effect.void,
           { secretReferences: true },
         ).pipe(
           Layer.provide(services),
@@ -1390,16 +1360,7 @@ it.effect("a publish whose push fails still refreshes the new remote", () =>
       [yield* Queue.take(refreshes), yield* Queue.take(refreshes)],
       ["identity /repo refresh=true", "status /repo"],
     );
-  }).pipe(
-    Effect.provide(
-      Layer.mergeAll(
-        Layer.fresh(layerConfigSources),
-        Layer.mock(PreviewAutomationBroker.PreviewAutomationBroker)({}),
-        Layer.mock(ServerBrowser.ServerBrowser)({}),
-      ),
-    ),
-    Effect.scoped,
-  ),
+  }).pipe(Effect.provide(Layer.fresh(layerConfigSources)), Effect.scoped),
 );
 
 // Pruned history cannot be replayed: a cursor below the boundary must resync from a snapshot,
