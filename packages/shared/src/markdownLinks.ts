@@ -234,7 +234,7 @@ export function splitMarkdownLinkSearchAndHash(value: string): {
 
 /**
  * The decoded path a markdown destination names on the host, before any workspace resolution, or
- * null for a `file:` URL that does not parse. Clients and the guest media route both read it here.
+ * null for a `file:` URL that does not parse.
  */
 export function markdownDestinationHostPath(source: string): string | null {
   if (/^file:/i.test(source)) {

@@ -31,8 +31,8 @@ import type { TurnItemDetailSource } from "../../state/queries";
 import { type HandoffTimelineRun } from "./V2LifecycleRow";
 
 /**
- * Where an expanded row reads an item's detail and a command's output. The owner's rows read them
- * from the environment; the guest page reads them through its own routes.
+ * Where an expanded row reads an item's detail and a command's output, when not from the
+ * environment.
  */
 export interface TurnItemSource {
   readonly detail: TurnItemDetailSource;
@@ -73,7 +73,7 @@ export interface TimelineRowSharedState {
   turnItemSource: TurnItemSource | undefined;
   onOpenThread: (threadId: OrchestrationV2TurnItem["threadId"]) => void;
   workflowOpening: WorkflowOpening | null;
-  /** Absent hides "Fork from this response", as in the guest view. */
+  /** Absent hides "Fork from this response". */
   onForkFromRun:
     | ((input: { readonly sourceThreadId: ThreadId; readonly runId: RunId }) => Promise<void>)
     | undefined;

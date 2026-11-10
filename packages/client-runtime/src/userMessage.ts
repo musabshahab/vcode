@@ -1,7 +1,6 @@
 import {
   type ChatAttachment,
   type ChatFileAttachment,
-  type GuestMessageAttribution,
   type OrchestrationMessageContext,
   type OrchestrationV2Actor,
   type OrchestrationV2CreationSource,
@@ -60,24 +59,12 @@ export function resolveUserMessagePresentation(message: {
   readonly text: string;
   readonly createdBy?: OrchestrationV2Actor;
   readonly creationSource?: OrchestrationV2CreationSource;
-  readonly context?: { readonly guest?: GuestMessageAttribution | undefined } | undefined;
 }): {
   readonly text: string;
-  readonly attribution: "agent" | "t3code" | "guest" | null;
-  /** Set when `attribution` is "guest". */
-  readonly guestName?: string;
+  readonly attribution: "agent" | "t3code" | null;
 } {
   if (message.role !== "user") {
     return { text: message.text, attribution: null };
-  }
-  // The stored text names the guest for the agent; people see the guest's own words.
-  const guest = message.context?.guest;
-  if (guest !== undefined) {
-    return {
-      text: guest.text,
-      attribution: "guest",
-      guestName: guest.name,
-    };
   }
   return {
     // The agent needs words to start a turn; people sent only the attachments.
