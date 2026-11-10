@@ -67,6 +67,7 @@ import {
   waitForDesktopUpdateTarget,
   runDesktopCommitWithReconnectObserver,
 } from "./server.ts";
+import { createEnvironmentRpcQueryAtomFamily } from "./runtime.ts";
 import { applyServerConfigProjection } from "./serverConfigProjection.ts";
 
 const CONFIG = {
@@ -1397,8 +1398,8 @@ describe("provider setup commands", () => {
   );
 });
 
-describe("resource telemetry history", () => {
-  it.effect("refreshes an initially empty history while mounted and stops after unmount", () =>
+describe("polling queries", () => {
+  it.effect("refreshes a query on its interval while mounted and stops after unmount", () =>
     Effect.gen(function* () {
       vi.useFakeTimers();
       try {
@@ -1406,10 +1407,8 @@ describe("resource telemetry history", () => {
           Effect.gen(function* () {
             let reads = 0;
             const client = {
-              [WS_METHODS.serverGetResourceTelemetryHistory]: () =>
-                Effect.sync(() => ({
-                  retainedSampleCount: reads++,
-                })),
+              [WS_METHODS.serverGetNpmRelease]: () =>
+                Effect.sync(() => ({ version: `0.0.${reads++}` })),
             } as unknown as WsRpcProtocolClient;
             const supervisor = EnvironmentSupervisor.EnvironmentSupervisor.of({
               target: TARGET,
@@ -1445,27 +1444,31 @@ describe("resource telemetry history", () => {
                 } as unknown as Persistence.EnvironmentCacheStore["Service"]),
               ),
             );
-            const atoms = createServerEnvironmentAtoms(runtime, {
-              initialConfigValueAtom: () => Atom.make(CONFIG),
+            const polled = createEnvironmentRpcQueryAtomFamily(runtime, {
+              label: "test:polled",
+              tag: WS_METHODS.serverGetNpmRelease,
+              staleTimeMs: 5_000,
+              refreshIntervalMs: 5_000,
+              idleTtlMs: 0,
             });
             const registry = yield* Effect.acquireRelease(Effect.sync(AtomRegistry.make), (value) =>
               Effect.sync(() => value.dispose()),
             );
-            const history = atoms.resourceTelemetryHistory({
+            const release = polled({
               environmentId: TARGET.environmentId,
-              input: { windowMs: 900_000, bucketMs: 30_000 },
+              input: { spec: "latest" },
             });
-            const unmount = registry.mount(history);
-            const initial = yield* AtomRegistry.getResult(registry, history, {
+            const unmount = registry.mount(release);
+            const initial = yield* AtomRegistry.getResult(registry, release, {
               suspendOnWaiting: true,
             });
-            expect(initial.retainedSampleCount).toBe(0);
+            expect(initial?.version).toBe("0.0.0");
             yield* Effect.promise(() => vi.advanceTimersByTimeAsync(5_000));
             expect(reads).toBe(2);
-            const updated = yield* AtomRegistry.getResult(registry, history, {
+            const updated = yield* AtomRegistry.getResult(registry, release, {
               suspendOnWaiting: true,
             });
-            expect(updated.retainedSampleCount).toBe(1);
+            expect(updated?.version).toBe("0.0.1");
             unmount();
             yield* Effect.promise(() => vi.advanceTimersByTimeAsync(10_000));
             expect(reads).toBe(2);

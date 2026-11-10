@@ -1,6 +1,6 @@
 import * as Schema from "effect/Schema";
 
-import { PortSchema, PositiveInt, TrimmedNonEmptyString } from "./baseSchemas.ts";
+import { PortSchema, PositiveInt } from "./baseSchemas.ts";
 
 // A supervisor must not restart a server refused by the state-directory owner.
 export const SERVER_EXIT_CODE_STATE_DIR_OWNED = 78;
@@ -26,7 +26,6 @@ export const DesktopBackendBootstrap = Schema.Struct({
   desktopTelemetryControlFd: Schema.optionalKey(PositiveInt),
   desktopBrowserFd: Schema.optionalKey(PositiveInt),
   desktopBrowserControlFd: Schema.optionalKey(PositiveInt),
-  resourceMonitorPath: Schema.optionalKey(TrimmedNonEmptyString),
 });
 
 export type DesktopBackendBootstrap = typeof DesktopBackendBootstrap.Type;

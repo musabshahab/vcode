@@ -304,8 +304,6 @@ keeps the explicit flush needed when Windows force-kills the backend.
 Build on Linux because the browser-secret helper links against the host's libsecret. Install
 C/C++ build tools, libsecret development headers, pkg-config, and ImageMagick.
 Bytecode preparation also runs packaged Electron and requires GTK, NSS, ALSA, and GBM runtime libraries.
-Install Rust 1.95 or newer through [rustup](https://rust-lang.org/install), using the stable
-toolchain as release CI does.
 
 Ubuntu 24.04 and Debian 13:
 
@@ -332,24 +330,13 @@ The C toolchain, pkg-config, and libsecret headers are also needed for Linux des
 
 ### macOS DMG prerequisites
 
-Install the Xcode Command Line Tools with `xcode-select --install` and install Rust.
-For a cross-architecture or universal build, add the requested Rust targets:
-
-```sh
-rustup target add aarch64-apple-darwin x86_64-apple-darwin
-```
+Install the Xcode Command Line Tools with `xcode-select --install`.
 
 ### Windows installer prerequisites
 
-Install Rust, Python 3, and Visual Studio Build Tools with **Desktop development with C++**.
+Install Python 3 and Visual Studio Build Tools with **Desktop development with C++**.
 Include the Windows SDK and the MSVC build tools and Spectre-mitigated libraries for the target
-architecture. Add its Rust target:
-
-```powershell
-rustup target add x86_64-pc-windows-msvc
-# For an ARM64 installer:
-rustup target add aarch64-pc-windows-msvc
-```
+architecture.
 
 NSIS is downloaded by electron-builder. WSL support additionally needs the Linux CLI archive
 passed as `--wsl-runtime`; see the

@@ -145,16 +145,9 @@ import * as CloudCliState from "./cloud/CliState.ts";
 import * as ServerSelfUpdate from "./cloud/selfUpdate.ts";
 import * as DesktopAppUpdate from "./desktopUpdate/DesktopAppUpdate.ts";
 import * as ServiceLauncherClient from "./cloud/serviceLauncherClient.ts";
-import * as ProcessDiagnostics from "./diagnostics/ProcessDiagnostics.ts";
-import * as HostResources from "./resourceTelemetry/HostResources.ts";
-import * as ProcessResourceMonitor from "./diagnostics/ProcessResourceMonitor.ts";
+import * as HostResources from "./environment/HostResources.ts";
 import * as TraceDiagnostics from "./diagnostics/TraceDiagnostics.ts";
-import * as DesktopTelemetryReceiver from "./resourceTelemetry/DesktopTelemetryReceiver.ts";
-import * as NativeTelemetryClient from "./resourceTelemetry/NativeTelemetryClient.ts";
-import * as ResourceAttribution from "./resourceTelemetry/ResourceAttribution.ts";
-import * as ResourceMonitorBinary from "./resourceTelemetry/ResourceMonitorBinary.ts";
-import * as ProcessGroupMetrics from "./resourceTelemetry/ProcessGroupMetrics.ts";
-import * as ResourceTelemetry from "./resourceTelemetry/ResourceTelemetry.ts";
+import * as DesktopTelemetryReceiver from "./background/DesktopTelemetryReceiver.ts";
 import * as UsageService from "./usage/UsageService.ts";
 import * as CodexUsageHistory from "./usage/CodexUsageHistory.ts";
 import * as RuntimeLayer from "./orchestration-v2/runtimeLayer.ts";
@@ -187,10 +180,8 @@ const HTTP_ROUTER_CONFIG = {
 
 // Skip Effect's default 20 s grace; WebSocket scope finalizers already close connections gracefully.
 const HTTP_PREEMPTIVE_SHUTDOWN_GRACE_MS = 0;
-const layerResourceAttribution = ResourceAttribution.layer;
 const layerApplicationObservability = EventLoopMonitor.layer.pipe(
   Layer.provideMerge(Observability.layer),
-  Layer.provideMerge(layerResourceAttribution),
 );
 
 // Share rotation state so driver loggers cannot race.
@@ -198,10 +189,7 @@ const layerProviderEventLoggers = Layer.effect(
   ProviderEventLoggers.ProviderEventLoggers,
   Effect.gen(function* () {
     const { providerEventLogPath } = yield* ServerConfig.ServerConfig;
-    const attribution = yield* ResourceAttribution.ResourceAttribution;
-    const store = yield* EventNdjsonLogger.makeEventNdjsonLogStore(providerEventLogPath, {
-      attribution,
-    }).pipe(
+    const store = yield* EventNdjsonLogger.makeEventNdjsonLogStore(providerEventLogPath).pipe(
       Effect.catch((error) =>
         Effect.logWarning(error.message, { error }).pipe(
           Effect.annotateLogs({ scope: "provider-observability" }),
@@ -222,16 +210,8 @@ const layerServerSettings = ServerSettings.layer.pipe(
   Layer.provideMerge(SqlitePersistence.layerConfig),
 );
 
-const layerNativeTelemetry = NativeTelemetryClient.layer.pipe(
-  Layer.provide(ResourceMonitorBinary.layer),
-);
 const layerDesktopTelemetryReceiver = DesktopTelemetryReceiver.layer.pipe(
   Layer.provideMerge(layerServerSettings),
-);
-
-const layerResourceTelemetry = ResourceTelemetry.layer.pipe(
-  Layer.provideMerge(layerNativeTelemetry),
-  Layer.provideMerge(layerDesktopTelemetryReceiver),
 );
 
 const layerHostPowerMonitor = HostPowerMonitor.layer.pipe(
@@ -257,13 +237,7 @@ const layerUsage = UsageService.layer.pipe(
   Layer.provide(layerServerSettings),
 );
 
-const layerResourceDiagnostics = Layer.mergeAll(
-  HostResources.layer,
-  layerResourceTelemetry,
-  ProcessDiagnostics.layer.pipe(Layer.provide(layerResourceTelemetry)),
-  ProcessResourceMonitor.layer.pipe(Layer.provide(layerResourceTelemetry)),
-  ProcessGroupMetrics.layer.pipe(Layer.provide(layerResourceTelemetry)),
-);
+const layerHostResources = Layer.mergeAll(HostResources.layer, layerDesktopTelemetryReceiver);
 
 const layerRelayClient = Layer.unwrap(
   Effect.gen(function* () {
@@ -418,7 +392,6 @@ const layerPortScanner = PortScanner.layer.pipe(Layer.provide(ProcessRunner.laye
 const layerTerminal = TerminalManager.layer.pipe(
   Layer.provide(layerPtyAdapter),
   Layer.provide(layerPortScanner),
-  Layer.provide(layerNativeTelemetry),
 );
 
 const layerPreview = Layer.empty.pipe(
@@ -626,7 +599,7 @@ const layerRuntimeCoreDependencies = layerRuntimeCoreDependenciesBase.pipe(
 const layerRuntimeDependencies = layerRuntimeCoreDependencies.pipe(
   Layer.provideMerge(layerUsage),
   Layer.provideMerge(layerBackground),
-  Layer.provideMerge(layerResourceDiagnostics),
+  Layer.provideMerge(layerHostResources),
   Layer.provideMerge(TraceDiagnostics.layer),
   Layer.provideMerge(ExternalLauncher.layer),
   Layer.provideMerge(RemoteOpenTargets.layer),

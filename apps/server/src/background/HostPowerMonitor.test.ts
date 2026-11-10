@@ -9,7 +9,7 @@ import * as Option from "effect/Option";
 import * as PubSub from "effect/PubSub";
 import * as Stream from "effect/Stream";
 
-import * as DesktopTelemetryReceiver from "../resourceTelemetry/DesktopTelemetryReceiver.ts";
+import * as DesktopTelemetryReceiver from "./DesktopTelemetryReceiver.ts";
 import * as HostPowerMonitor from "./HostPowerMonitor.ts";
 
 describe("HostPowerMonitor", () => {
@@ -102,8 +102,6 @@ describe("HostPowerMonitor", () => {
             stale: false,
             updatedAt: sampledAt,
           },
-          speedLimitPercent: Option.none(),
-          electronProcesses: [],
         };
         const updated: DesktopHostTelemetrySnapshot = {
           ...initial,

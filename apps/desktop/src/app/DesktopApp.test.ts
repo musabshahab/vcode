@@ -43,7 +43,6 @@ import * as ElectronSafeStorage from "../electron/ElectronSafeStorage.ts";
 import * as PreviewPasskeys from "../preview/Passkeys.ts";
 import * as DesktopAppSettings from "../settings/DesktopAppSettings.ts";
 import * as DesktopShellEnvironment from "../shell/DesktopShellEnvironment.ts";
-import * as DesktopRendererHistory from "../telemetry/DesktopRendererHistory.ts";
 import * as DesktopUpdates from "../updates/DesktopUpdates.ts";
 import * as DesktopApplicationMenu from "../window/DesktopApplicationMenu.ts";
 import * as DesktopWindow from "../window/DesktopWindow.ts";
@@ -69,7 +68,7 @@ import * as MacPermissions from "../permissions/MacPermissions.ts";
 import * as PreviewManager from "../preview/Manager.ts";
 
 it.effect.each([false, true])(
-  "stops backends together before flushing history and cancels Linux registration, stop defect=%s",
+  "stops backends together before completing shutdown and cancels Linux registration, stop defect=%s",
   (stopDefect) =>
     Effect.gen(function* () {
       const registrationStarted = yield* Deferred.make<void>();
@@ -79,8 +78,6 @@ it.effect.each([false, true])(
       const firstStopStarted = yield* Deferred.make<void>();
       const secondStopStarted = yield* Deferred.make<void>();
       const releaseStops = yield* Deferred.make<void>();
-      const historyStarted = yield* Deferred.make<void>();
-      const releaseHistory = yield* Deferred.make<void>();
       const quitting = yield* Ref.make(false);
       const events: string[] = [];
       const record = (event: string) =>
@@ -197,12 +194,6 @@ it.effect.each([false, true])(
           Effect.provideService(DesktopAppActivation.DesktopAppActivation, {
             start: Effect.void,
           } as unknown as DesktopAppActivation.DesktopAppActivation["Service"]),
-          Effect.provideService(DesktopRendererHistory.DesktopRendererHistory, {
-            shutdown: Deferred.succeed(historyStarted, undefined).pipe(
-              Effect.andThen(Deferred.await(releaseHistory)),
-              Effect.asVoid,
-            ),
-          } as DesktopRendererHistory.DesktopRendererHistory["Service"]),
         );
       const app = yield* runApp.pipe(
         Effect.provide(
@@ -248,12 +239,8 @@ it.effect.each([false, true])(
       yield* shutdown.request;
       yield* Deferred.await(firstStopStarted);
       yield* Deferred.await(secondStopStarted);
-      assert.isFalse(yield* Deferred.isDone(historyStarted));
       assert.isFalse(yield* shutdown.isComplete);
       yield* Deferred.succeed(releaseStops, undefined);
-      yield* Deferred.await(historyStarted);
-      assert.isFalse(yield* shutdown.isComplete);
-      yield* Deferred.succeed(releaseHistory, undefined);
       const result = yield* Fiber.await(app);
       assert.equal(Exit.isFailure(result), stopDefect);
       assert.isTrue(yield* shutdown.isComplete);

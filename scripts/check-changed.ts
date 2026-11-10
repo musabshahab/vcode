@@ -544,7 +544,6 @@ const checkChanged = Effect.fn("checkChanged")(function* (input: {
   const ciOnly = Object.entries({
     "full test suites": outputs.test || outputs.test_web || outputs.test_server,
     build: outputs.build,
-    rust: outputs.rust,
     "release smoke": outputs.release_smoke,
   }).flatMap(([job, runs]) => (runs ? [job] : []));
   if (ciOnly.length > 0) summary.push(`  CI also runs: ${ciOnly.join(", ")}`);

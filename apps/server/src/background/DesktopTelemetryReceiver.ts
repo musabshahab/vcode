@@ -33,10 +33,15 @@ import * as Scope from "effect/Scope";
 import * as Stream from "effect/Stream";
 import * as Ndjson from "effect/encoding/Ndjson";
 
-import { eventVersion as messageVersion } from "./NativeTelemetryClient.ts";
 import * as ServerConfig from "../config.ts";
 import * as ServerSettings from "../serverSettings.ts";
 import { subscribeBeforeSnapshotWithoutMutex } from "../utils/subscribeBeforeSnapshot.ts";
+
+function messageVersion(value: unknown): number | undefined {
+  if (typeof value !== "object" || value === null) return undefined;
+  const version = Reflect.get(value, "version");
+  return typeof version === "number" ? version : undefined;
+}
 
 const INITIAL_SAMPLE_DEADLINE_MS = 90_000;
 const MIN_SNAPSHOT_STALE_AFTER_MS = 90_000;
@@ -184,9 +189,6 @@ export class DesktopTelemetryReceiver extends Context.Service<
       never,
       Scope.Scope
     >;
-    readonly setDiagnosticsDemand: (
-      enabled: boolean,
-    ) => Effect.Effect<void, DesktopTelemetryControlError>;
     readonly requestDesktopUpdate: (
       requestId: string,
       trackSwitch?: DesktopTrackSwitch,
@@ -206,7 +208,7 @@ export class DesktopTelemetryReceiver extends Context.Service<
       Scope.Scope
     >;
   }
->()("t3/resourceTelemetry/DesktopTelemetryReceiver") {}
+>()("t3/background/DesktopTelemetryReceiver") {}
 
 class DesktopShellCertificatesUpdateFailed extends Schema.TaggedError<DesktopShellCertificatesUpdateFailed>()(
   "DesktopShellCertificatesUpdateFailed",
@@ -473,15 +475,6 @@ export const make = Effect.fn("resourceTelemetry.desktopTelemetryReceiver.make")
         );
       }),
     );
-  const setDiagnosticsDemand: DesktopTelemetryReceiver["Service"]["setDiagnosticsDemand"] = (
-    enabled,
-  ) =>
-    sendControlMessage({
-      version: 1,
-      type: "setDiagnosticsDemand",
-      enabled,
-    });
-
   const sendHostPowerIntervals = (
     settings: Parameters<typeof resolveServerBackgroundActivitySettings>[0],
   ) => {
@@ -716,7 +709,6 @@ export const make = Effect.fn("resourceTelemetry.desktopTelemetryReceiver.make")
     ),
     health: Ref.get(health),
     subscribeHealth: subscribeBeforeSnapshotWithoutMutex(healthChanges, Ref.get(health)),
-    setDiagnosticsDemand,
     requestDesktopUpdate: Effect.fn("DesktopTelemetryReceiver.requestDesktopUpdate")(
       function (requestId, trackSwitch) {
         return sendControlMessage({
@@ -784,9 +776,6 @@ export const layerTest = (
             changes: Stream.empty,
           })),
         ),
-      setDiagnosticsDemand: Effect.fn("DesktopTelemetryReceiver.setDiagnosticsDemand")(function () {
-        return Effect.void;
-      }),
       requestDesktopUpdate: Effect.fn("DesktopTelemetryReceiver.requestDesktopUpdate")(function () {
         return Effect.void;
       }),

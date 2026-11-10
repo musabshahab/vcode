@@ -10,9 +10,6 @@
     "ghcr.io/devcontainers/features/node:2": {
       "version": "26"
     },
-    // native/resource-monitor (edition 2024, needs stable >= 1.85). The server
-    // degrades gracefully without the binary, but CI checks cargo fmt + test.
-    "ghcr.io/devcontainers/features/rust:1": {},
     "ghcr.io/devcontainers/features/github-cli:1": {}
   },
   "hostRequirements": {

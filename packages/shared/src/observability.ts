@@ -160,13 +160,6 @@ export interface TraceSinkOptions {
   readonly maxBytes: number;
   readonly maxFiles: number;
   readonly batchWindowMs: number;
-  readonly onFlush?: (stats: TraceSinkFlushStats) => Effect.Effect<void>;
-}
-
-export interface TraceSinkFlushStats {
-  readonly logicalWriteBytes: number;
-  readonly count: number;
-  readonly durationMs: number;
 }
 
 export interface TraceSink {
@@ -425,11 +418,6 @@ export const makeTraceSink = Effect.fn("makeTraceSink")(function* (options: Trac
   let writeFailing = false;
   let droppedCount = 0;
   let failureReported = false;
-  let pendingFlushStats: TraceSinkFlushStats = {
-    logicalWriteBytes: 0,
-    count: 0,
-    durationMs: 0,
-  };
 
   const flushBuffered = Effect.gen(function* () {
     if (buffer.length === 0) {
@@ -456,7 +444,6 @@ export const makeTraceSink = Effect.fn("makeTraceSink")(function* (options: Trac
         .slice(persistedCount, nextIndex)
         .map((record) => record.text)
         .join("");
-      const startedAt = performance.now();
       const written = yield* sink.write(chunk).pipe(Effect.result);
       if (Result.isFailure(written)) {
         // Drop the batch after disk failure to avoid an ever-growing retry backlog.
@@ -465,11 +452,6 @@ export const makeTraceSink = Effect.fn("makeTraceSink")(function* (options: Trac
         return;
       }
       writeFailing = false;
-      pendingFlushStats = {
-        logicalWriteBytes: pendingFlushStats.logicalWriteBytes + chunkBytes,
-        count: pendingFlushStats.count + nextIndex - persistedCount,
-        durationMs: pendingFlushStats.durationMs + Math.max(0, performance.now() - startedAt),
-      };
       persistedCount = nextIndex;
     }
   });
@@ -479,15 +461,6 @@ export const makeTraceSink = Effect.fn("makeTraceSink")(function* (options: Trac
       Effect.gen(function* () {
         const droppedAtStart = droppedCount;
         yield* flushBuffered;
-        const stats = pendingFlushStats;
-        pendingFlushStats = {
-          logicalWriteBytes: 0,
-          count: 0,
-          durationMs: 0,
-        };
-        if (stats.count > 0 && options.onFlush) {
-          yield* options.onFlush(stats).pipe(Effect.ignore);
-        }
         if (droppedCount > 0 && !failureReported) {
           failureReported = true;
           yield* Effect.logWarning(
@@ -657,7 +630,6 @@ export const makeLocalFileTracer = Effect.fn("makeLocalFileTracer")(function* (
       maxBytes: options.maxBytes,
       maxFiles: options.maxFiles,
       batchWindowMs: options.batchWindowMs,
-      ...(options.onFlush ? { onFlush: options.onFlush } : {}),
     }));
 
   const delegate =

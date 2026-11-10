@@ -259,21 +259,10 @@ import {
   ServerSelfUpdateProgressEvent,
   ServerSelfUpdateResult,
   ServerTraceDiagnosticsResult,
-  ServerProcessDiagnosticsResult,
-  ServerProcessResourceHistoryInput,
-  ServerProcessResourceHistoryResult,
-  ServerSignalProcessInput,
-  ServerSignalProcessResult,
   ServerUpsertKeybindingInput,
   ServerUpsertKeybindingResult,
 } from "./server.ts";
-import {
-  HostResourcesSnapshot,
-  ResourceTelemetryHistory,
-  ResourceTelemetryHistoryInput,
-  ResourceTelemetryRetryResult,
-  ResourceTelemetrySnapshot,
-} from "./resourceTelemetry.ts";
+import { HostResourcesSnapshot } from "./resourceTelemetry.ts";
 import {
   UsageLimitSourceError,
   ProviderConsumeResetCreditInput,
@@ -412,14 +401,9 @@ export const WS_METHODS = {
   serverUpdateSettings: "server.updateSettings",
   serverDiscoverSourceControl: "server.discoverSourceControl",
   serverGetTraceDiagnostics: "server.getTraceDiagnostics",
-  serverGetProcessDiagnostics: "server.getProcessDiagnostics",
   serverGetHostResources: "server.getHostResources",
-  serverGetProcessResourceHistory: "server.getProcessResourceHistory",
-  serverGetResourceTelemetryHistory: "server.getResourceTelemetryHistory",
-  serverRetryResourceTelemetry: "server.retryResourceTelemetry",
   serverCheckOtlpEndpoint: "server.checkOtlpEndpoint",
   serverListTextGeneratorModels: "server.listTextGeneratorModels",
-  serverSignalProcess: "server.signalProcess",
   serverReportClientActivity: "server.reportClientActivity",
   serverGetUsageSummary: "server.getUsageSummary",
   serverRefreshUsageRates: "server.refreshUsageRates",
@@ -489,7 +473,6 @@ export const WS_METHODS = {
   subscribeServerConfig: "subscribeServerConfig",
   subscribeServerLifecycle: "subscribeServerLifecycle",
   subscribeAuthAccess: "subscribeAuthAccess",
-  subscribeResourceTelemetry: "subscribeResourceTelemetry",
 } as const;
 
 const WsServerUpsertKeybindingRpc = Rpc.make(WS_METHODS.serverUpsertKeybinding, {
@@ -714,36 +697,9 @@ const WsServerGetTraceDiagnosticsRpc = Rpc.make(WS_METHODS.serverGetTraceDiagnos
   error: EnvironmentAuthorizationError,
 });
 
-const WsServerGetProcessDiagnosticsRpc = Rpc.make(WS_METHODS.serverGetProcessDiagnostics, {
-  payload: Schema.Struct({}),
-  success: ServerProcessDiagnosticsResult,
-  error: EnvironmentAuthorizationError,
-});
-
 const WsServerGetHostResourcesRpc = Rpc.make(WS_METHODS.serverGetHostResources, {
   payload: Schema.Struct({}),
   success: HostResourcesSnapshot,
-  error: EnvironmentAuthorizationError,
-});
-
-const WsServerGetProcessResourceHistoryRpc = Rpc.make(WS_METHODS.serverGetProcessResourceHistory, {
-  payload: ServerProcessResourceHistoryInput,
-  success: ServerProcessResourceHistoryResult,
-  error: EnvironmentAuthorizationError,
-});
-
-const WsServerGetResourceTelemetryHistoryRpc = Rpc.make(
-  WS_METHODS.serverGetResourceTelemetryHistory,
-  {
-    payload: ResourceTelemetryHistoryInput,
-    success: ResourceTelemetryHistory,
-    error: EnvironmentAuthorizationError,
-  },
-);
-
-const WsServerRetryResourceTelemetryRpc = Rpc.make(WS_METHODS.serverRetryResourceTelemetry, {
-  payload: Schema.Struct({}),
-  success: ResourceTelemetryRetryResult,
   error: EnvironmentAuthorizationError,
 });
 
@@ -768,12 +724,6 @@ const WsServerGetUsageSummaryRpc = Rpc.make(WS_METHODS.serverGetUsageSummary, {
 const WsServerRefreshUsageRatesRpc = Rpc.make(WS_METHODS.serverRefreshUsageRates, {
   payload: Schema.Struct({}),
   success: UsagePricing,
-  error: EnvironmentAuthorizationError,
-});
-
-const WsServerSignalProcessRpc = Rpc.make(WS_METHODS.serverSignalProcess, {
-  payload: ServerSignalProcessInput,
-  success: ServerSignalProcessResult,
   error: EnvironmentAuthorizationError,
 });
 
@@ -1656,13 +1606,6 @@ const WsSubscribeAuthAccessRpc = Rpc.make(WS_METHODS.subscribeAuthAccess, {
   stream: true,
 });
 
-const WsSubscribeResourceTelemetryRpc = Rpc.make(WS_METHODS.subscribeResourceTelemetry, {
-  payload: Schema.Struct({}),
-  success: ResourceTelemetrySnapshot,
-  error: EnvironmentAuthorizationError,
-  stream: true,
-});
-
 export class RpcScopeAuthorization extends RpcMiddleware.Service<RpcScopeAuthorization>()(
   "t3/contracts/RpcScopeAuthorization",
   { error: EnvironmentAuthorizationError },
@@ -1701,16 +1644,11 @@ export const WsRpcGroup = RpcGroup.make(
   WsServerUpdateSettingsRpc,
   WsServerDiscoverSourceControlRpc,
   WsServerGetTraceDiagnosticsRpc,
-  WsServerGetProcessDiagnosticsRpc,
   WsServerGetHostResourcesRpc,
-  WsServerGetProcessResourceHistoryRpc,
-  WsServerGetResourceTelemetryHistoryRpc,
-  WsServerRetryResourceTelemetryRpc,
   WsServerCheckOtlpEndpointRpc,
   WsServerListTextGeneratorModelsRpc,
   WsServerGetUsageSummaryRpc,
   WsServerRefreshUsageRatesRpc,
-  WsServerSignalProcessRpc,
   WsSecretsAnswerRequestRpc,
   WsServerReportClientActivityRpc,
   WsCloudGetRelayClientStatusRpc,
@@ -1823,7 +1761,6 @@ export const WsRpcGroup = RpcGroup.make(
   WsSubscribeServerConfigRpc,
   WsSubscribeServerLifecycleRpc,
   WsSubscribeAuthAccessRpc,
-  WsSubscribeResourceTelemetryRpc,
   WsOrchestrationV2DispatchCommandRpc,
   WsOrchestrationV2GetWorkflowScriptRpc,
   WsOrchestrationV2StopWorkflowRpc,

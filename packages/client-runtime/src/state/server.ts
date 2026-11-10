@@ -1307,20 +1307,12 @@ export function createServerEnvironmentAtoms<R, E>(
       staleTimeMs: 60_000,
       refreshIntervalMs: 5 * 60_000,
     }),
-    processDiagnostics: createEnvironmentRpcQueryAtomFamily(runtime, {
-      label: "environment-data:server:process-diagnostics",
-      tag: WS_METHODS.serverGetProcessDiagnostics,
-    }),
     hostResources: createEnvironmentQueryAtomFamily(runtime, {
       label: "environment-data:server:host-resources",
       idleTtlMs: 0,
       staleTimeMs: 5_000,
       execute: (input: EnvironmentRpcInput<typeof WS_METHODS.serverGetHostResources>) =>
         request(WS_METHODS.serverGetHostResources, input).pipe(Effect.timeout("5 seconds")),
-    }),
-    processResourceHistory: createEnvironmentRpcQueryAtomFamily(runtime, {
-      label: "environment-data:server:process-resource-history",
-      tag: WS_METHODS.serverGetProcessResourceHistory,
     }),
     // A cold transcript scan is measured in seconds, so keep the result around
     // long enough that switching windows or re-rendering does not rescan.
@@ -1347,18 +1339,6 @@ export function createServerEnvironmentAtoms<R, E>(
               ),
           ),
         ),
-    }),
-    resourceTelemetry: createEnvironmentRpcSubscriptionAtomFamily(runtime, {
-      label: "environment-data:server:resource-telemetry",
-      tag: WS_METHODS.subscribeResourceTelemetry,
-      idleTtlMs: 0,
-    }),
-    resourceTelemetryHistory: createEnvironmentRpcQueryAtomFamily(runtime, {
-      label: "environment-data:server:resource-telemetry-history",
-      tag: WS_METHODS.serverGetResourceTelemetryHistory,
-      staleTimeMs: 5_000,
-      refreshIntervalMs: 5_000,
-      idleTtlMs: 0,
     }),
     configProjection,
     welcome,
@@ -1442,10 +1422,6 @@ export function createServerEnvironmentAtoms<R, E>(
     }),
     updateSettings,
     mutateProviderInstance: updateSettings,
-    signalProcess: createEnvironmentRpcCommand(runtime, {
-      label: "environment-data:server:signal-process",
-      tag: WS_METHODS.serverSignalProcess,
-    }),
     // Off the config lane: answering a card must not queue behind settings
     // edits. One answer per card at a time.
     answerSecretRequest: createEnvironmentRpcCommand(runtime, {
@@ -1472,14 +1448,6 @@ export function createServerEnvironmentAtoms<R, E>(
     listTextGeneratorModels: createEnvironmentRpcCommand(runtime, {
       label: "environment-data:server:list-text-generator-models",
       tag: WS_METHODS.serverListTextGeneratorModels,
-    }),
-    retryResourceTelemetry: createEnvironmentRpcCommand(runtime, {
-      label: "environment-data:server:retry-resource-telemetry",
-      tag: WS_METHODS.serverRetryResourceTelemetry,
-      concurrency: {
-        mode: "singleFlight",
-        key: ({ environmentId }) => environmentId,
-      },
     }),
   };
 }

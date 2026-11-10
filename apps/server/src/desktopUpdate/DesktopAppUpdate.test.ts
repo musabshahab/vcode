@@ -11,7 +11,7 @@ import * as Option from "effect/Option";
 import * as Stream from "effect/Stream";
 
 import * as ServerConfig from "../config.ts";
-import * as DesktopTelemetryReceiver from "../resourceTelemetry/DesktopTelemetryReceiver.ts";
+import * as DesktopTelemetryReceiver from "../background/DesktopTelemetryReceiver.ts";
 import * as DesktopAppUpdate from "./DesktopAppUpdate.ts";
 
 function makeState(overrides: Partial<DesktopUpdateState> = {}): DesktopUpdateState {

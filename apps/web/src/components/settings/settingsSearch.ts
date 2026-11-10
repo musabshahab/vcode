@@ -739,7 +739,7 @@ export const SETTINGS_SEARCH_ITEMS = [
     id: "diagnostics",
     title: "Diagnostics",
     to: "/settings/maintenance",
-    searchTerms: ["logs traces processes resource history failures spans cpu memory"],
+    searchTerms: ["logs traces failures spans"],
   },
   {
     id: "open-source-licenses",

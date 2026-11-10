@@ -22,9 +22,6 @@ export class ElectronPowerMonitor extends Context.Service<
     readonly onThermalStateChange: (
       listener: (state: ElectronThermalState) => void,
     ) => Effect.Effect<void, never, Scope.Scope>;
-    readonly onSpeedLimitChange: (
-      listener: (limit: number) => void,
-    ) => Effect.Effect<void, never, Scope.Scope>;
   }
 >()("@t3tools/desktop/electron/ElectronPowerMonitor") {}
 
@@ -58,23 +55,6 @@ const onThermalStateChange: ElectronPowerMonitor["Service"]["onThermalStateChang
   ).pipe(Effect.asVoid);
 };
 
-const onSpeedLimitChange: ElectronPowerMonitor["Service"]["onSpeedLimitChange"] = (listener) => {
-  const wrapped = (
-    event: Electron.Event<Electron.PowerMonitorSpeedLimitChangeEventParams>,
-  ): void => {
-    listener(event.limit);
-  };
-  return Effect.acquireRelease(
-    Effect.sync(() => {
-      Electron.powerMonitor.on("speed-limit-change", wrapped);
-    }),
-    () =>
-      Effect.sync(() => {
-        Electron.powerMonitor.removeListener("speed-limit-change", wrapped);
-      }),
-  ).pipe(Effect.asVoid);
-};
-
 /** @public */
 export const make = ElectronPowerMonitor.of({
   isOnBatteryPower: Effect.sync(() => Electron.powerMonitor.isOnBatteryPower()),
@@ -87,7 +67,6 @@ export const make = ElectronPowerMonitor.of({
   getCurrentThermalState: Effect.sync(() => Electron.powerMonitor.getCurrentThermalState()),
   onSimpleEvent,
   onThermalStateChange,
-  onSpeedLimitChange,
 });
 
 export const layer = Layer.succeed(ElectronPowerMonitor, make);

@@ -16,7 +16,7 @@ import * as Result from "effect/Result";
 import * as Stream from "effect/Stream";
 
 import * as ServerConfig from "../config.ts";
-import * as DesktopTelemetryReceiver from "../resourceTelemetry/DesktopTelemetryReceiver.ts";
+import * as DesktopTelemetryReceiver from "../background/DesktopTelemetryReceiver.ts";
 
 const DESKTOP_UPDATE_TIMEOUT = Duration.minutes(20);
 const DESKTOP_INSTALL_TIMEOUT = Duration.minutes(2);

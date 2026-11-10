@@ -641,8 +641,6 @@ jobs:
       platform: mac
       target: dmg
       arch: arm64
-      rust_target: aarch64-apple-darwin
-      resource_key: darwin-arm64
       cli_archive: true
       launch_check: true
       # desktop_mac_x64 saves the shared pnpm store; this job finishes last.
@@ -667,8 +665,6 @@ jobs:
       platform: mac
       target: dmg
       arch: x64
-      rust_target: x86_64-apple-darwin
-      resource_key: darwin-x64
       # No CLI archive: Node single-executables are unsupported on x64 macOS
       # (the SEA docs list macOS as arm64 only) and the built binary segfaults
       # on start. The x64 desktop app is Electron and unaffected.
@@ -693,8 +689,6 @@ jobs:
       platform: linux
       target: AppImage
       arch: x64
-      rust_target: x86_64-unknown-linux-gnu
-      resource_key: linux-x64
       cli_archive: true
       launch_check: true
 
@@ -719,8 +713,6 @@ jobs:
       platform: linux
       target: AppImage
       arch: arm64
-      rust_target: aarch64-unknown-linux-gnu
-      resource_key: linux-arm64
       cli_archive: true
 
   # The Windows jobs start with the other platforms and wait for the same-arch
@@ -748,8 +740,6 @@ jobs:
       platform: win
       target: nsis
       arch: x64
-      rust_target: x86_64-pc-windows-msvc
-      resource_key: win32-x64
       cli_archive: true
 
   desktop_win_arm64:
@@ -772,8 +762,6 @@ jobs:
       platform: win
       target: nsis
       arch: arm64
-      rust_target: aarch64-pc-windows-msvc
-      resource_key: win32-arm64
       cli_archive: true
 
   release:

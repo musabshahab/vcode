@@ -66,16 +66,11 @@ const RPC_AGGREGATES = {
   [WS_METHODS.serverUpdateSettings]: "server",
   [WS_METHODS.serverDiscoverSourceControl]: "server",
   [WS_METHODS.serverGetTraceDiagnostics]: "server",
-  [WS_METHODS.serverGetProcessDiagnostics]: "server",
   [WS_METHODS.serverGetHostResources]: "server",
-  [WS_METHODS.serverGetProcessResourceHistory]: "server",
-  [WS_METHODS.serverGetResourceTelemetryHistory]: "server",
-  [WS_METHODS.serverRetryResourceTelemetry]: "server",
   [WS_METHODS.serverCheckOtlpEndpoint]: "server",
   [WS_METHODS.serverListTextGeneratorModels]: "server",
   [WS_METHODS.serverGetUsageSummary]: "server",
   [WS_METHODS.serverRefreshUsageRates]: "server",
-  [WS_METHODS.serverSignalProcess]: "server",
   [WS_METHODS.serverReportClientActivity]: "server",
   [WS_METHODS.secretsAnswerRequest]: "secrets",
   [WS_METHODS.cloudGetRelayClientStatus]: "cloud",
@@ -151,7 +146,6 @@ const RPC_AGGREGATES = {
   [WS_METHODS.vcsRefreshBranch]: "vcs",
   [WS_METHODS.subscribeWorktreeSetup]: "vcs",
   [WS_METHODS.worktreeSetupCancel]: "vcs",
-  [WS_METHODS.subscribeResourceTelemetry]: "server",
   [WS_METHODS.vcsRefreshStatus]: "vcs",
   [WS_METHODS.vcsPull]: "git",
   [WS_METHODS.gitRunStackedAction]: "vcs",
@@ -197,9 +191,6 @@ const DEFAULT_RPC_SPAN_ATTRIBUTES = {
 } as const;
 const RPC_METHODS_WITH_TRACING_DISABLED: ReadonlySet<string> = new Set([
   WS_METHODS.serverGetTraceDiagnostics,
-  WS_METHODS.serverGetProcessDiagnostics,
-  WS_METHODS.serverGetProcessResourceHistory,
-  WS_METHODS.serverSignalProcess,
 ]);
 
 /** Add after RpcScopeAuthorization to wrap authorization and record rejected calls. */

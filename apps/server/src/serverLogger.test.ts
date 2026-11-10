@@ -84,7 +84,6 @@ const layerConfig = (overrides: Partial<ServerConfig.ServerConfig["Service"]>) =
         desktopBootstrapToken: undefined,
         desktopTelemetryFd: undefined,
         desktopTelemetryControlFd: undefined,
-        resourceMonitorPath: undefined,
         staticDir: undefined,
         devUrl: undefined,
         devAllowedOrigins: [],

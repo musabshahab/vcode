@@ -27,7 +27,6 @@ const EXTRA_OWNERS = [
   // apps/server/src/cloud/ConnectReachability.test.ts checks the guide's headings.
   [/^docs\/user\/t3-connect-troubleshooting\.md$/, ["t3"]],
 ];
-const RUST = /^native\/resource-monitor\//;
 
 // These tests read other packages without declaring dependencies.
 const TEST_ONLY_DEPS = {
@@ -104,8 +103,6 @@ function ownersOf(file, packages) {
   // A manifest can change dependencies or versions other packages read.
   if (path.posix.basename(file) === "package.json") return null;
   if (RUNS_EVERYTHING.some((pattern) => pattern.test(file))) return null;
-  // scripts/build-desktop-artifact.test.ts reads the crates' sources.
-  if (RUST.test(file)) return ["@t3tools/scripts", ...extra];
 
   const owner = packages
     .filter((pkg) => file.startsWith(`${pkg.dir}/`))
@@ -118,10 +115,8 @@ function decide(files, packages, full) {
   const all = new Set(packages.map((pkg) => pkg.name));
   let affected = new Set();
   let everything = full || files === null;
-  let rust = false;
 
   for (const file of files ?? []) {
-    if (RUST.test(file)) rust = true;
     const owners = ownersOf(file, packages);
     if (owners === null) {
       everything = true;
@@ -173,7 +168,6 @@ function decide(files, packages, full) {
       test_packages: everything ? "" : tested.map((pkg) => pkg.name).join(" "),
       test_web: has("@t3tools/web"),
       test_server: has("t3"),
-      rust: everything || rust,
       release_smoke: scriptsChanged,
       mobile_native: files === null || files.some((file) => MOBILE_NATIVE.test(file)),
     },

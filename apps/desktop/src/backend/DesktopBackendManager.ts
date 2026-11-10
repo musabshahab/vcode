@@ -496,13 +496,6 @@ export const runBackendProcess = Effect.fn("runBackendProcess")(function* (
           cause: Cause.pretty(cause),
         }),
       ),
-      Effect.ensuring(
-        handleControl({
-          version: 1,
-          type: "setDiagnosticsDemand",
-          enabled: false,
-        }),
-      ),
       Effect.forkScoped,
     );
   }
@@ -867,7 +860,6 @@ export const makeBackendInstance = Effect.fn("makeBackendInstance")(function* (
                 );
 
               if (isCurrentRun) {
-                yield* desktopTelemetryPublisher.removeControlSource(spec.id);
                 if (Option.isSome(pid)) {
                   if (exitObserved && !stopRequested) {
                     yield* backendOutputLog.persistFailure({
@@ -902,8 +894,7 @@ export const makeBackendInstance = Effect.fn("makeBackendInstance")(function* (
           desktopTelemetryStream: desktopTelemetryPublisher.encoded,
           desktopBrowserStream: desktopBrowserHost.events,
           onDesktopBrowserCommand: desktopBrowserHost.handleCommandLine,
-          onDesktopTelemetryControl: (message) =>
-            desktopTelemetryPublisher.handleControlForSource(spec.id, message),
+          onDesktopTelemetryControl: desktopTelemetryPublisher.handleControl,
           onStarted: Effect.fn("desktop.backendInstance.onStarted")(function* (pid) {
             yield* updateActiveRun(runId, (run) => ({
               ...run,
@@ -1134,7 +1125,6 @@ export const makeBackendInstance = Effect.fn("makeBackendInstance")(function* (
           ),
         );
         if (cleanup.needsCleanup) {
-          yield* desktopTelemetryPublisher.removeControlSource(spec.id);
           yield* backendOutputLog.discardSession;
         }
         if (cleanup.shouldStart) {

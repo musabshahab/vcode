@@ -200,10 +200,7 @@ import * as BackgroundPolicy from "./background/BackgroundPolicy.ts";
 import * as EnvironmentAuth from "./auth/EnvironmentAuth.ts";
 import * as RpcAuthorization from "./auth/RpcAuthorization.ts";
 import { RpcInstrumentation, rpcInstrumentationLayer } from "./observability/RpcInstrumentation.ts";
-import * as ProcessDiagnostics from "./diagnostics/ProcessDiagnostics.ts";
-import * as ProcessResourceMonitor from "./diagnostics/ProcessResourceMonitor.ts";
-import * as ResourceTelemetry from "./resourceTelemetry/ResourceTelemetry.ts";
-import * as HostResources from "./resourceTelemetry/HostResources.ts";
+import * as HostResources from "./environment/HostResources.ts";
 import * as UsageService from "./usage/UsageService.ts";
 import * as TraceDiagnostics from "./diagnostics/TraceDiagnostics.ts";
 import * as PullRequestService from "./pullRequest/PullRequestService.ts";
@@ -1399,10 +1396,7 @@ export const layerWsRpc = (
       const withPullRequestViewer = pullRequests.withRoutingCredential;
       const bootstrapCredentials = yield* PairingGrantStore.PairingGrantStore;
       const sessions = yield* SessionStore.SessionStore;
-      const processDiagnostics = yield* ProcessDiagnostics.ProcessDiagnostics;
       const hostResources = yield* HostResources.HostResources;
-      const processResourceMonitor = yield* ProcessResourceMonitor.ProcessResourceMonitor;
-      const resourceTelemetry = yield* ResourceTelemetry.ResourceTelemetry;
       const relayClient = yield* RelayClient.RelayClient;
       const loadAuthAccessSnapshot = () =>
         Effect.all({
@@ -2073,18 +2067,11 @@ export const layerWsRpc = (
             traceFilePath: config.serverTracePath,
             maxFiles: config.traceMaxFiles,
           }),
-        [WS_METHODS.serverGetProcessDiagnostics]: (_input) => processDiagnostics.read,
         [WS_METHODS.serverGetHostResources]: (_input) => hostResources.read,
-        [WS_METHODS.serverGetProcessResourceHistory]: (input) =>
-          processResourceMonitor.readHistory(input),
-        [WS_METHODS.serverGetResourceTelemetryHistory]: (input) =>
-          resourceTelemetry.readHistory(input),
         [WS_METHODS.serverGetUsageSummary]: (input) => usage.readSummary(input),
         [WS_METHODS.serverRefreshUsageRates]: (_input) => usage.refreshRates,
-        [WS_METHODS.serverRetryResourceTelemetry]: (_input) => resourceTelemetry.retry,
         [WS_METHODS.serverCheckOtlpEndpoint]: (input) => otlpEndpointCheck.check(input),
         [WS_METHODS.serverListTextGeneratorModels]: (input) => textGenerators.listModels(input),
-        [WS_METHODS.serverSignalProcess]: (input) => processDiagnostics.signal(input),
         [WS_METHODS.serverReportClientActivity]: (input, metadata) =>
           Ref.update(rpcClientIds, (clientIds) => {
             const next = new Set(clientIds);
@@ -2819,12 +2806,6 @@ export const layerWsRpc = (
                 liveEvents,
               );
             }),
-          ),
-        [WS_METHODS.subscribeResourceTelemetry]: (_input) =>
-          Stream.unwrap(
-            Effect.map(resourceTelemetry.subscribe, ({ latest, changes }) =>
-              Stream.concat(Stream.make(latest), changes),
-            ),
           ),
       });
       const splitHandlers: Pick<typeof handlers, SplitWsRpc["_tag"]> = handlers;

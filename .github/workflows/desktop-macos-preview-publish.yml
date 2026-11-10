@@ -313,8 +313,6 @@ jobs:
       platform: mac
       target: dmg
       arch: arm64
-      rust_target: aarch64-apple-darwin
-      resource_key: darwin-arm64
       cli_archive: false
 
   # Release assets download without a GitHub account, unlike workflow

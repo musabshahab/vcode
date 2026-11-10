@@ -53,7 +53,6 @@ export const BackgroundScope = Schema.Union([
   }),
   Schema.Struct({ type: Schema.Literal("vcs-status"), cwd: Schema.String }),
   Schema.Struct({ type: Schema.Literal("git-refs"), cwd: Schema.String }),
-  Schema.Struct({ type: Schema.Literal("diagnostics") }),
   Schema.Struct({ type: Schema.Literal("thread"), threadId: ThreadId }),
 ]);
 export type BackgroundScope = typeof BackgroundScope.Type;

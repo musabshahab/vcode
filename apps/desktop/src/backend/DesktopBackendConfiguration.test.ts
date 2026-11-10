@@ -736,7 +736,6 @@ describe("DesktopBackendConfiguration", () => {
         assert.equal(config.bootstrap.host, "0.0.0.0");
         assert.equal(config.bootstrap.tailscaleServeEnabled, false);
         assert.notProperty(config.bootstrap, "desktopTelemetryFd");
-        assert.notProperty(config.bootstrap, "resourceMonitorPath");
         assert.equal(config.httpBaseUrl.href, "http://172.27.0.99:5050/");
         assert.equal(config.env.OPENAI_API_KEY, "openai-key");
         assert.equal(config.env.ANTHROPIC_API_KEY, "anthropic-key");
@@ -879,55 +878,6 @@ describe("DesktopBackendConfiguration", () => {
               }),
             ),
             Layer.provideMerge(layerEnvironment(baseDir, { platform: "win32" })),
-          ),
-        ),
-      );
-    }).pipe(Effect.scoped, Effect.provide(Layer.mergeAll(NodeServices.layer, NodeCrypto.layer))),
-  );
-
-  it.effect("prefers the external packaged resource monitor over the copy inside the asar", () =>
-    Effect.gen(function* () {
-      const fileSystem = yield* FileSystem.FileSystem;
-      const path = yield* Path.Path;
-      const baseDir = yield* fileSystem.makeTempDirectoryScoped({
-        prefix: "t3-desktop-backend-config-test-",
-      });
-      const resourcesPath = path.join(baseDir, "resources");
-      const dirname = `${resourcesPath}/app.asar/apps/desktop/dist-electron`;
-      const embeddedMonitorPath = `${resourcesPath}/app.asar/apps/desktop/prod-resources/resource-monitor/t3-resource-monitor`;
-      const monitorPath = path.join(resourcesPath, "resource-monitor/t3-resource-monitor");
-      yield* fileSystem.makeDirectory(
-        `${resourcesPath}/app.asar/apps/desktop/prod-resources/resource-monitor`,
-        { recursive: true },
-      );
-      yield* fileSystem.makeDirectory(`${resourcesPath}/resource-monitor`, {
-        recursive: true,
-      });
-      yield* fileSystem.writeFileString(embeddedMonitorPath, "embedded");
-      yield* fileSystem.writeFileString(monitorPath, "binary");
-      yield* fileSystem.chmod(monitorPath, 0o755);
-
-      yield* Effect.gen(function* () {
-        const configuration = yield* DesktopBackendConfiguration.DesktopBackendConfiguration;
-        const config = yield* configuration.resolvePrimary;
-        assert.equal(config.bootstrap.resourceMonitorPath, monitorPath);
-        assert.equal(config.bootstrap.desktopTelemetryFd, 4);
-        assert.equal(config.bootstrap.desktopTelemetryControlFd, 5);
-      }).pipe(
-        Effect.provide(
-          layerBackendConfiguration().pipe(
-            Layer.provideMerge(layerServerExposure),
-            Layer.provideMerge(DesktopAppSettings.layerTest()),
-            Layer.provideMerge(DesktopWslServerTree.layerTest()),
-            Layer.provideMerge(DesktopWslEnvironment.layerTest()),
-            Layer.provideMerge(
-              layerEnvironment(baseDir, {
-                appPath: `${resourcesPath}/app.asar`,
-                dirname,
-                isPackaged: true,
-                resourcesPath,
-              }),
-            ),
           ),
         ),
       );

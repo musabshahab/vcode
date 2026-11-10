@@ -46,7 +46,6 @@ export const MAX_CLIENT_ACTIVITY_LEASES_PER_RPC_CLIENT = 16;
 function scopeKey(scope: BackgroundScope): string {
   switch (scope.type) {
     case "server-config":
-    case "diagnostics":
       return scope.type;
     case "provider-status":
       return scope.instanceId ? `${scope.type}:${scope.instanceId}` : scope.type;

@@ -23,7 +23,7 @@ import * as NodeCrypto from "node:crypto";
 import * as NodeNet from "node:net";
 
 import * as ServerConfig from "../config.ts";
-import { writeAllToFileDescriptor } from "../resourceTelemetry/DesktopTelemetryReceiver.ts";
+import { writeAllToFileDescriptor } from "../background/DesktopTelemetryReceiver.ts";
 
 const decodeEvent = Schema.decodeUnknownEffect(DesktopBrowserEvent);
 const encodeCommand = Schema.encodeEffect(Schema.fromJsonString(DesktopBrowserCommand));

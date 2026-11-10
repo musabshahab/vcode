@@ -26,7 +26,6 @@ import { TestClock } from "effect/testing";
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 import * as DesktopEnvironment from "../app/DesktopEnvironment.ts";
-import * as DesktopRendererHistory from "../telemetry/DesktopRendererHistory.ts";
 import * as ElectronWindow from "../electron/ElectronWindow.ts";
 import * as BrowserSession from "./BrowserSession.ts";
 import * as DesktopBrowserHost from "./DesktopBrowserHost.ts";
@@ -232,13 +231,6 @@ const layerFileSystem = FileSystem.layerNoop({
 
 const managerLayer = (platform: NodeJS.Platform = "darwin") =>
   PreviewManager.layer.pipe(
-    Layer.provideMerge(
-      Layer.succeed(DesktopRendererHistory.DesktopRendererHistory, {
-        register: () => Effect.void,
-        recordMetrics: () => Effect.void,
-        shutdown: Effect.void,
-      }),
-    ),
     Layer.provideMerge(DesktopBrowserHost.layer),
     Layer.provideMerge(layerBrowserSession),
     Layer.provideMerge(
@@ -623,7 +615,6 @@ describe("PreviewManager", () => {
                 installSessionHandlers: () => {},
                 attachGuest: () => () => {},
               }),
-              Layer.mock(DesktopRendererHistory.DesktopRendererHistory)({}),
               Layer.succeed(HostProcess.Platform, "linux"),
             ),
           ),

@@ -520,7 +520,6 @@ break:
   a single `t3-<version>-linux-<arch>` directory holding `t3`, `client/`, and
   `node_modules/` with the Linux node-pty binary, and must not carry a loose
   server bundle (`bin.mjs`).
-- The external Windows resource monitor is absent.
 - The unpacked Windows application contains more than 80 files.
 
 Cross-architecture Windows builds retain every structural and extracted-sidecar
