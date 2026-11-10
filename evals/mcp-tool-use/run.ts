@@ -1997,19 +1997,21 @@ const postModel = Effect.fn("evaluateMcpToolUse.postModel")(function* (
   proxy?: Config["proxy"],
   responses = false,
 ) {
+  // An OpenRouter key reaches the same Claude models through its Anthropic-shaped endpoint.
+  const openRouter = proxy === undefined && apiKey.startsWith("sk-or-");
+  // Anthropic answers 529 when it is overloaded; retryTransient already retries 429 and 5xx.
+  // OpenRouter answers 402 while requests in flight hold the remaining credit, which clears.
+  const retried = (status: number) => status === 529 || (openRouter && status === 402);
   const client = (yield* HttpClient.HttpClient).pipe(
-    // Anthropic answers 529 when it is overloaded; retryTransient already retries 429 and 5xx.
-    HttpClient.filterStatus((status) => status !== 529),
+    HttpClient.filterStatus((status) => !retried(status)),
     HttpClient.retryTransient({
       retryOn: "errors-and-responses",
       while: (error) =>
-        error.reason._tag === "StatusCodeError" && error.reason.response.status === 529,
+        error.reason._tag === "StatusCodeError" && retried(error.reason.response.status),
       schedule: RETRY,
       times: 8,
     }),
   );
-  // An OpenRouter key reaches the same Claude models through its Anthropic-shaped endpoint.
-  const openRouter = proxy === undefined && apiKey.startsWith("sk-or-");
   const response = yield* HttpClientRequest.post(
     `${proxy?.url ?? (openRouter ? "https://openrouter.ai/api/v1" : "https://api.anthropic.com/v1")}/${responses ? "responses" : "messages"}`,
   ).pipe(
