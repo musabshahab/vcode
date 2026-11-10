@@ -7186,7 +7186,7 @@ describe("ClaudeAdapterV2 background wake turns", () => {
     ),
   );
 
-  it.effect.each(["root", "mcp", "subagent", "remote"] as const)(
+  it.effect.each(["root", "subagent"] as const)(
     "asks Claude for suggestions only on threads a person drives (%s)",
     (lineage) =>
       Effect.gen(function* () {
@@ -7200,42 +7200,21 @@ describe("ClaudeAdapterV2 background wake turns", () => {
           attachments: [],
         });
         const parentThreadId = ThreadId.make("thread-claude-suggestion-parent");
-        // MCP-launched root threads carry `delegatedFrom: null` at runtime.
-        const offered = lineage === "root" || lineage === "mcp";
+        const offered = lineage === "root";
         const input =
           lineage === "root"
             ? base
-            : lineage === "mcp"
-              ? {
-                  ...base,
-                  appThread: {
-                    ...base.appThread,
-                    delegatedFrom: null as unknown as undefined,
+            : {
+                ...base,
+                appThread: {
+                  ...base.appThread,
+                  lineage: {
+                    parentThreadId,
+                    relationshipToParent: "subagent" as const,
+                    rootThreadId: parentThreadId,
                   },
-                }
-              : lineage === "subagent"
-                ? {
-                    ...base,
-                    appThread: {
-                      ...base.appThread,
-                      lineage: {
-                        parentThreadId,
-                        relationshipToParent: "subagent" as const,
-                        rootThreadId: parentThreadId,
-                      },
-                    },
-                  }
-                : {
-                    ...base,
-                    appThread: {
-                      ...base.appThread,
-                      delegatedFrom: {
-                        environmentId: EnvironmentId.make("environment-claude-suggestion-parent"),
-                        threadId: parentThreadId,
-                        title: "Parent",
-                      },
-                    },
-                  };
+                },
+              };
         yield* harness.runtime.startTurn(input);
         yield* Queue.offer(
           harness.sdkMessages,

@@ -7,16 +7,6 @@ import {
 } from "./orchestrationV2.ts";
 import { OrchestrationDispatchCommandError } from "./orchestrationDispatch.ts";
 import {
-  PeerLink,
-  PeerLinkCreateInput,
-  PeerLinkError,
-  PeerLinkRemoveInput,
-  PeerLinkRemoveResult,
-  PeerLinkRequestAnswerInput,
-  PeerLinkRequestError,
-  PeerLinkSummary,
-} from "./peerLink.ts";
-import {
   ChatGptReconnectProfileInput,
   ChatGptReconnectProfile,
   ChatGptImportProfileInput,
@@ -419,10 +409,6 @@ export const WS_METHODS = {
   serverGetStorageCleanupReport: "server.getStorageCleanupReport",
   serverGetDatabaseStorage: "server.getDatabaseStorage",
   serverReclaimDatabaseSpace: "server.reclaimDatabaseSpace",
-  peerLinksList: "peerLinks.list",
-  peerLinksLink: "peerLinks.link",
-  peerLinksUnlink: "peerLinks.unlink",
-  peerLinksAnswerRequest: "peerLinks.answerRequest",
   serverUpdateSettings: "server.updateSettings",
   serverDiscoverSourceControl: "server.discoverSourceControl",
   serverGetTraceDiagnostics: "server.getTraceDiagnostics",
@@ -705,29 +691,6 @@ const WsServerGetDatabaseStorageRpc = Rpc.make(WS_METHODS.serverGetDatabaseStora
 const WsServerReclaimDatabaseSpaceRpc = Rpc.make(WS_METHODS.serverReclaimDatabaseSpace, {
   payload: Schema.Struct({}),
   error: Schema.Union([DatabaseReclaimError, EnvironmentAuthorizationError]),
-});
-
-const WsPeerLinksListRpc = Rpc.make(WS_METHODS.peerLinksList, {
-  payload: Schema.Struct({}),
-  success: Schema.Struct({ links: Schema.Array(PeerLinkSummary) }),
-  error: Schema.Union([PeerLinkError, EnvironmentAuthorizationError]),
-});
-
-const WsPeerLinksLinkRpc = Rpc.make(WS_METHODS.peerLinksLink, {
-  payload: PeerLinkCreateInput,
-  success: PeerLink,
-  error: Schema.Union([PeerLinkError, EnvironmentAuthorizationError]),
-});
-
-const WsPeerLinksUnlinkRpc = Rpc.make(WS_METHODS.peerLinksUnlink, {
-  payload: PeerLinkRemoveInput,
-  success: PeerLinkRemoveResult,
-  error: Schema.Union([PeerLinkError, EnvironmentAuthorizationError]),
-});
-
-const WsPeerLinksAnswerRequestRpc = Rpc.make(WS_METHODS.peerLinksAnswerRequest, {
-  payload: PeerLinkRequestAnswerInput,
-  error: Schema.Union([PeerLinkRequestError, EnvironmentAuthorizationError]),
 });
 
 const WsServerUpdateSettingsRpc = Rpc.make(WS_METHODS.serverUpdateSettings, {
@@ -1736,10 +1699,6 @@ export const WsRpcGroup = RpcGroup.make(
   WsServerGetDatabaseStorageRpc,
   WsServerReclaimDatabaseSpaceRpc,
   WsServerUpdateSettingsRpc,
-  WsPeerLinksListRpc,
-  WsPeerLinksLinkRpc,
-  WsPeerLinksUnlinkRpc,
-  WsPeerLinksAnswerRequestRpc,
   WsServerDiscoverSourceControlRpc,
   WsServerGetTraceDiagnosticsRpc,
   WsServerGetProcessDiagnosticsRpc,

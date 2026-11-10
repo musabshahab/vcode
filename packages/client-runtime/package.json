@@ -67,10 +67,6 @@
       "types": "./src/secretRequest.ts",
       "default": "./src/secretRequest.ts"
     },
-    "./link-request": {
-      "types": "./src/linkRequest.ts",
-      "default": "./src/linkRequest.ts"
-    },
     "./connection": {
       "types": "./src/connection/index.ts",
       "default": "./src/connection/index.ts"
@@ -210,10 +206,6 @@
     "./state/mediaStreamAccess": {
       "types": "./src/state/mediaStreamAccess.ts",
       "default": "./src/state/mediaStreamAccess.ts"
-    },
-    "./state/peerLinks": {
-      "types": "./src/state/peerLinks.ts",
-      "default": "./src/state/peerLinks.ts"
     },
     "./state/environmentHttpAuth": {
       "types": "./src/state/environmentHttpAuth.ts",

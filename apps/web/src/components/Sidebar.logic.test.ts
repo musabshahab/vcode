@@ -788,7 +788,7 @@ describe("sortSidebarV2ProjectGroups", () => {
     ];
 
     expect(
-      sortSidebarV2ProjectGroups(projects, threads, "updated_at", new Set()).map(
+      sortSidebarV2ProjectGroups(projects, threads, "updated_at").map(
         (project) => project.projectKey,
       ),
     ).toEqual(["logical-newer", "logical-older"]);
@@ -1470,7 +1470,6 @@ describe("resolveSidebarRouteReveal", () => {
         routeKey: hiddenKey,
         isSearching: false,
         scopedProjectKeys,
-        delegatedUnderParent: new Set(),
         findThread,
       }),
     ).toEqual({ pendingKey: hiddenKey, widensScope: true });
@@ -1484,7 +1483,6 @@ describe("resolveSidebarRouteReveal", () => {
         routeKey: hiddenKey,
         isSearching: false,
         scopedProjectKeys,
-        delegatedUnderParent: new Set(),
         findThread,
       }),
     ).toEqual({ pendingKey: null, widensScope: false });
@@ -1500,7 +1498,6 @@ describe("resolveSidebarRouteReveal", () => {
         routeKey,
         isSearching: false,
         scopedProjectKeys,
-        delegatedUnderParent: new Set(),
         findThread,
       });
     resolve("environment-test:unlisted");
@@ -1514,7 +1511,6 @@ describe("resolveSidebarRouteReveal", () => {
         routeKey: hiddenKey,
         isSearching: true,
         scopedProjectKeys,
-        delegatedUnderParent: new Set(),
         findThread,
       }),
     ).toEqual({ pendingKey: hiddenKey, widensScope: false });

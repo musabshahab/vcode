@@ -62,7 +62,6 @@ export interface SettingsSearchItem {
   readonly primaryEnvironmentOnly?: boolean;
   readonly wslAvailableOnly?: boolean;
   readonly managedTunnelOnly?: boolean;
-  readonly peerLinksOnly?: boolean;
   readonly fastWorktreeCheckoutOnly?: boolean;
   readonly textGeneratorsOnly?: boolean;
   readonly secondary?: boolean;
@@ -78,7 +77,6 @@ export interface SettingsSearchAvailability {
   readonly isWslSettingsRowVisible: boolean;
   readonly hasThreadAutoSettlement: boolean;
   readonly managedTunnelActive?: boolean;
-  readonly hasPeerLinkHost?: boolean;
   readonly hasFastWorktreeCheckoutEnvironment?: boolean;
   /** An environment without a provider allow-list, which hides text generators. */
   readonly hasTextGeneratorsEnvironment?: boolean;
@@ -459,13 +457,6 @@ export const SETTINGS_SEARCH_ITEMS = [
     searchTerms: [
       "hide tool calls commands edits searches work log activity quiet chat zen final answers only",
     ],
-  },
-  {
-    id: "linked-environments-beta",
-    title: "Linked environments",
-    to: "/settings/labs",
-    scope: "environment",
-    searchTerms: ["beta link another machine vps peer agents work there delegate"],
   },
   {
     id: "prompt-suggestions-beta",
@@ -1067,14 +1058,6 @@ export const SETTINGS_SEARCH_ITEMS = [
     ],
   },
   {
-    id: "linked-environments",
-    peerLinksOnly: true,
-    title: "Linked environments",
-    to: "/settings/connections",
-    targetId: "linked-environments",
-    searchTerms: ["link peer another machine vps agents work there handoff pairing code"],
-  },
-  {
     id: "remote-environments",
     title: "Environments",
     to: "/settings/connections",
@@ -1250,7 +1233,6 @@ export function filterAvailableSettingsSearchItems(
       (!item.wslAvailableOnly || availability.isWslSettingsRowVisible) &&
       (!item.requiresThreadAutoSettlement || availability.hasThreadAutoSettlement) &&
       (!item.managedTunnelOnly || availability.managedTunnelActive === true) &&
-      (!item.peerLinksOnly || availability.hasPeerLinkHost === true) &&
       (!item.fastWorktreeCheckoutOnly ||
         availability.hasFastWorktreeCheckoutEnvironment === true) &&
       (!item.textGeneratorsOnly || availability.hasTextGeneratorsEnvironment === true),

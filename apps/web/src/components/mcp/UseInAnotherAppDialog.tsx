@@ -1,6 +1,5 @@
 import { useAuth } from "@clerk/react";
 import { useAtomValue } from "@effect/atom-react";
-import { offersLinkedEnvironments } from "@t3tools/client-runtime/link-request";
 import {
   AuthAccessWriteScope,
   AuthMcpClientAccess,
@@ -31,15 +30,9 @@ import { useCopyToClipboard, writeTextToClipboard } from "~/hooks/useCopyToClipb
 import { useNowSecond } from "~/hooks/useNowSecond";
 import { readLocalApi } from "~/localApi";
 import { appAtomRegistry } from "~/rpc/atomRegistry";
-import {
-  type EnvironmentPresentation,
-  useEnvironmentIdentities,
-  usePrimaryEnvironmentId,
-} from "~/state/environments";
+import { type EnvironmentPresentation, usePrimaryEnvironmentId } from "~/state/environments";
 import { useManagedPolicy } from "~/state/managedPolicy";
 import { mintMcpApprovalCodeOn } from "~/state/peerPairingCode";
-import { peerLinkEnvironment } from "~/state/peerLinks";
-import { useEnvironmentQuery } from "~/state/query";
 import { relayEnvironmentDiscovery } from "~/state/relay";
 import { useEnvironmentScope, useEnvironmentSessionState } from "~/state/session";
 import { useAtomCommand } from "~/state/use-atom-command";
@@ -590,7 +583,6 @@ function ConnectStep({
             {app.handoff.kind === "commands" ? "Back to commands" : "Back to one click"}
           </TextButton>
         )}
-        <LinkedLine environment={environment} access={access} />
       </section>
     );
   }
@@ -600,7 +592,6 @@ function ConnectStep({
       <CopyRow label="URL" value={mcpUrl} />
       {code}
       <TextButton onClick={() => setAnotherWay(true)}>Set up another way</TextButton>
-      <LinkedLine environment={environment} access={access} />
     </section>
   );
 }
@@ -763,35 +754,6 @@ function CopyRow({ label, value }: { readonly label: string; readonly value: str
       </Button>
     </div>
   );
-}
-
-const levelRank = (level: AuthMcpClientAccess) => AuthMcpClientAccess.literals.indexOf(level);
-
-/** Machines this environment links to, at the level a call forwarded there gets. */
-function LinkedLine({
-  environment,
-  access,
-}: {
-  readonly environment: EnvironmentPresentation;
-  readonly access: AuthMcpClientAccess;
-}) {
-  const offered = offersLinkedEnvironments(environment.serverConfig);
-  const links = useEnvironmentQuery(
-    offered
-      ? peerLinkEnvironment.list({ environmentId: environment.environmentId, input: {} })
-      : null,
-  ).data?.links;
-  const identities = useEnvironmentIdentities();
-  if (!offered || links === undefined || links.length === 0) return null;
-  const named = links.map((link) => {
-    const name =
-      identities.find((identity) => identity.environmentId === link.environmentId)?.label ??
-      link.label;
-    // A forwarded call keeps the lower of the app's level and the link's own.
-    const level = levelRank(link.access) < levelRank(access) ? link.access : access;
-    return `${name} · ${link.status === "expired" ? "Expired" : accessConfig[level].label}`;
-  });
-  return <p className="text-xs text-muted-foreground">Linked: {named.join(", ")}</p>;
 }
 
 /** Opens Sharing & access on this environment, where its clients and T3 Connect tunnels live. */

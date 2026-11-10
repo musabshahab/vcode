@@ -1,14 +1,11 @@
 /**
- * One-use pairing codes minted on an environment with the user's own session there: a code
- * for linking, so a link card can be answered without fetching a code by hand, and a code
- * that approves one app's sign-in at a set level. Each carries exactly what an agent
- * sign-in with the chosen access needs.
+ * One-use codes minted on an environment with the user's own session there, each approving one
+ * app's sign-in at a set level.
  */
 import {
   type AuthCreatePairingCredentialInput,
   type AuthMcpClientAccess,
   type AuthPairingCredentialResult,
-  mcpClientScopes,
 } from "@t3tools/contracts";
 import * as Schema from "effect/Schema";
 import * as Effect from "effect/Effect";
@@ -26,10 +23,10 @@ import { executeAuthenticatedEnvironmentHttpRequest } from "./environmentHttpAut
 import { createEnvironmentCommand } from "./runtime.ts";
 
 const MINT_TIMEOUT_MS = 8_000;
-const PEER_PAIRING_CODE_LABEL = "T3 Code link";
+
 const MCP_APPROVAL_CODE_LABEL = "App sign-in";
 
-/** Minting failed; the user can still paste a code from the other environment. */
+/** Minting failed; the user can still paste a code from the environment. */
 export class PeerPairingCodeError extends Schema.TaggedError<PeerPairingCodeError>()(
   "PeerPairingCodeError",
   {
@@ -89,22 +86,6 @@ const mintOnEnvironment = Effect.fnUntraced(function* (payload: AuthCreatePairin
   }
   return yield* mintPairingCredential(prepared.value, payload);
 });
-
-/**
- * Mints a code on the environment it runs in. Each run mints its own: a code
- * is one-use, so two overlapping answers must never share one.
- */
-export function createPeerPairingCodeCommand<R, E>(
-  runtime: Atom.AtomRuntime<EnvironmentRegistry | HttpClient.HttpClient | R, E>,
-) {
-  return createEnvironmentCommand(runtime, {
-    label: "environment-data:peer-pairing-code:mint",
-    execute: (access: AuthMcpClientAccess) =>
-      mintOnEnvironment({ label: PEER_PAIRING_CODE_LABEL, scopes: mcpClientScopes(access) }).pipe(
-        Effect.map((minted) => minted.credential),
-      ),
-  });
-}
 
 /**
  * Mints a hidden code that approves one app's sign-in at `access`, and only that. Servers

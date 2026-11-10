@@ -2,7 +2,6 @@ import { assert, it } from "@effect/vitest";
 import {
   CommandId,
   ContextTransferId,
-  EnvironmentId,
   MessageId,
   type ModelSelection,
   type OrchestrationV2AppThread,
@@ -134,9 +133,8 @@ const planFork = (
     });
   }).pipe(Effect.provide(ThreadForkService.layer));
 
-it.effect("resets a fork's pin, snooze, settle and delegation state but keeps its origin", () =>
+it.effect("resets a fork's pin, snooze and settle state but keeps its origin", () =>
   Effect.gen(function* () {
-    const linkOrigin = { sessionId: "mcp-session:fork-source", label: "Linked laptop" };
     const sourceThread: OrchestrationV2AppThread = {
       ...makeSourceThread(),
       lastSnoozeWakeAt: snoozedAt,
@@ -144,13 +142,7 @@ it.effect("resets a fork's pin, snooze, settle and delegation state but keeps it
       pinOrderKey: "a0",
       activeOrderKey: "a1",
       autoSettleDisabledAt: snoozedAt,
-      delegatedFrom: {
-        environmentId: EnvironmentId.make("linked-environment"),
-        threadId: ThreadId.make("linked-parent"),
-        title: "Linked parent",
-      },
       historyOrigin: "v1_import",
-      linkOrigin,
       tags: ["private"],
     };
     const sourceRun = makeSourceRun("completed");
@@ -166,9 +158,7 @@ it.effect("resets a fork's pin, snooze, settle and delegation state but keeps it
     assert.isNull(result.targetThread.pinOrderKey);
     assert.isNull(result.targetThread.activeOrderKey);
     assert.isNull(result.targetThread.autoSettleDisabledAt);
-    assert.isUndefined(result.targetThread.delegatedFrom);
     assert.equal(result.targetThread.historyOrigin, "v1_import");
-    assert.deepEqual(result.targetThread.linkOrigin, linkOrigin);
     assert.deepEqual(result.targetThread.tags, ["private"]);
     assert.equal(result.targetThread.projectId, sourceThread.projectId);
     assert.equal(result.targetThread.providerInstanceId, sourceThread.providerInstanceId);
@@ -349,23 +339,5 @@ it.effect("marks only requested forks as side chats and inherits parent permissi
       { sideChat: true },
     ).pipe(Effect.flip);
     assert.equal(fromSubagent.cause, "A subagent cannot start a side chat.");
-
-    const delegatedSource = makeSourceProjection(sourceRun);
-    const fromDelegated = yield* planFork(
-      sourceRun,
-      {
-        ...delegatedSource,
-        thread: {
-          ...delegatedSource.thread,
-          delegatedFrom: {
-            environmentId: EnvironmentId.make("linked-environment"),
-            threadId: ThreadId.make("linked-parent"),
-            title: "Linked parent",
-          },
-        },
-      },
-      { sideChat: true },
-    ).pipe(Effect.flip);
-    assert.equal(fromDelegated.cause, "A subagent cannot start a side chat.");
   }),
 );

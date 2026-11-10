@@ -244,8 +244,6 @@ export const McpToolUseCase = Schema.Struct({
     role: Schema.Literals(["top", "delegated-child", "native-subagent"]),
     /** Runs only on this harness, for cases whose right answer depends on it. */
     harness: Schema.optional(Schema.Literals(["claude", "codex"])),
-    /** The Linked environments beta is on, so T3 lists its link tools. */
-    linkedEnvironments: Schema.optional(Schema.Boolean),
     /** delegate_task `role` for a delegated child. T3 builds the child's first message from it. */
     delegateRole: Schema.optional(OrchestratorMcpTaskRole),
     context: Schema.optional(Schema.String),
@@ -433,14 +431,8 @@ const pastedSecret = (name: string, input: Readonly<Record<string, unknown>>) =>
   savesPastedSecrets && name === "request_secret" && typeof input.value === "string";
 // T3 does not offer these to a delegated child, so its harness never lists them.
 const hiddenFromSubagents = enabledWhen(McpInvocationContext.hiddenFromSubagents);
-// The Linked environments beta starts off, and T3 lists its tools only while it is on.
-const hiddenWhileLinksOff = enabledWhen(McpInvocationContext.hiddenWhileLinksOff);
-const visibleT3Tools = (options: { readonly subagent?: boolean; readonly links?: boolean }) =>
-  t3Tools.filter(
-    (tool) =>
-      (options.links === true || !hiddenWhileLinksOff.has(tool.name)) &&
-      !(options.subagent === true && hiddenFromSubagents.has(tool.name)),
-  );
+const visibleT3Tools = (options: { readonly subagent?: boolean }) =>
+  t3Tools.filter((tool) => !(options.subagent === true && hiddenFromSubagents.has(tool.name)));
 
 /** T3's Claude Code options for an eval thread: its system prompt append and its hooks. */
 const claudeQueryOptions = (model: Model) =>
@@ -534,7 +526,6 @@ export const buildBase = (
     readonly model: Model;
     readonly keepUserInstructions: boolean;
     readonly subagent?: boolean;
-    readonly links?: boolean;
     /** A native subagent starts from its task: T3 appends nothing to its system prompt. */
     readonly nativeSubagent?: boolean;
   },
@@ -624,7 +615,6 @@ const buildCodexBase = (
     readonly keepUserInstructions: boolean;
     readonly effort?: string | undefined;
     readonly subagent?: boolean;
-    readonly links?: boolean;
   },
 ): Base => {
   const t3 = visibleT3Tools(options);
@@ -2243,7 +2233,6 @@ const main = Effect.gen(function* () {
   const keepUserInstructions = flags["user-instructions"] === "keep";
   const buildFor = (
     role: McpToolUseCase["setup"]["role"],
-    links: boolean,
   ): Effect.Effect<Base, Schema.SchemaError> =>
     codex
       ? decodeCodexCapture(template).pipe(
@@ -2253,7 +2242,6 @@ const main = Effect.gen(function* () {
               keepUserInstructions,
               effort: flags.effort,
               subagent: role === "delegated-child",
-              links,
             }),
           ),
         )
@@ -2264,7 +2252,6 @@ const main = Effect.gen(function* () {
               keepUserInstructions,
               subagent: role === "delegated-child",
               nativeSubagent: role === "native-subagent",
-              links,
             });
             return role === "native-subagent"
               ? Effect.promise(() => t3SubagentContext(flags.model)).pipe(
@@ -2275,14 +2262,13 @@ const main = Effect.gen(function* () {
         );
   // Codex has no native subagents; its cases with that role run as top-level threads.
   const baseKey = ({ setup }: McpToolUseCase) =>
-    `${codex && setup.role === "native-subagent" ? "top" : setup.role}:${setup.linkedEnvironments === true}`;
-  const base = yield* buildFor("top", false);
-  const bases = new Map<string, Base>([["top:false", base]]);
+    codex && setup.role === "native-subagent" ? "top" : setup.role;
+  const base = yield* buildFor("top");
+  const bases = new Map<string, Base>([["top", base]]);
   for (const testCase of selected) {
     const key = baseKey(testCase);
     if (bases.has(key)) continue;
-    const [role = "top", links] = key.split(":") as [McpToolUseCase["setup"]["role"], string];
-    bases.set(key, yield* buildFor(role, links === "true"));
+    bases.set(key, yield* buildFor(key));
   }
   const baseFor = (testCase: McpToolUseCase) => bases.get(baseKey(testCase)) ?? base;
   const effort = flags.effort ?? base.codex?.reasoning.effort ?? "high";

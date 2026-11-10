@@ -46,13 +46,9 @@ import {
 import * as ProviderRegistryMock from "../provider/testUtils/providerRegistryMock.ts";
 import * as ProjectService from "../project/ProjectService.ts";
 import * as SecretRequests from "../secrets/SecretRequests.ts";
-import * as RemoteDelegation from "../peer/RemoteDelegation.ts";
 import * as ServerSecretStore from "../auth/ServerSecretStore.ts";
 import * as McpHttpServer from "./McpHttpServer.ts";
 import * as McpInvocationContext from "./McpInvocationContext.ts";
-import * as PeerForwarding from "../peer/PeerForwarding.ts";
-import * as PeerLinkRequests from "../peer/PeerLinkRequests.ts";
-import * as PeerLinks from "../peer/PeerLinks.ts";
 
 const layerOrchestratorToolkit = McpHttpServer.layerOrchestratorToolkit.pipe(
   Layer.provide(Layer.mock(ThreadLaunchService.ThreadLaunchService)({})),
@@ -224,9 +220,6 @@ describe("orchestrator MCP toolkit", () => {
           ),
           Layer.provide(layerProviderRegistry),
           Layer.provide(ServerSettings.layerTest()),
-          Layer.provide(Layer.mock(PeerForwarding.PeerForwarding)({})),
-          Layer.provide(Layer.mock(PeerLinkRequests.PeerLinkRequests)({})),
-          Layer.provide(Layer.mock(PeerLinks.PeerLinks)({})),
           Layer.provide(Layer.mock(ProjectService.ProjectService)({})),
           Layer.provideMerge(
             SecretRequests.layer.pipe(
@@ -235,7 +228,6 @@ describe("orchestrator MCP toolkit", () => {
               Layer.provide(layerOrchestration),
             ),
           ),
-          Layer.provide(Layer.mock(RemoteDelegation.RemoteDelegation)({})),
           Layer.provide(Layer.mergeAll(NodeServices.layer, NodeCrypto.layer)),
         );
 

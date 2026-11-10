@@ -3,10 +3,14 @@ import {
   type PendingSubagentRequest,
   presentThreadShell,
 } from "@t3tools/client-runtime/state/models";
-import { isShownUnderParent } from "@t3tools/client-runtime/state/threads";
 import type { AnyRouter } from "@tanstack/react-router";
 import { threadKey } from "@t3tools/client-runtime/state/entities";
-import type { EnvironmentId, OrchestrationV2ThreadShell, ThreadId } from "@t3tools/contracts";
+import {
+  type EnvironmentId,
+  isListedThreadLineage,
+  type OrchestrationV2ThreadShell,
+  type ThreadId,
+} from "@t3tools/contracts";
 import type { ClientSettings } from "@t3tools/contracts/settings";
 import * as Option from "effect/Option";
 import type { AtomRegistry } from "effect/reactivity";
@@ -221,22 +225,12 @@ export function startThreadNotifications(
   ) => {
     const previous = entry.previous;
     const next = new Map<ThreadId, NotificationState>();
-    // A parent here also hears of what its tasks on linked environments ask.
     const subagentRequests = registry.get(
       environmentThreadShells.pendingSubagentRequestsAtom(environmentId),
     );
-    const delegatedUnderParent = registry.get(environmentThreadShells.delegatedUnderParentAtom);
     const changed: Array<[NotificationState | undefined, NotificationState]> = [];
     for (const rawThread of threads) {
-      if (
-        isShownUnderParent(
-          { environmentId, threadId: rawThread.id },
-          rawThread.lineage,
-          delegatedUnderParent,
-        )
-      ) {
-        continue;
-      }
+      if (!isListedThreadLineage(rawThread.lineage)) continue;
       const prior = previous.get(rawThread.id);
       const subagentRequest = subagentRequests.get(rawThread.id) ?? null;
       if (
@@ -312,14 +306,9 @@ export function startThreadNotifications(
       environmentThreadShells.pendingSubagentRequestsAtom(environmentId),
       reobserve,
     );
-    const unsubscribeDelegated = registry.subscribe(
-      environmentThreadShells.delegatedUnderParentAtom,
-      reobserve,
-    );
     entry.unsubscribe = () => {
       unsubscribeShell();
       unsubscribeRequests();
-      unsubscribeDelegated();
       entry.gate.clear();
     };
     return entry;

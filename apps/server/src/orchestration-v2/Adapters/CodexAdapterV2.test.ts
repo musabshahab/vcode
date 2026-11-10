@@ -1794,7 +1794,7 @@ describe("CodexAdapterV2 post-settle continuation", () => {
     ),
   );
 
-  it.effect.each(["subagent", "remote", "toggled-off"] as const)(
+  it.effect.each(["subagent", "toggled-off"] as const)(
     "never samples a suggestion for a %s thread",
     (delegation) =>
       Effect.gen(function* () {
@@ -1856,23 +1856,14 @@ describe("CodexAdapterV2 post-settle continuation", () => {
           appThread:
             delegation === "toggled-off"
               ? base.appThread
-              : delegation === "subagent"
-                ? {
-                    ...base.appThread,
-                    lineage: {
-                      parentThreadId,
-                      relationshipToParent: "subagent" as const,
-                      rootThreadId: parentThreadId,
-                    },
-                  }
-                : {
-                    ...base.appThread,
-                    delegatedFrom: {
-                      environmentId: EnvironmentId.make("environment-codex-suggestion-parent"),
-                      threadId: parentThreadId,
-                      title: "Parent",
-                    },
+              : {
+                  ...base.appThread,
+                  lineage: {
+                    parentThreadId,
+                    relationshipToParent: "subagent" as const,
+                    rootThreadId: parentThreadId,
                   },
+                },
         };
         yield* harness.runtime.startTurn(turn);
         yield* harness.awaitTerminal(1);

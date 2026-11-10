@@ -148,7 +148,6 @@ import {
 import {
   readThreadShell,
   useAllEnvironmentProjectSnapshotsReady,
-  useDelegatedUnderParent,
   useProjects,
   useServerConfigs,
   useQuietThreadShells,
@@ -344,7 +343,6 @@ interface SidebarThreadPartitionInput {
   readonly threads: readonly EnvironmentThreadShell[];
   readonly scopedProjectKeys: ReadonlySet<string> | null;
   /** Tasks linked environments run for a listed thread; they show under it. */
-  readonly delegatedUnderParent: ReadonlySet<string>;
   readonly serverConfigs: ReadonlyMap<EnvironmentId, EnvironmentServerConfig>;
   readonly connectedEnvironmentIds: readonly EnvironmentId[];
   readonly optimisticDrop: SidebarOptimisticDrop | null;
@@ -414,7 +412,6 @@ function useSidebarThreads(input: {
   readonly connectedEnvironmentIds: readonly EnvironmentId[];
   readonly optimisticDrop: SidebarOptimisticDrop | null;
   readonly threads: readonly EnvironmentThreadShell[];
-  readonly delegatedUnderParent: ReadonlySet<string>;
   readonly routeRowThreadKey: string | null;
   // Set in boring mode: the project groups to fold active threads into, in order.
   readonly folderGroups: readonly SidebarProjectSnapshot[] | null;
@@ -428,7 +425,6 @@ function useSidebarThreads(input: {
     connectedEnvironmentIds,
     optimisticDrop,
     threads,
-    delegatedUnderParent,
     routeRowThreadKey,
     folderGroups,
     keepEmptyFolders: keepEmpty,
@@ -474,7 +470,6 @@ function useSidebarThreads(input: {
   const partition = partitionSidebarThreads({
     threads,
     scopedProjectKeys,
-    delegatedUnderParent,
     serverConfigs,
     connectedEnvironmentIds,
     optimisticDrop,
@@ -610,14 +605,13 @@ function partitionSidebarThreads(input: SidebarThreadPartitionInput) {
   const {
     threads,
     scopedProjectKeys,
-    delegatedUnderParent,
     serverConfigs,
     optimisticDrop,
     workingShelfEnabled,
     sortActiveBySend,
   } = input;
   const preciseNow = new Date().toISOString();
-  const visible = filterSidebarV2VisibleThreads(threads, scopedProjectKeys, delegatedUnderParent);
+  const visible = filterSidebarV2VisibleThreads(threads, scopedProjectKeys);
   const inboxObservation = inboxReturns.observe(workingShelfEnabled ? threads : null);
   const pinned: EnvironmentThreadShell[] = [];
   const active: EnvironmentThreadShell[] = [];
@@ -904,7 +898,6 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
     projectGroupByScopeKey,
     projectScopeItems: lookupProjectScopeItems,
   } = useSidebarLookups();
-  const delegatedUnderParent = useDelegatedUnderParent();
   const router = useRouter();
   const { isMobile, setOpenMobile } = useSidebar();
   const keybindings = useAtomValue(primaryServerKeybindingsAtom);
@@ -1123,7 +1116,6 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
     routeKey: routeRowThreadKey,
     isSearching: isSearchingThreads,
     scopedProjectKeys: chosenScopeProjectKeys,
-    delegatedUnderParent,
     findThread: (key) => threads.find((candidate) => threadShellKey(candidate) === key),
   });
   const projectScopeKeys = revealWidensScope ? [] : chosenProjectScopeKeys;
@@ -1331,7 +1323,6 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
     connectedEnvironmentIds,
     optimisticDrop,
     threads,
-    delegatedUnderParent,
     routeRowThreadKey,
     folderGroups: boringSidebarEnabled
       ? scopedProjectGroups.length === 0

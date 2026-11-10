@@ -5,7 +5,6 @@ import {
   AuthStandardClientScopes,
   type AuthCreatePairingCredentialInput,
   EnvironmentHttpApi,
-  MCP_PEER_LINK_SOFTWARE_ID,
   mcpClientScopes,
 } from "@t3tools/contracts";
 import { expect, it } from "@effect/vitest";
@@ -54,7 +53,7 @@ const makeLayerRoutes = (capture: (auth: EnvironmentAuth.EnvironmentAuth["Servic
       Layer.provide(
         McpOAuthHttp.layer.pipe(
           Layer.provide(McpOAuth.layer),
-          Layer.provide(ServerSettings.layerTest({ linkedEnvironmentsEnabled: true })),
+          Layer.provide(ServerSettings.layerTest()),
         ),
       ),
       Layer.provide(AuthHttp.layerAuthenticatedAuth),
@@ -520,7 +519,7 @@ it.live("an app approval code approves only an app sign-in, at its own level", (
       const code = issued.credential;
       expect(code).toMatch(/^SUPERVISED-[2-9A-HJ-NP-Z]{12}$/);
 
-      // Signing in a browser, a token exchange and linking all refuse it and leave it unspent.
+      // Signing in a browser and a token exchange refuse it and leave it unspent.
       const browser = yield* handler(
         at("/api/auth/browser-session", {
           method: "POST",
@@ -533,24 +532,6 @@ it.live("an app approval code approves only an app sign-in, at its own level", (
         .exchangeBootstrapCredentialForAccessToken(code, undefined, { deviceType: "bot" })
         .pipe(Effect.flip);
       expect(exchanged._tag).toBe("ServerAuthInvalidCredentialError");
-      const peer = yield* handler(
-        at("/oauth/mcp/register", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: encodeJson({
-            client_name: "Studio",
-            software_id: MCP_PEER_LINK_SOFTWARE_ID,
-            redirect_uris: [REDIRECT],
-          }),
-        }),
-      ).pipe(Effect.flatMap(json<{ client_id: string }>));
-      const linked = yield* decide(handler, authorizeParams(peer.client_id), {
-        _tag: "pairing-code",
-        access: "approval-required",
-        code,
-      });
-      expect(linked.status).toBe(400);
-
       // Supervised and Auto share scopes, so only the code's own level may spend it.
       const otherLevel = yield* decide(handler, params, {
         _tag: "pairing-code",

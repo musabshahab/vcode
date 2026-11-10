@@ -30,13 +30,8 @@ export interface McpClientCaller {
   readonly label: string;
   readonly access: AuthMcpClientAccess;
   /**
-   * Another T3 Code environment's peer link. What it starts here carries its
-   * session as `linkOrigin`, and it changes only that work (`linkOrigin.ts`).
-   */
-  readonly linked?: boolean | undefined;
-  /**
    * Narrower modes the client asked for on this request (`T3-Mode-Limit`):
-   * another environment passing on the limits of the agent it calls for.
+   * passing on the limits of the agent it calls for.
    */
   readonly narrowedTo?: ClientModes | undefined;
   /** An outside client's thread links go through this hosted app, as Copy thread's do. */
@@ -45,8 +40,8 @@ export interface McpClientCaller {
 
 /**
  * `T3-Mode-Limit: <runtimeMode>/<interactionMode>` lets an OAuth client cap
- * a request below what it was approved with: another environment passes on
- * the limits of the agent it calls for. It can only narrow (see
+ * a request below what it was approved with, such as to pass on the limits of
+ * the agent it calls for. It can only narrow (see
  * `clientModeCeiling`), so a client gains nothing by sending a broad one.
  */
 export const MODE_LIMIT_HEADER = "t3-mode-limit";
@@ -123,8 +118,6 @@ export interface McpInvocationScope {
   readonly requestNamespace: string;
   readonly thread: McpThreadCaller | undefined;
   readonly client: McpClientCaller | undefined;
-  /** False while the Linked environments beta is off here; `/mcp` reads it per request. */
-  readonly linkedEnvironments?: boolean;
 }
 
 /**
@@ -157,13 +150,6 @@ export const hiddenFromSubagents = (): boolean => {
   const fiber = Fiber.getCurrent();
   const scope = fiber && Context.getOrUndefined(fiber.context, McpInvocationContext);
   return scope?.thread?.subagent !== true;
-};
-
-/** `McpSchema.EnabledWhen` for tools that only serve links, hidden while the beta is off. */
-export const hiddenWhileLinksOff = (): boolean => {
-  const fiber = Fiber.getCurrent();
-  const scope = fiber && Context.getOrUndefined(fiber.context, McpInvocationContext);
-  return scope?.linkedEnvironments !== false;
 };
 
 export type McpCapabilityError<C extends McpCapability> = C extends "preview"

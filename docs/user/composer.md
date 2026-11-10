@@ -292,8 +292,7 @@ pull request is older than the recent list. Type a single word after `#` to sear
 the repository by text. Choose a result to insert it as a chip.
 
 Another thread can be context too. Type `@` followed by part of its title to pick one from
-the same server, or from a machine it links to while the Linked environments beta is on; those
-show the machine's name. On web and desktop you can also drag a thread out of the sidebar and
+the same server. On web and desktop you can also drag a thread out of the sidebar and
 drop it on the composer; a multi-selection drops together. On any client, **Copy thread** copies a
 link to the thread that pastes into a composer as its chip. The chip shows the thread's
 current title and opens it when selected. Your prompt only carries a reference: the agent reads the thread's

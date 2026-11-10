@@ -235,7 +235,6 @@ import { resolveProviderSkillsForCwd } from "@t3tools/client-runtime/providerSki
 import { chatGitStatusAtom, NO_CHAT_GIT_STATUS_ATOM, vcsEnvironment } from "../state/vcs";
 import {
   type EnvironmentPresentation,
-  useEnvironment,
   useEnvironmentProviders,
   useEnvironments,
   usePrimaryEnvironment,
@@ -838,15 +837,6 @@ export default function ChatView(props: ChatViewProps) {
           messages: serverProjection.messages,
           parentSubagents: workflowOpeningParentProjection?.projection.subagents ?? null,
         });
-  // A linked environment's agent may have delegated this thread from there.
-  const delegatedFrom = activeThread?.delegatedFrom ?? null;
-  const delegatedFromEnvironment = useEnvironment(delegatedFrom?.environmentId ?? null);
-  const delegatedFromRef =
-    delegatedFrom === null
-      ? null
-      : scopeThreadRef(delegatedFrom.environmentId, delegatedFrom.threadId);
-  // The title it had at delegation, until this client sees the parent itself.
-  const delegatedFromThread = useQuietThreadShell(delegatedFromRef);
   const sideChatParentRef =
     activeThread?.lineage.sideChat === true && activeThread.lineage.parentThreadId !== null
       ? scopeThreadRef(activeThread.environmentId, activeThread.lineage.parentThreadId)
@@ -879,23 +869,7 @@ export default function ChatView(props: ChatViewProps) {
         },
       };
     }
-    if (delegatedFrom === null || delegatedFromRef === null) return null;
-    const parentRef = delegatedFromRef;
-    return {
-      title: delegatedFromThread?.title ?? delegatedFrom.title,
-      environmentLabel: delegatedFromEnvironment?.label ?? activeThread?.linkOrigin?.label ?? "",
-      // Only an environment this client is connected to can open the parent.
-      ...(delegatedFromEnvironment === null
-        ? {}
-        : {
-            open: (): void => {
-              void navigate({
-                to: "/$environmentId/$threadId",
-                params: buildThreadRouteParams(parentRef),
-              });
-            },
-          }),
-    };
+    return null;
   })();
   // The header's breadcrumb opens a parent in this environment only.
   const headerParentThreadLink =
@@ -2706,8 +2680,7 @@ export default function ChatView(props: ChatViewProps) {
 
   usePasteToFocusComposer(embedded ? null : activeThreadId, composerRef);
   // A delegated task is a remote thread's subagent.
-  const isSubagentThread =
-    activeThread?.lineage.relationshipToParent === "subagent" || delegatedFrom !== null;
+  const isSubagentThread = activeThread?.lineage.relationshipToParent === "subagent";
   // Side chats do not nest or start from subagents, and older servers would fork a listed thread.
   const sideChatsOffered =
     !embedded &&
@@ -3220,7 +3193,6 @@ export default function ChatView(props: ChatViewProps) {
               activeThreadId={activeThread.id}
               isServerThread={isServerThread}
               activeThreadTitle={activeThread.title}
-              activeThreadLinkOrigin={activeThreadShell?.linkOrigin?.label ?? null}
               activeProject={activeProject ?? null}
               parentThreadLink={headerParentThreadLink}
               onOpenThread={onOpenRelatedThreadStable}

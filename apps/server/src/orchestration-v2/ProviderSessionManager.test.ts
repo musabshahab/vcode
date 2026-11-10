@@ -3794,11 +3794,6 @@ it.effect(
         assert.equal((yield* Ref.get(state)).resumeCount, 2);
         yield* resumeSecondThread;
         assert.equal((yield* Ref.get(state)).resumeCount, 3);
-        // regression: #26722 a Linked environments change reloads only the idle thread's tools.
-        yield* settings.updateSettings({ linkedEnvironmentsEnabled: true });
-        yield* resumeSecondThread;
-        assert.equal((yield* Ref.get(state)).resumeCount, 4);
-        assert.deepEqual((yield* Ref.get(state)).unloadedNativeThreadIds, ["native-thread"]);
         const subscribe = firstRuntime.subscribeEvents;
         assert.isDefined(subscribe);
         if (subscribe === undefined) return;
@@ -3830,18 +3825,13 @@ it.effect(
           runtimePolicy,
         });
         yield* resumeSecondThread;
-        assert.equal((yield* Ref.get(state)).resumeCount, 5);
-
-        assert.deepEqual((yield* Ref.get(state)).unloadedNativeThreadIds, ["native-thread"]);
+        assert.equal((yield* Ref.get(state)).resumeCount, 4);
 
         yield* manager.detach({ providerSessionId, threadId: firstThreadId });
         assert.isTrue(Option.isSome(yield* manager.get(providerSessionId)));
         assert.equal((yield* Ref.get(state)).closeCount, 0);
         assert.equal((yield* Ref.get(state)).interruptCount, 1);
-        assert.deepEqual((yield* Ref.get(state)).unloadedNativeThreadIds, [
-          "native-thread",
-          "native-thread",
-        ]);
+        assert.deepEqual((yield* Ref.get(state)).unloadedNativeThreadIds, ["native-thread"]);
 
         yield* manager.detach({ providerSessionId, threadId: secondThreadId });
         yield* TestClock.adjust("1 second");
@@ -4260,7 +4250,7 @@ it.effect(
 );
 
 it.effect(
-  "ProviderSessionManagerV2 rejects a second thread when the provider runtime is exclusive, and reopens it when Linked environments changes",
+  "ProviderSessionManagerV2 rejects a second thread when the provider runtime is exclusive",
   () =>
     Effect.gen(function* () {
       const state = yield* Ref.make(emptyState);
@@ -4311,17 +4301,6 @@ it.effect(
 
         assert.equal(error._tag, "ProviderSessionOpenError");
         assert.equal((yield* Ref.get(state)).openCount, 1);
-
-        // regression: #26722 an exclusive runtime configures MCP at open, so it reopens.
-        yield* settings.updateSettings({ linkedEnvironmentsEnabled: true });
-        yield* manager.open({
-          threadId: firstThreadId,
-          providerSessionId,
-          modelSelection,
-          runtimePolicy,
-        });
-        assert.equal((yield* Ref.get(state)).openCount, 2);
-        assert.equal((yield* Ref.get(state)).closeCount, 1);
       });
 
       yield* effect.pipe(

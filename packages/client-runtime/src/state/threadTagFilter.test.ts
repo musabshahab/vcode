@@ -11,7 +11,6 @@ const thread = (
   id: string,
   tags: Array<string>,
   parent?: { readonly id: string; readonly relationship: "fork" | "subagent" },
-  delegatedFrom?: { readonly environmentId: EnvironmentId; readonly id: string },
 ) => ({
   id: ThreadId.make(id),
   tags,
@@ -20,15 +19,6 @@ const thread = (
     relationshipToParent: parent?.relationship ?? null,
     rootThreadId: ThreadId.make(parent?.id ?? id),
   },
-  ...(delegatedFrom === undefined
-    ? {}
-    : {
-        delegatedFrom: {
-          environmentId: delegatedFrom.environmentId,
-          threadId: ThreadId.make(delegatedFrom.id),
-          title: "parent",
-        },
-      }),
 });
 
 const localThreads = [
@@ -38,10 +28,7 @@ const localThreads = [
   thread("plain", []),
   thread("plain-private-side-chat", ["private"], { id: "plain", relationship: "subagent" }),
 ];
-const linkedThreads = [
-  thread("delegated-from-private", [], undefined, { environmentId: local, id: "private" }),
-  thread("linked-client", ["client"]),
-];
+const linkedThreads = [thread("linked-client", ["client"])];
 const hiddenIds = (localTags: Array<string> | null, linkedTags: Array<string> | null) =>
   [
     ...hiddenThreadKeys([
@@ -60,26 +47,22 @@ describe("hiddenThreadKeys", () => {
     ).toBe(NO_HIDDEN_THREADS);
   });
 
-  it("hides a tagged thread with its subagents and linked tasks, but not its forks", () => {
+  it("hides a tagged thread with its subagents, but not its forks", () => {
     expect(hiddenIds(["private"], null)).toEqual(
-      [
-        key(local, "private"),
-        key(local, "private-subagent"),
-        key(linked, "delegated-from-private"),
-      ].toSorted(),
+      [key(local, "private"), key(local, "private-subagent")].toSorted(),
     );
   });
 
   it("judges an archive page against live hidden parents", () => {
     const archived = hiddenThreadKeys(
-      [{ environmentId: linked, threads: [linkedThreads[0]!], hiddenTags: null }],
+      [{ environmentId: local, threads: [localThreads[1]!], hiddenTags: null }],
       new Set([key(local, "private")]),
     );
-    expect([...archived]).toEqual([key(linked, "delegated-from-private")]);
+    expect([...archived]).toEqual([key(local, "private-subagent")]);
   });
 
   it("hides a child whose parent is not loaded while any environment hides tags", () => {
-    const orphan = thread("orphan-task", [], undefined, { environmentId: local, id: "archived" });
+    const orphan = thread("orphan-task", [], { id: "archived", relationship: "subagent" });
     const keys = (localTags: Array<string> | null, linkedTags: Array<string> | null) => [
       ...hiddenThreadKeys([
         { environmentId: local, threads: [], hiddenTags: localTags },
@@ -118,10 +101,10 @@ describe("hiddenThreadKeys", () => {
   it("lets a live hidden parent win over the same parent being loaded elsewhere", () => {
     const parentKey = key(local, "private");
     const archived = hiddenThreadKeys(
-      [{ environmentId: linked, threads: [linkedThreads[0]!], hiddenTags: null }],
+      [{ environmentId: local, threads: [localThreads[1]!], hiddenTags: null }],
       new Set([parentKey]),
       new Set([parentKey]),
     );
-    expect([...archived]).toEqual([key(linked, "delegated-from-private")]);
+    expect([...archived]).toEqual([key(local, "private-subagent")]);
   });
 });

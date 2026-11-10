@@ -12,7 +12,6 @@ import * as NetService from "@t3tools/shared/Net";
 import packageJson from "../package.json" with { type: "json" };
 import { acpMcpBridgeCommand, acpMcpCallCommand } from "./cli/acpMcpBridge.ts";
 import { authCommand } from "./cli/auth.ts";
-import { environmentCommand } from "./cli/environment.ts";
 import { appCommand } from "./cli/app.ts";
 import { browserCommand } from "./cli/browser.ts";
 import { pairCommand } from "./cli/pair.ts";
@@ -85,7 +84,6 @@ export const makeCli = ({ cloudEnabled = hasCloudPublicConfig } = {}) =>
       appCommand,
       pairCommand,
       authCommand,
-      environmentCommand,
       browserCommand,
       projectCommand,
       threadCommand,

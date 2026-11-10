@@ -1,5 +1,3 @@
-import { Link } from "@tanstack/react-router";
-
 import { Switch } from "../ui/switch";
 import { ScopedSwitch } from "./ScopedSwitch";
 import { SettingsPageContainer, SettingsRow, SettingsSection } from "./settingsLayout";
@@ -13,7 +11,6 @@ export function LabsSettingsPanel() {
     <SettingsPageContainer>
       <SettingsSection id="beta" title="Beta">
         <BoringSidebarRow />
-        <LinkedEnvironmentsRow />
         <PromptSuggestionsRow />
         <FastWorktreeCheckoutRow />
       </SettingsSection>
@@ -60,38 +57,6 @@ function BoringSidebarMultilineRow() {
             updateSettings({ boringSidebarMultilineRows: Boolean(checked) })
           }
           aria-label="Two-line folder rows"
-        />
-      }
-    />
-  );
-}
-
-function LinkedEnvironmentsRow() {
-  const settings = useScopedSettings();
-  const updateSettings = useUpdateScopedSettings();
-  return (
-    <SettingsRow
-      serverScoped
-      {...searchableSetting("linked-environments-beta")}
-      settingKeys={["linkedEnvironmentsEnabled"]}
-      description={
-        <>
-          Let agents here work on your other machines, and theirs here. Turn it on for each machine,
-          then link them in{" "}
-          <Link to="/settings/connections" className="underline underline-offset-2">
-            Connections
-          </Link>
-          . While off, nothing new starts over a link; running tasks finish.
-        </>
-      }
-      control={
-        <ScopedSwitch
-          settingKeys={["linkedEnvironmentsEnabled"]}
-          checked={settings.linkedEnvironmentsEnabled}
-          onCheckedChange={(checked) =>
-            updateSettings({ linkedEnvironmentsEnabled: Boolean(checked) })
-          }
-          aria-label="Linked environments"
         />
       }
     />
