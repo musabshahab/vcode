@@ -112,8 +112,6 @@ interface PinnedRuntimeInstallInput {
   readonly arch: string;
   readonly httpClient: HttpClient.HttpClient;
   readonly releaseBaseUrl?: string | undefined;
-  /** Reuse a cached runtime only while the release source still lists it, as a policy mirror does. */
-  readonly requirePublishedRelease?: boolean;
   readonly onProgress?: (progress: PinnedRuntimeProgress) => void;
 }
 
@@ -285,15 +283,6 @@ const installPinnedRuntime = Effect.fn("cloud.pinned_runtime.ensure_installed")(
   const alreadyPinned =
     entryExists && Option.isSome(sentinel) && sentinel.value.trim() === input.version;
   if (alreadyPinned) {
-    if (input.requirePublishedRelease === true) {
-      const platformKey = cliArchivePlatformKey(input.platform, input.arch);
-      if (platformKey === undefined) {
-        return yield* new PinnedRuntimeInstallError({
-          step: `selecting a t3 release archive for ${input.platform}-${input.arch}`,
-        });
-      }
-      yield* publishedArchive(input, platformKey);
-    }
     input.onProgress?.({ stage: "cached" });
     yield* input.validate(paths);
     return paths;

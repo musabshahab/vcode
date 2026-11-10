@@ -31,7 +31,6 @@ import * as McpOAuth from "../auth/McpOAuth.ts";
 import * as ServerSecretStore from "../auth/ServerSecretStore.ts";
 import * as ServerEnvironment from "../environment/ServerEnvironment.ts";
 import * as Sqlite from "../persistence/Sqlite.ts";
-import * as ManagedPolicy from "../policy/ManagedPolicy.ts";
 
 import * as PullRequestReviewGuideService from "../pullRequest/PullRequestReviewGuideService.ts";
 import * as ServerConfig from "../config.ts";
@@ -988,7 +987,6 @@ it.effect("accepts case-insensitive MCP bearer schemes and diagnoses rejected cr
     ),
     Layer.provideMerge(Sqlite.layerMemory),
     Layer.provide(ServerSecretStore.layer),
-    Layer.provide(ManagedPolicy.layerTest()),
     Layer.provideMerge(ServerEnvironment.layerIdentity),
     Layer.provide(ServerConfig.layerTest(process.cwd(), { prefix: "t3-mcp-auth-header-test-" })),
     Layer.provideMerge(Layer.mergeAll(NodeServices.layer, NodeCrypto.layer)),

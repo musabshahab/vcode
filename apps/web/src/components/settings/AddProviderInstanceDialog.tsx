@@ -15,7 +15,6 @@ import {
   ProviderDriverKind,
   type EnvironmentId,
   type ProviderInstanceConfig,
-  isManagedDriverAllowed,
 } from "@t3tools/contracts";
 
 import {
@@ -25,7 +24,6 @@ import {
 
 import { cn } from "../../lib/utils";
 import { normalizeProviderAccentColor } from "../../providerInstances";
-import { managedInstanceLocks, useManagedPolicy } from "../../state/managedPolicy";
 import { readEnvironmentScope, useEnvironmentScope } from "../../state/session";
 import { Button } from "../ui/button";
 import { ChatGptConnectionButton } from "./ChatGptConnectionButton";
@@ -145,14 +143,8 @@ export function AddProviderInstanceDialog({
 
   const [wizardStep, setWizardStep] = useState(0);
   const [addingChatGptAccount, setAddingChatGptAccount] = useState(false);
-  // Drivers the administrator's policy leaves out are not offered at all.
-  const managedPolicy = useManagedPolicy(environmentId);
-  const featuredDriverOptions = FEATURED_DRIVER_OPTIONS.filter((option) =>
-    isManagedDriverAllowed(managedPolicy, option.driverKind),
-  );
-  const moreDriverOptions = MORE_DRIVER_OPTIONS.filter((option) =>
-    isManagedDriverAllowed(managedPolicy, option.driverKind),
-  );
+  const featuredDriverOptions = FEATURED_DRIVER_OPTIONS;
+  const moreDriverOptions = MORE_DRIVER_OPTIONS;
   const [driver, setDriver] = useState<ProviderDriverKind>(
     () => (featuredDriverOptions[0] ?? moreDriverOptions[0])?.driverKind ?? DEFAULT_DRIVER_KIND,
   );
@@ -236,9 +228,6 @@ export function AddProviderInstanceDialog({
       }),
     );
   };
-
-  // A policy that owns this driver's launch settings also rules out ChatGPT's own runtime.
-  const driverLocks = managedInstanceLocks(managedPolicy, driver);
 
   const handleSave = async () => {
     if (!readEnvironmentScope(environmentId, AuthProvidersManageScope)) return;
@@ -429,9 +418,6 @@ export function AddProviderInstanceDialog({
                   idPrefix={`add-provider-${driver}`}
                   variant="settings"
                   onChange={setConfigDraft}
-                  managed={
-                    driverLocks && { keys: driverLocks.configKeys, reason: driverLocks.reason }
-                  }
                   environmentId={environmentId}
                 />
               </SettingsGroup>
@@ -464,12 +450,7 @@ export function AddProviderInstanceDialog({
                 <Button variant="outline" size="sm" onClick={() => navigateToStep(1)}>
                   Configure manually
                 </Button>
-                {driverLocks?.configKeys.has("setupMode") ? null : (
-                  <ChatGptConnectionButton
-                    size="sm"
-                    onClick={() => setAddingChatGptAccount(true)}
-                  />
-                )}
+                <ChatGptConnectionButton size="sm" onClick={() => setAddingChatGptAccount(true)} />
               </>
             ) : wizardStep < 2 ? (
               <Button size="sm" onClick={() => navigateToStep(wizardStep + 1)}>

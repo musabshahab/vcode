@@ -2,11 +2,7 @@ import { useComposerTypingGuard } from "./useComposerTypingGuard";
 import { insertAttachmentReferencesForDraft } from "./composerAttachmentReferences";
 import { DESKTOP_PASTE_AS_TEXT_EVENT } from "../../lib/desktopPasteAsText";
 import { BackgroundThreadContext } from "./backgroundThread";
-import {
-  resolveCompatibleRuntimeMode,
-  runtimeModeConfig,
-  resolveRuntimeModeOptions,
-} from "./runtimeModeConfig";
+import { resolveCompatibleRuntimeMode, resolveRuntimeModeOptions } from "./runtimeModeConfig";
 import { isLocalEnvironmentDisabled } from "../../localEnvironment";
 import { usePrimaryEnvironmentId } from "../../state/environments";
 import { useRightPanelStore } from "~/rightPanelStore";
@@ -36,8 +32,6 @@ import type {
 import {
   EnvironmentRequestInvalidError,
   AuthOrchestrationOperateScope,
-  clampManagedRuntimeMode,
-  managedRuntimeModeDenial,
   ProviderDriverKind,
   ProviderInstanceId,
   PROVIDER_SEND_TURN_MAX_ATTACHMENTS,
@@ -220,9 +214,7 @@ import { observeResize } from "~/lib/observeResize";
 
 const isEnvironmentRequestInvalidError = Schema.is(EnvironmentRequestInvalidError);
 import { toastManager } from "../ui/toast";
-import { BuildingIcon, PlayIcon } from "lucide-react";
-import { Button } from "../ui/button";
-import { useManagedPolicy } from "../../state/managedPolicy";
+import { PlayIcon } from "lucide-react";
 import { hasProviderSetup } from "./ProviderStatusBanner";
 import { type AppModelOption, getAppModelOptionsForInstance } from "../../modelSelection";
 import type { UnifiedSettings } from "@t3tools/contracts/settings";
@@ -843,25 +835,12 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
       runtimeMode,
       selectedProviderEntry?.snapshot.supportedRuntimeModes,
     );
-  // Modes above an administrator's ceiling stay listed, disabled with the reason.
-  const managedPolicy = useManagedPolicy(environmentId);
-  const compatibleRuntimeModeOptions = resolveRuntimeModeOptions(
-    compatibleRuntimeModes,
-    managedPolicy,
-  );
-  // A thread or draft already above the ceiling would be refused; offer the broadest mode left.
-  const runtimeModeCeilingDenial = managedRuntimeModeDenial(managedPolicy, compatibleRuntimeMode);
-  const runtimeModeCeilingFallback =
-    runtimeModeCeilingDenial === undefined
-      ? undefined
-      : clampManagedRuntimeMode(managedPolicy, compatibleRuntimeMode, compatibleRuntimeModes);
+  const compatibleRuntimeModeOptions = resolveRuntimeModeOptions(compatibleRuntimeModes);
 
   const sendDisabledReason =
     externalSendDisabledReason ??
     (multipleModelSelections?.length === 0 ? "Select at least one model." : null) ??
-    (activePendingProgress
-      ? attachmentBlockReason
-      : (attachmentBlockReason ?? runtimeModeCeilingDenial ?? null));
+    attachmentBlockReason;
   const isSendDisabled = sendDisabledReason !== null;
   const selectedProviderStatus = selectedProviderEntry?.snapshot ?? null;
   const selectedProviderSkills = selectedProviderStatus
@@ -2289,31 +2268,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
   );
   // An open question owns the space above the composer. Only a machine problem,
   // which is why an answer could not go through, stays beside it.
-  const bannerItems: readonly ComposerBannerStackItem[] =
-    runtimeModeCeilingDenial === undefined || activePendingProgress
-      ? props.bannerItems
-      : [
-          ...props.bannerItems,
-          {
-            id: "managed-runtime-mode",
-            variant: "warning",
-            icon: <BuildingIcon />,
-            title: runtimeModeCeilingDenial,
-            ...(runtimeModeCeilingFallback === undefined
-              ? {}
-              : {
-                  actions: (
-                    <Button
-                      size="xs"
-                      variant="ghost"
-                      onClick={() => handleRuntimeModeChange(runtimeModeCeilingFallback)}
-                    >
-                      Switch to {runtimeModeConfig[runtimeModeCeilingFallback].label}
-                    </Button>
-                  ),
-                }),
-          },
-        ];
+  const bannerItems = props.bannerItems;
   const shelfItems = hasBlockingComposerTopDrawer
     ? bannerItems.filter(
         (item) =>

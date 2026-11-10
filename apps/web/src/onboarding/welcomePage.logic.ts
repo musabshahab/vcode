@@ -1,7 +1,5 @@
 import {
   isProviderAvailable,
-  managedCapabilityDenial,
-  type ManagedPolicySummary,
   type ProviderInstanceConfig,
   type ProviderInstanceId,
   resolveProjectProviderInstanceEnabled,
@@ -38,7 +36,7 @@ export function welcomeAgentState(
 }
 
 /**
- * Splits a computer's allowed providers into agents already on it and agents the user can add.
+ * Splits a computer's providers into agents already on it and agents the user can add.
  * Order inside each group is by state, then by the name the user sees. Agents still being
  * checked are listed with the ones to add, so a slow check never drops an agent.
  */
@@ -46,14 +44,12 @@ export function groupWelcomeAgents(
   providers: ReadonlyArray<ServerProvider> | null | undefined,
   settings: ComputerSettings | null | undefined,
   nameOf: (provider: ServerProvider) => string,
-  isAllowed: (provider: ServerProvider) => boolean,
 ) {
   const found: Array<{ readonly provider: ServerProvider; readonly state: FoundState }> = [];
   const available: ServerProvider[] = [];
   let checking = providers == null;
   let readyCount = 0;
   for (const provider of providers ?? []) {
-    if (!isAllowed(provider)) continue;
     const state = welcomeAgentState(provider, settings);
     if (state === "ready") readyCount += 1;
     if (state === "checking") checking = true;
@@ -135,22 +131,15 @@ export function codexNeedsSetup(
 
 /**
  * The phone joins by signing in to T3 Connect, which shares the primary computer. Another
- * computer, a build without T3 Connect, or a policy that turns it off gets no Phone section.
+ * computer or a build without T3 Connect gets no Phone section.
  */
 export function welcomeOffersPhone(input: {
   readonly isPrimary: boolean;
   readonly cloud: boolean;
   // Relay read and write access, which sharing this computer through T3 Connect needs.
   readonly canShare: boolean;
-  readonly policy: ManagedPolicySummary | undefined;
 }) {
-  return (
-    input.isPrimary &&
-    input.cloud &&
-    input.canShare &&
-    managedCapabilityDenial(input.policy, "remoteClients") === undefined &&
-    managedCapabilityDenial(input.policy, "connect") === undefined
-  );
+  return input.isPrimary && input.cloud && input.canShare;
 }
 
 /**

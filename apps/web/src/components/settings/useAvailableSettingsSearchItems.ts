@@ -35,11 +35,7 @@ export function useAvailableSettingsSearchItems() {
         environment.serverConfig?.environment.capabilities.fastWorktreeCheckout === true,
     ) === true;
   const hasTextGeneratorsEnvironment =
-    environments.some(
-      (environment) =>
-        environment.serverConfig !== null &&
-        environment.serverConfig.managedPolicy?.limits?.providers?.allowedDrivers === undefined,
-    ) === true;
+    environments.some((environment) => environment.serverConfig !== null) === true;
   const hasThreadAutoSettlement =
     getThreadAutoSettlementSearchAvailability(environments).eligibleEnvironmentIds.length > 0;
   const primaryEnvironmentId = usePrimaryEnvironmentId();

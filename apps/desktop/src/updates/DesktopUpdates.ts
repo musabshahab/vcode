@@ -35,7 +35,6 @@ import * as ElectronUpdater from "../electron/ElectronUpdater.ts";
 import * as ElectronWindow from "../electron/ElectronWindow.ts";
 import * as IpcChannels from "../ipc/channels.ts";
 import * as DesktopAppSettings from "../settings/DesktopAppSettings.ts";
-import * as DesktopUpdatePolicy from "./DesktopUpdatePolicy.ts";
 import { normalizeDesktopUpdateReleaseNotes } from "./releaseNotes.ts";
 import { desktopUpdateChannelOf } from "@t3tools/shared/cliRelease";
 import { compareSemverVersions } from "@t3tools/shared/semver";
@@ -163,22 +162,9 @@ export class DesktopUpdateUnexpectedActionError extends Schema.TaggedError<Deskt
   }
 }
 
-export class DesktopUpdateChannelManagedError extends Schema.TaggedError<DesktopUpdateChannelManagedError>()(
-  "DesktopUpdateChannelManagedError",
-  {
-    channel: DesktopUpdateChannelSchema,
-    policyMessage: Schema.String,
-  },
-) {
-  override get message(): string {
-    return `${this.policyMessage} The ${this.channel} channel is not available.`;
-  }
-}
-
 export const DesktopUpdateSetChannelError = Schema.Union([
   DesktopUpdateActionInProgressError,
   DesktopUpdateChannelPersistenceError,
-  DesktopUpdateChannelManagedError,
 ]);
 export type DesktopUpdateSetChannelError = typeof DesktopUpdateSetChannelError.Type;
 
@@ -330,7 +316,6 @@ function shouldBroadcastDownloadProgress(
 }
 
 function getAutoUpdateDisabledReason(args: {
-  policy: DesktopUpdatePolicy.UpdatePolicy;
   isDevelopment: boolean;
   isPackaged: boolean;
   platform: NodeJS.Platform;
@@ -339,9 +324,6 @@ function getAutoUpdateDisabledReason(args: {
   disabledByEnv: boolean;
   hasUpdateFeedConfig: boolean;
 }): string | null {
-  if (args.policy.mode === "off") {
-    return args.policy.message ?? "Updates are turned off on this machine.";
-  }
   if (!args.hasUpdateFeedConfig) {
     return "Automatic updates are not available because no update feed is configured.";
   }
@@ -371,9 +353,7 @@ export const make = Effect.gen(function* () {
   const environment = yield* DesktopEnvironment.DesktopEnvironment;
   const fileSystem = yield* FileSystem.FileSystem;
   const desktopSettings = yield* DesktopAppSettings.DesktopAppSettings;
-  const policy = yield* DesktopUpdatePolicy.DesktopUpdatePolicy;
-  // Any user can set the mock flag, so it never replaces an administrator's update source.
-  const mockUpdates = config.mockUpdates && policy.message === null;
+  const mockUpdates = config.mockUpdates;
 
   const appUpdateYmlConfigRef = yield* Ref.make<Option.Option<AppUpdateYmlConfig>>(Option.none());
   const activeUpdateActionRef = yield* Ref.make<Option.Option<UpdateAction>>(Option.none());
@@ -453,17 +433,13 @@ export const make = Effect.gen(function* () {
       : false;
 
   const hasUpdateFeedConfig = Ref.get(appUpdateYmlConfigRef).pipe(
-    Effect.map(
-      (appUpdateYmlConfig) =>
-        Option.isSome(appUpdateYmlConfig) || mockUpdates || policy.feedUrl !== undefined,
-    ),
+    Effect.map((appUpdateYmlConfig) => Option.isSome(appUpdateYmlConfig) || mockUpdates),
   );
 
   const resolveDisabledReason = Effect.gen(function* () {
     const hasFeedConfig = yield* hasUpdateFeedConfig;
     return Option.fromNullishOr(
       getAutoUpdateDisabledReason({
-        policy,
         isDevelopment: environment.isDevelopment,
         isPackaged: environment.isPackaged,
         platform: environment.platform,
@@ -474,18 +450,6 @@ export const make = Effect.gen(function* () {
       }),
     );
   });
-
-  // Without nightly, an install on that channel stays put until its user picks stable: moving it
-  // silently would be a downgrade nobody asked for, and checking nightly would break the policy.
-  const channelBlockedReason = (channel: DesktopUpdateChannel): Option.Option<string> =>
-    channel === "nightly" && !policy.allowNightly
-      ? Option.some(
-          `${policy.message ?? "Nightly updates are turned off on this machine."} Switch to the stable channel to keep getting updates.`,
-        )
-      : Option.none();
-
-  const resolveStateDisabledReason = (channel: DesktopUpdateChannel) =>
-    resolveDisabledReason.pipe(Effect.map(Option.orElse(() => channelBlockedReason(channel))));
 
   const activeUpdateAction = Ref.get(activeUpdateActionRef);
 
@@ -538,7 +502,6 @@ export const make = Effect.gen(function* () {
     if (!(yield* Ref.get(updaterConfiguredRef))) return false;
 
     const state = yield* Ref.get(updateStateRef);
-    // A configured updater is disabled only by a channel the managed policy blocks.
     if (state.status === "disabled") return false;
     if (state.status === "downloading") {
       yield* logUpdaterInfo("skipping update check while update is active", {
@@ -699,11 +662,6 @@ export const make = Effect.gen(function* () {
     Ref.get(notAppliedVersionRef).pipe(
       Effect.map((notAppliedVersion) => ({
         ...createBaseUpdateState(channel, disabledReason, environment),
-        // Callers fall back to the channel's reason only when nothing else turns updates off.
-        ...(Option.isSome(disabledReason) &&
-        disabledReason.value === Option.getOrUndefined(channelBlockedReason(channel))
-          ? { channelBlockedByPolicy: true as const }
-          : {}),
         ...Option.match(notAppliedVersion, {
           onNone: () => ({}),
           onSome: (version) => ({ notAppliedVersion: version }),
@@ -1110,9 +1068,7 @@ export const make = Effect.gen(function* () {
       }),
     ),
     emitState,
-    disabledReason: Ref.get(updateStateRef).pipe(
-      Effect.flatMap((state) => resolveStateDisabledReason(state.channel)),
-    ),
+    disabledReason: resolveDisabledReason,
     configure: Effect.gen(function* () {
       const context = yield* Effect.context<never>();
       const runEffect = (effect: Effect.Effect<void>) => {
@@ -1136,22 +1092,11 @@ export const make = Effect.gen(function* () {
           provider: "generic",
           url: `http://localhost:${config.mockUpdateServerPort}`,
         } as ElectronUpdater.ElectronUpdaterFeedUrl);
-      } else if (policy.feedUrl !== undefined) {
-        // The administrator's mirror replaces the GitHub feed baked into app-update.yml.
-        yield* electronUpdater.setFeedURL({
-          provider: "generic",
-          url: policy.feedUrl,
-        } as ElectronUpdater.ElectronUpdaterFeedUrl);
       }
 
       const settings = yield* desktopSettings.get;
       const disabledReason = yield* resolveDisabledReason;
-      yield* setState(
-        yield* baseUpdateState(
-          settings.updateChannel,
-          Option.orElse(disabledReason, () => channelBlockedReason(settings.updateChannel)),
-        ),
-      );
+      yield* setState(yield* baseUpdateState(settings.updateChannel, disabledReason));
       if (Option.isSome(disabledReason)) {
         return;
       }
@@ -1200,12 +1145,6 @@ export const make = Effect.gen(function* () {
       options?: { readonly minimumVersion?: string | undefined },
     ) {
       yield* Effect.annotateCurrentSpan({ channel: nextChannel });
-      if (Option.isSome(channelBlockedReason(nextChannel))) {
-        return yield* new DesktopUpdateChannelManagedError({
-          channel: nextChannel,
-          policyMessage: policy.message ?? "Your administrator manages T3 Code updates.",
-        });
-      }
       // A background check holds the updater only briefly, so wait it out instead of refusing.
       const activeAction = yield* tryStartChannelChange.pipe(
         Effect.repeat({

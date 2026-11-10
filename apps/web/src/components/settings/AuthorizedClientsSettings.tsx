@@ -8,7 +8,6 @@ import {
   AuthFilesystemReadScope,
   AuthStandardClientScopes,
   AuthTerminalReadScope,
-  managedCapabilityDenial,
   type AuthEnvironmentScope,
   type AuthGrantScope,
   type AuthPairingCredentialResult,
@@ -56,9 +55,7 @@ import {
 } from "~/environments/primary";
 import { authEnvironment } from "~/state/auth";
 import { readEnvironmentScope } from "~/state/session";
-import { useManagedPolicy, usePrimaryManagedPolicy } from "~/state/managedPolicy";
 import { useAtomCommand } from "~/state/use-atom-command";
-import { ManagedControl } from "../ManagedPolicy";
 import { openUseInAnotherApp } from "../mcp/UseInAnotherAppDialog";
 import { ConnectionStatusDot } from "../ConnectionStatusDot";
 import { ITEM_ROW_CLASSNAME, ITEM_ROW_INNER_CLASSNAME } from "./itemRows";
@@ -590,7 +587,6 @@ export const AuthorizedClientsHeaderAction = memo(function AuthorizedClientsHead
   onRevokeOtherClients,
   delegatableScopes,
 }: AuthorizedClientsHeaderActionProps) {
-  const pairingDenial = managedCapabilityDenial(useManagedPolicy(environmentId), "remoteClients");
   const createPairingCredential = useAtomCommand(authEnvironment.createPairingCredential, {
     reportFailure: false,
   });
@@ -654,16 +650,8 @@ export const AuthorizedClientsHeaderAction = memo(function AuthorizedClientsHead
       >
         {isRevokingOtherClients ? "Revoking…" : "Revoke others"}
       </Button>
-      {pairingDenial !== undefined ? (
-        <ManagedControl reason={pairingDenial}>
-          <Button size="xs" variant="default" disabled>
-            <PlusIcon className="size-3" />
-            Create link
-          </Button>
-        </ManagedControl>
-      ) : null}
       <Dialog
-        open={dialogOpen && pairingDenial === undefined}
+        open={dialogOpen}
         onOpenChange={(open) => {
           setDialogOpen(open);
           if (!open) {
@@ -674,16 +662,14 @@ export const AuthorizedClientsHeaderAction = memo(function AuthorizedClientsHead
           }
         }}
       >
-        {pairingDenial === undefined ? (
-          <DialogTrigger
-            render={
-              <Button size="xs" variant="default">
-                <PlusIcon className="size-3" />
-                Create link
-              </Button>
-            }
-          />
-        ) : null}
+        <DialogTrigger
+          render={
+            <Button size="xs" variant="default">
+              <PlusIcon className="size-3" />
+              Create link
+            </Button>
+          }
+        />
         <DialogPopup className="max-w-md">
           <DialogHeader>
             <DialogTitle>Create pairing link</DialogTitle>
@@ -892,7 +878,6 @@ export const AdvertisedEndpointListRow = memo(function AdvertisedEndpointListRow
   const canDisableTailscaleServe =
     isTailscaleHttpsEndpoint(endpoint) && endpoint.status === "available";
   const shouldShowEndpointUrl = !needsTailscaleSetup;
-  const remoteDenial = managedCapabilityDenial(usePrimaryManagedPolicy(), "remoteClients");
   return (
     <div className={endpointRowClassName(isAvailable)}>
       {isDefault ? (
@@ -928,16 +913,14 @@ export const AdvertisedEndpointListRow = memo(function AdvertisedEndpointListRow
             </span>
           ) : null}
           {needsTailscaleSetup ? (
-            <ManagedControl reason={remoteDenial}>
-              <Button
-                size="xs"
-                variant="outline"
-                onClick={() => onSetupTailscaleServe(endpoint)}
-                disabled={isUpdatingTailscaleServe || remoteDenial !== undefined}
-              >
-                {isUpdatingTailscaleServe ? "Restarting…" : "Setup"}
-              </Button>
-            </ManagedControl>
+            <Button
+              size="xs"
+              variant="outline"
+              onClick={() => onSetupTailscaleServe(endpoint)}
+              disabled={isUpdatingTailscaleServe}
+            >
+              {isUpdatingTailscaleServe ? "Restarting…" : "Setup"}
+            </Button>
           ) : null}
           {canDisableTailscaleServe ? (
             <Button

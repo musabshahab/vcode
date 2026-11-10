@@ -1,8 +1,7 @@
-import type { EnvironmentId, RuntimeMode } from "@t3tools/contracts";
+import type { RuntimeMode } from "@t3tools/contracts";
 import { useAtomValue } from "@effect/atom-react";
 
 import { shortcutLabelForCommand } from "../keybindings";
-import { useManagedPolicy } from "../state/managedPolicy";
 import { primaryServerKeybindingsAtom } from "../state/server";
 import { ComposerControl } from "./chat/ComposerControl";
 import { ComposerPermissionsSection } from "./chat/ComposerFooterControls";
@@ -17,7 +16,6 @@ import { Menu, MenuPopup, MenuTrigger } from "./ui/menu";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "./ui/tooltip";
 
 export function ComposerContextPermissions(props: {
-  environmentId: EnvironmentId | null;
   runtimeMode: RuntimeMode;
   supportedRuntimeModes: ReadonlyArray<RuntimeMode> | undefined;
   onRuntimeModeChange: (mode: RuntimeMode) => void;
@@ -30,7 +28,7 @@ export function ComposerContextPermissions(props: {
     props.runtimeMode,
     props.supportedRuntimeModes,
   );
-  const options = resolveRuntimeModeOptions(modes, useManagedPolicy(props.environmentId));
+  const options = resolveRuntimeModeOptions(modes);
   const composerMenuProps = useComposerMenuProps();
   const { icon: Icon, label } = runtimeModeConfig[mode];
   return (

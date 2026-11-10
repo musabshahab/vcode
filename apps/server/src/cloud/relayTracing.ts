@@ -7,27 +7,18 @@ import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 
 import * as ServerConfig from "../config.ts";
-import * as ManagedPolicy from "../policy/ManagedPolicy.ts";
 import { resolveRelayClientTracingConfig } from "./publicConfig.ts";
 
 const relayClientTracingConfig = resolveRelayClientTracingConfig();
 
-/** Relay traces leave the machine for T3 Connect, so a policy with `telemetry: false` stops them. */
-export const relayLayer = (
-  resource: Omit<RelayTracing.RelayClientTracingResource, "serviceInstanceId">,
-  tracingConfig = relayClientTracingConfig,
-) =>
+const relayLayer = (resource: Omit<RelayTracing.RelayClientTracingResource, "serviceInstanceId">) =>
   Layer.unwrap(
     Effect.gen(function* () {
       const config = yield* ServerConfig.ServerConfig;
-      const policy = yield* ManagedPolicy.ManagedPolicy;
-      return RelayTracing.layer(
-        ManagedPolicy.deniedBy(policy, "telemetry") === undefined ? tracingConfig : null,
-        {
-          ...resource,
-          serviceInstanceId: processServiceInstanceId(config.otelEnvironment.resourceAttributes),
-        },
-      );
+      return RelayTracing.layer(relayClientTracingConfig, {
+        ...resource,
+        serviceInstanceId: processServiceInstanceId(config.otelEnvironment.resourceAttributes),
+      });
     }),
   );
 

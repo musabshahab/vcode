@@ -48,7 +48,7 @@ export type ImportOutcome =
   | {
       readonly kind: "blocked";
       readonly reason: BrowserImportFailureReason;
-      /** Shown instead of the reason's copy, such as a managed policy's refusal. */
+      /** Shown instead of the reason's copy. */
       readonly message?: string;
     };
 

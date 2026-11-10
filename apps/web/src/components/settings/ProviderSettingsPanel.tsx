@@ -89,7 +89,6 @@ import { Toggle, ToggleGroup } from "../ui/toggle-group";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { stackedThreadToast, toastManager } from "../ui/toast";
 import { AddProviderInstanceDialog } from "./AddProviderInstanceDialog";
-import { useManagedPolicy } from "~/state/managedPolicy";
 import { ExpandableText } from "./ExpandableText";
 import { IntervalSecondsField } from "./IntervalSecondsField";
 import { ProviderInstanceCard } from "./ProviderInstanceCard";
@@ -534,10 +533,7 @@ export function EnvironmentProviderSettings({
   readonly readOnly?: boolean;
 }) {
   const settings = useEnvironmentSettings(environmentId);
-  const managedPolicy = useManagedPolicy(environmentId);
-  // A policy that allows no provider leaves nothing to add.
-  const canAddProvider =
-    !readOnly && managedPolicy?.limits?.providers?.allowedDrivers?.length !== 0;
+  const canAddProvider = !readOnly;
   const canWriteSettings = useEnvironmentScope(environmentId, AuthSettingsWriteScope);
   const canRefreshProviders = useEnvironmentScope(environmentId, AuthOrchestrationReadScope);
   const updateSettings = useUpdateEnvironmentSettings(environmentId);
@@ -1018,16 +1014,13 @@ export function EnvironmentProviderSettings({
         readOnly={readOnly}
       />
 
-      {/* The server drops text generators under a provider allow-list. */}
-      {managedPolicy?.limits?.providers?.allowedDrivers === undefined ? (
-        <TextGeneratorsSettings
-          key={`text-generators:${environmentId}`}
-          environmentId={environmentId}
-          environmentLabel={environmentLabel}
-          providers={serverProviders}
-          readOnly={readOnly}
-        />
-      ) : null}
+      <TextGeneratorsSettings
+        key={`text-generators:${environmentId}`}
+        environmentId={environmentId}
+        environmentLabel={environmentLabel}
+        providers={serverProviders}
+        readOnly={readOnly}
+      />
 
       <SettingsSection title="Advanced">
         <SettingsRow

@@ -23,7 +23,6 @@ import {
   AuthTerminalOperateScope,
   CommandId,
   AuthOrchestrationOperateScope,
-  isManagedDriverAllowed,
   ProviderDriverKind,
   ThreadId,
 } from "@t3tools/contracts";
@@ -83,7 +82,6 @@ import { newProjectId, randomUUID } from "../../lib/utils";
 import { agentSessionImport } from "../../state/agentSessions";
 import { readProjects, useProjects, waitForProject } from "../../state/entities";
 import { useEnvironments, usePrimaryEnvironmentId } from "../../state/environments";
-import { managedTelemetryOffMessage, useManagedPolicy } from "../../state/managedPolicy";
 import { useProjectScans } from "../../onboarding/useProjectScans";
 import { projectEnvironment } from "../../state/projects";
 import { serverEnvironment } from "../../state/server";
@@ -140,7 +138,6 @@ export function WelcomePage({
     isPrimary,
     cloud: hasCloudPublicConfig(),
     canShare: canReadRelay && canWriteRelay,
-    policy: useManagedPolicy(environmentId),
   });
   const scans = useProjectScans([environmentId]);
   const [storedSelection, storeSelection] = useLocalStorage(
@@ -313,7 +310,7 @@ export function WelcomePage({
                 </Button>
               </div>
             </div>
-            <TelemetryNotice environmentId={environmentId} />
+            <TelemetryNotice />
           </div>
         </div>
       </div>
@@ -321,12 +318,10 @@ export function WelcomePage({
   );
 }
 
-function TelemetryNotice({ environmentId }: { readonly environmentId: EnvironmentId }) {
-  const telemetryOff = managedTelemetryOffMessage(useManagedPolicy(environmentId));
+function TelemetryNotice() {
   return (
     <p className="mt-auto pt-12 text-2xs leading-relaxed text-muted-foreground/70">
-      {telemetryOff ?? "T3 Code collects anonymous usage data to improve the app."}{" "}
-      {telemetryOff === undefined ? "To opt out, see the" : "See the"}{" "}
+      T3 Code collects anonymous usage data to improve the app. To opt out, see the{" "}
       <a
         className="underline decoration-current/40 underline-offset-2 hover:text-muted-foreground"
         href={PRIVACY_POLICY_URL}
@@ -383,13 +378,10 @@ interface AgentTerminalSession {
 function useWelcomeAgents(environmentId: EnvironmentId) {
   const providers = useAtomValue(serverEnvironment.providersValueAtom(environmentId));
   const serverConfig = useAtomValue(serverEnvironment.configValueAtom(environmentId));
-  const managedPolicy = serverConfig?.managedPolicy;
   return {
     providers,
     serverConfig,
-    ...groupWelcomeAgents(providers, serverConfig?.settings, agentName, (provider) =>
-      isManagedDriverAllowed(managedPolicy, provider.driver),
-    ),
+    ...groupWelcomeAgents(providers, serverConfig?.settings, agentName),
   };
 }
 

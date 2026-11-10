@@ -16,7 +16,6 @@ import {
   type DesktopServerExposureState,
   type DesktopWslState,
   EnvironmentId,
-  managedCapabilityDenial,
   resolveEnvironmentMachineKind,
 } from "@t3tools/contracts";
 import {
@@ -37,7 +36,6 @@ import {
 import { settingsScopeEnvironmentLabel } from "./settingsScopeAxis";
 import { useAccessEnvironment } from "./useAccessEnvironment";
 import { SettingsPageContainer, SettingsRow, SettingsSection } from "./settingsLayout";
-import { ManagedByOrganization } from "../ManagedPolicy";
 import { LocalEnvironmentSetting } from "./LocalEnvironmentSetting";
 import { searchableSetting } from "./settingsSearch";
 import { EnvironmentIconMenu } from "./EnvironmentIconPicker";
@@ -360,11 +358,6 @@ function ConnectionsSettingsContent({
     DesktopServerExposureState["mode"] | null
   >(null);
   const primaryServerConfig = primaryEnvironment?.serverConfig ?? null;
-  // Turning remote access off stays possible; only the way in is managed.
-  const remoteClientsDenial = managedCapabilityDenial(
-    primaryServerConfig?.managedPolicy,
-    "remoteClients",
-  );
   const primaryVersionMismatch = resolveServerConfigVersionMismatch(primaryServerConfig);
   const primaryServerUpdateState = useAtomValue(
     serverEnvironment.updateStateAtom(primaryEnvironmentId),
@@ -1019,7 +1012,6 @@ function ConnectionsSettingsContent({
           />
         ) : null
       }
-      managed={tailscaleHttpsEndpoint?.status === "available" ? undefined : remoteClientsDenial}
     />
   );
   const newestPairingLink = visibleDesktopPairingLinks.find(
@@ -1086,7 +1078,6 @@ function ConnectionsSettingsContent({
         ) : null
       }
       control={renderNetworkAccessToggle()}
-      managed={isLocalBackendNetworkAccessible ? undefined : remoteClientsDenial}
     />
   );
   const renderDisabledNetworkAccessRow = () => (
@@ -1171,11 +1162,6 @@ function ConnectionsSettingsContent({
               ) : null
             }
           >
-            {accessServerConfig?.managedPolicy ? (
-              <div className="px-3 py-2 sm:px-4">
-                <ManagedByOrganization policy={accessServerConfig.managedPolicy} />
-              </div>
-            ) : null}
             {canManageLocalBackend ? (
               <SettingsRow
                 title="Version"

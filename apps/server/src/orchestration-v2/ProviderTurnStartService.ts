@@ -699,24 +699,11 @@ export const layer: Layer.Layer<
       });
       const { isCurrentAttemptInStatus } = runControls;
 
-      const resolvedPolicy = yield* runtimePolicy
-        .resolve({
-          thread: projection.thread,
-          modelSelection: run.modelSelection,
-        })
-        .pipe(Effect.result);
-      if (resolvedPolicy._tag === "Failure") {
-        const error = resolvedPolicy.failure;
-        if (error._tag !== "RuntimePolicyAboveCeilingError") return yield* error;
-        yield* settleStartFailure({
-          signal: "runtime-mode-above-ceiling",
-          title: "Thread mode is above the policy limit",
-          error,
-          message: error.message,
-        });
-        return;
-      }
-      const resolvedRuntimePolicy = resolvedPolicy.success;
+      const resolvedPolicy = yield* runtimePolicy.resolve({
+        thread: projection.thread,
+        modelSelection: run.modelSelection,
+      });
+      const resolvedRuntimePolicy = resolvedPolicy;
       if (!(yield* isCurrentAttemptInStatus("starting"))) return;
       const existingSessionProjection = projection.providerSessions.find(
         (candidate) => candidate.id === providerSessionId,

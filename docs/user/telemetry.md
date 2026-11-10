@@ -23,10 +23,6 @@ To disable product events and relay tracing from the server, set
 `T3CODE_TELEMETRY_ENABLED=false` in its environment before starting it. Relay tracing also stops
 when `T3CODE_OTEL_SDK_DISABLED` or `OTEL_SDK_DISABLED` turns OpenTelemetry export off.
 
-An administrator can turn product events and relay tracing off in the server and desktop app with
-a [managed policy](./managed-policy.md#other-capabilities). This does not control traces sent by
-separate browser or mobile clients.
-
 The desktop app reads `T3CODE_TELEMETRY_ENABLED` from your shell profile (for example `~/.zshrc`) on macOS and
 Linux, so export it there and restart the app. On Windows, set it as a user environment variable.
 
@@ -46,8 +42,8 @@ To stop sending them, turn off **Send crash reports** in **Settings > About T3 C
 
 The mobile app also sends relay connection traces when its build has tracing configured. These
 carry an identifier for the current app session. **Send crash reports** does not control these
-traces, and the mobile app has no separate relay tracing toggle. Server environment variables and
-managed policy do not disable mobile tracing.
+traces, and the mobile app has no separate relay tracing toggle. Server environment variables do
+not disable mobile tracing.
 
 ## Agent activity for mobile notifications
 

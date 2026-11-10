@@ -408,29 +408,3 @@ it.effect(
       });
     }).pipe(Effect.scoped, Effect.provide(persistence)),
 );
-
-it.effect("imports under a policy ceiling in the project's default, kept under the ceiling", () =>
-  Effect.gen(function* () {
-    const projections = yield* ProjectionStore.ProjectionStoreV2;
-    const runtimes = yield* ProviderSessionRuntime.ProviderSessionRuntimeRepository;
-    const source = candidate(CODEX_MODEL_SELECTION, "ceiling");
-    const threadId = importId(source);
-    const importer = yield* makeImporter(
-      [source],
-      Effect.void,
-      ServerSettings.layerTest(
-        { defaultRuntimeMode: "full-access" },
-        {
-          organization: "Example Corp",
-          lockedSettings: [],
-          limits: { maxRuntimeMode: "auto-accept-edits" },
-        },
-      ),
-    );
-    expect(yield* importer.run).toEqual({ importedCount: 1, skippedCount: 0 });
-    expect((yield* projections.getThread(threadId)).runtimeMode).toBe("auto-accept-edits");
-    expect(Option.getOrThrow(yield* runtimes.getByThreadId({ threadId })).runtimeMode).toBe(
-      "auto-accept-edits",
-    );
-  }).pipe(Effect.scoped, Effect.provide(persistence)),
-);

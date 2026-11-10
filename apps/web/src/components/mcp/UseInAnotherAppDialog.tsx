@@ -6,8 +6,6 @@ import {
   AuthRelayReadScope,
   type EnvironmentConnectReachability,
   type EnvironmentId,
-  managedCapabilityDenial,
-  managedRuntimeModeDenial,
   mcpClientScopes,
   sessionGrantsScope,
 } from "@t3tools/contracts";
@@ -31,7 +29,6 @@ import { useNowSecond } from "~/hooks/useNowSecond";
 import { readLocalApi } from "~/localApi";
 import { appAtomRegistry } from "~/rpc/atomRegistry";
 import { type EnvironmentPresentation, usePrimaryEnvironmentId } from "~/state/environments";
-import { useManagedPolicy } from "~/state/managedPolicy";
 import { mintMcpApprovalCodeOn } from "~/state/peerPairingCode";
 import { relayEnvironmentDiscovery } from "~/state/relay";
 import { useEnvironmentScope, useEnvironmentSessionState } from "~/state/session";
@@ -199,21 +196,14 @@ function useGrantableLevels(environment: EnvironmentPresentation) {
   const environmentId = environment.environmentId;
   const session = useEnvironmentSessionState(environmentId).data;
   const canMint = useEnvironmentScope(environmentId, AuthAccessWriteScope);
-  const policy = useManagedPolicy(environmentId);
-  // The server refuses codes for any level when its policy keeps remote clients out.
-  const remoteDenial = managedCapabilityDenial(policy, "remoteClients");
   return new Map(
     AuthMcpClientAccess.literals.flatMap((level) => {
-      const reason =
-        remoteDenial ??
-        (!canMint
-          ? `This device needs the Manage access permission on ${environment.label}.`
-          : session === null ||
-              !mcpClientScopes(level).every((scope) => sessionGrantsScope(session, scope))
-            ? `This device cannot grant this on ${environment.label}.`
-            : level === "read-only"
-              ? undefined
-              : managedRuntimeModeDenial(policy, level));
+      const reason = !canMint
+        ? `This device needs the Manage access permission on ${environment.label}.`
+        : session === null ||
+            !mcpClientScopes(level).every((scope) => sessionGrantsScope(session, scope))
+          ? `This device cannot grant this on ${environment.label}.`
+          : undefined;
       return reason === undefined ? [] : [[level, reason] as const];
     }),
   );
@@ -455,8 +445,6 @@ function GateScreen({
                 </>
               ) : null}
             </div>
-          ) : turnOnHere.kind === "policy" ? (
-            <p className="text-sm text-muted-foreground">{turnOnHere.reason}</p>
           ) : (
             <div className="space-y-2 text-sm">
               <CommandBlock command="t3 connect link" />

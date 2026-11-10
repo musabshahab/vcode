@@ -465,9 +465,7 @@ export interface TailscaleServeRoute {
  * its command. A web route names its path: without one the CLI removes every handler on the port,
  * and answers its own confirmation prompt with yes when nobody is there to answer.
  */
-export const tailscaleServeOffArgs = (
-  route: TailscaleServeRoute,
-): ReadonlyArray<string> | undefined =>
+const tailscaleServeOffArgs = (route: TailscaleServeRoute): ReadonlyArray<string> | undefined =>
   route.owner === "foreground"
     ? undefined
     : [
@@ -494,10 +492,6 @@ export const disableTailscaleServe = Effect.fn("tailscale.disableTailscaleServe"
     TAILSCALE_SERVE_TIMEOUT,
   );
 });
-
-/** Removes a TCP forward on `servePort`; one port holds one forward, so nothing else goes. */
-export const disableTailscaleServeTcp = (servePort: number) =>
-  runTailscaleCommand(tailscaleServeOffArgs({ servePort })!, TAILSCALE_SERVE_TIMEOUT);
 
 const TailscaleServeConfigJson = Schema.Struct({
   TCP: Schema.optional(

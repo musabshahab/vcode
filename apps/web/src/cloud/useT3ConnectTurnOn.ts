@@ -1,12 +1,6 @@
-import {
-  AuthRelayReadScope,
-  AuthRelayWriteScope,
-  type EnvironmentId,
-  managedCapabilityDenial,
-} from "@t3tools/contracts";
+import { AuthRelayReadScope, AuthRelayWriteScope, type EnvironmentId } from "@t3tools/contracts";
 
 import { isElectron } from "../env";
-import { useManagedPolicy } from "../state/managedPolicy";
 import { useEnvironmentScope } from "../state/session";
 import { useCloudLinkState } from "./cloudLinkState";
 import { hasCloudPublicConfig } from "./publicConfig";
@@ -16,7 +10,6 @@ import { resolveT3ConnectTurnOn } from "./t3ConnectState";
 export function useT3ConnectTurnOn(environmentId: EnvironmentId | null) {
   const canReadRelay = useEnvironmentScope(environmentId, AuthRelayReadScope);
   const canWriteRelay = useEnvironmentScope(environmentId, AuthRelayWriteScope);
-  const connectDenial = managedCapabilityDenial(useManagedPolicy(environmentId), "connect");
   const linkState = useCloudLinkState(environmentId).data;
   return resolveT3ConnectTurnOn({
     desktopApp: isElectron,
@@ -25,6 +18,5 @@ export function useT3ConnectTurnOn(environmentId: EnvironmentId | null) {
     cloudConfigured: hasCloudPublicConfig(),
     canReadRelay,
     canWriteRelay,
-    connectDenial,
   });
 }

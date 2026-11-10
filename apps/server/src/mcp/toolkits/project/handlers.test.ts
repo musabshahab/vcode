@@ -10,7 +10,6 @@ import {
   type ModelSelection,
   type RuntimeMode,
   type OrchestrationV2ThreadShell,
-  ThreadId,
 } from "@t3tools/contracts";
 import * as NodeCrypto from "@effect/platform-node/NodeCrypto";
 import * as NodeServices from "@effect/platform-node/NodeServices";
@@ -24,7 +23,6 @@ import * as Option from "effect/Option";
 import * as Stream from "effect/Stream";
 
 import * as DocumentText from "../../../provider/DocumentText.ts";
-import { OrchestratorRuntimeModeAboveCeilingError } from "../../../orchestration-v2/Orchestrator.ts";
 import * as ThreadLaunch from "../../../orchestration-v2/ThreadLaunchService.ts";
 import * as ThreadManagement from "../../../orchestration-v2/ThreadManagementService.ts";
 import * as ServerConfig from "../../../config.ts";
@@ -50,8 +48,6 @@ const clientLaunchHarness = (input: {
   readonly workspaceRoot?: string;
   readonly checkWorktreeBase?: ThreadLaunch.ThreadLaunchService["Service"]["checkWorktreeBase"];
   readonly hostedAppUrl?: string;
-  /** The orchestrator refuses the new thread's mode, as under a managed ceiling. */
-  readonly refusedByCeiling?: true;
 }) => {
   const projectId = ProjectId.make("project:client-target");
   const modelSelection = {
@@ -113,23 +109,6 @@ const clientLaunchHarness = (input: {
       checkWorktreeBase: input.checkWorktreeBase ?? (() => Effect.void),
       launch: (launch) => {
         input.launched.push(launch);
-        if (input.refusedByCeiling) {
-          return Effect.fail(
-            new ThreadLaunch.ThreadLaunchError({
-              operation: "create-thread",
-              commandId: launch.commandId,
-              projectId: launch.projectId,
-              cause: new OrchestratorRuntimeModeAboveCeilingError({
-                commandId: launch.commandId,
-                threadId: launch.threadId ?? ThreadId.make("thread:refused"),
-                refused: "mode",
-                runtimeMode: launch.runtimeMode,
-                maxRuntimeMode: "approval-required",
-                organization: "Example Corp",
-              }),
-            }),
-          );
-        }
         return Effect.succeed({
           threadId: launch.threadId,
           projection: {
@@ -186,10 +165,9 @@ it.effect(
           readonly targeted?: false;
           readonly overrideModel?: ModelSelection;
           readonly hostedAppUrl?: string;
-          readonly refusedByCeiling?: true;
         },
       ) {
-        const { targeted, overrideModel, hostedAppUrl, refusedByCeiling, ...input } = params;
+        const { targeted, overrideModel, hostedAppUrl, ...input } = params;
         const launched: Array<ThreadLaunch.ThreadLaunchInput> = [];
         const { projectId, modelSelection, dependencies } = clientLaunchHarness({
           runtimeModeCeiling,
@@ -197,7 +175,6 @@ it.effect(
           launched,
           ...(overrideModel === undefined ? {} : { overrideModel }),
           ...(hostedAppUrl === undefined ? {} : { hostedAppUrl }),
-          ...(refusedByCeiling === undefined ? {} : { refusedByCeiling }),
         });
         const toolkit = yield* ProjectToolkit.pipe(
           Effect.provide(
@@ -261,16 +238,6 @@ it.effect(
         overrideModel,
       });
       expect(fromSettings.launched[0]?.modelSelection).toEqual(overrideModel);
-
-      // An administrator's ceiling the orchestrator enforces is named, not reported as unavailable.
-      const managed = yield* launchWith("full-access", "full-access", {
-        title: "Fix",
-        refusedByCeiling: true,
-      });
-      expect(managed.result).toMatchObject({
-        code: "invalid_request",
-        message: "Example Corp limits threads to Supervised.",
-      });
     }),
 );
 

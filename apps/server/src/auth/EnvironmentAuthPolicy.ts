@@ -19,7 +19,7 @@ export class EnvironmentAuthPolicy extends Context.Service<
 >()("t3/auth/EnvironmentAuthPolicy") {}
 
 /** The auth policy a server started with `config` runs under. */
-export function resolveServerAuthPolicy(
+function resolveServerAuthPolicy(
   config: Pick<ServerConfig.ServerConfig["Service"], "mode" | "host">,
 ): ServerAuthPolicy {
   if (isRemoteReachableHost(config.host)) return "remote-reachable";

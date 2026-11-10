@@ -1,5 +1,4 @@
 import {
-  type ManagedPolicySummary,
   ProjectId,
   resolveProviderInstanceEnabled,
   ProviderDriverKind,
@@ -38,7 +37,6 @@ function provider(name: string, overrides: Partial<ServerProvider> = {}): Server
 
 const nameOf = (entry: ServerProvider) => entry.displayName ?? entry.driver;
 const names = (entries: ReadonlyArray<ServerProvider>) => entries.map(nameOf);
-const allowAll = () => true;
 
 describe("groupWelcomeAgents", () => {
   it("lists agents on the computer by state, then name, and everything else by name", () => {
@@ -53,7 +51,6 @@ describe("groupWelcomeAgents", () => {
       ],
       undefined,
       nameOf,
-      allowAll,
     );
 
     expect(names(groups.found)).toEqual(["Claude", "Codex", "Zeta"]);
@@ -100,7 +97,6 @@ describe("groupWelcomeAgents", () => {
       ],
       settings,
       nameOf,
-      allowAll,
     );
 
     expect(names(groups.found)).toEqual(["Broken", "Codex"]);
@@ -109,20 +105,8 @@ describe("groupWelcomeAgents", () => {
     expect(groups.checking).toBe(false);
   });
 
-  it("leaves out agents the computer's policy does not allow, ready or not", () => {
-    const groups = groupWelcomeAgents(
-      [provider("Codex"), provider("Blocked")],
-      undefined,
-      nameOf,
-      (entry) => entry.driver !== "blocked",
-    );
-
-    expect(names(groups.found)).toEqual(["Codex"]);
-    expect(groups.readyCount).toBe(1);
-  });
-
   it("reports checking before the computer has sent its providers", () => {
-    expect(groupWelcomeAgents(undefined, undefined, nameOf, allowAll)).toEqual({
+    expect(groupWelcomeAgents(undefined, undefined, nameOf)).toEqual({
       checking: true,
       readyCount: 0,
       found: [],
@@ -233,18 +217,12 @@ describe("codexCardProvider", () => {
 });
 
 describe("welcomeOffersPhone", () => {
-  it("offers the phone only through T3 Connect on the primary computer, and only when allowed", () => {
-    const policy = (limits: ManagedPolicySummary["limits"]): ManagedPolicySummary => ({
-      organization: "Acme",
-      lockedSettings: [],
-      ...(limits === undefined ? {} : { limits }),
-    });
+  it("offers the phone only through T3 Connect on the primary computer", () => {
     const offers = (input: Partial<Parameters<typeof welcomeOffersPhone>[0]>) =>
       welcomeOffersPhone({
         isPrimary: true,
         cloud: true,
         canShare: true,
-        policy: undefined,
         ...input,
       });
 
@@ -252,8 +230,6 @@ describe("welcomeOffersPhone", () => {
     // There is no pairing-code fallback; without T3 Connect the page leaves the phone out.
     expect(offers({ cloud: false })).toBe(false);
     expect(offers({ canShare: false })).toBe(false);
-    expect(offers({ policy: policy({ connect: false }) })).toBe(false);
-    expect(offers({ policy: policy({ clients: ["desktop"] }) })).toBe(false);
     expect(offers({ isPrimary: false })).toBe(false);
   });
 });

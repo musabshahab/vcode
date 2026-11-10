@@ -30,8 +30,6 @@ import { FetchHttpClient, HttpClient, HttpClientRequest, HttpClientResponse } fr
 import * as HttpApiClient from "effect/http-api/HttpApiClient";
 
 import * as EnvironmentAuth from "../auth/EnvironmentAuth.ts";
-import * as ManagedLimits from "../policy/managedLimits.ts";
-import * as ManagedPolicy from "../policy/ManagedPolicy.ts";
 import * as ServerSecretStore from "../auth/ServerSecretStore.ts";
 import * as BootService from "../cloud/bootService.ts";
 import * as CliState from "../cloud/CliState.ts";
@@ -536,7 +534,6 @@ export const runCloudCommand = Effect.fn("cloud.cli.run_cloud_command")(function
     | Prompt.Environment
     | ServerConfig.ServerConfig
     | ServerEnvironment.ServerEnvironmentIdentity
-    | ManagedPolicy.ManagedPolicy
   >,
   options?: {
     readonly quietLogs?: boolean;
@@ -554,21 +551,13 @@ export const runCloudCommand = Effect.fn("cloud.cli.run_cloud_command")(function
     RelayClient.layerCloudflared({ baseDir: config.baseDir }),
     EnvironmentAuth.layerRuntime,
     CliService.layer(config),
-    RelayTracing.layerHeadlessRelayClient.pipe(Layer.provide(ManagedPolicy.layer)),
+    RelayTracing.layerHeadlessRelayClient,
   ).pipe(
     Layer.provideMerge(FetchHttpClient.layer),
     Layer.provideMerge(ServerConfig.layer(config)),
     Layer.provide(Layer.succeed(References.MinimumLogLevel, minimumLogLevel)),
   );
   return yield* run.pipe(Effect.provide(layerRuntime));
-});
-
-/** Status, unlink, and logout stay available so a machine can leave Connect the policy turned off. */
-export const requireConnectAllowed = Effect.gen(function* () {
-  const policy = yield* ManagedPolicy.ManagedPolicy;
-  if (!ManagedLimits.allowsConnect(policy)) {
-    return yield* ManagedLimits.refuseConnect(policy);
-  }
 });
 
 const connectedAs = (identity: string | null): string => (identity ? ` as ${identity}` : "");
@@ -627,7 +616,6 @@ const connectLoginCommand = Command.make("login", {
     runCloudCommand(
       flags,
       Effect.gen(function* () {
-        yield* requireConnectAllowed;
         yield* Console.log("T3 Connect\n");
         const identity = yield* authorizeCli(flags);
         yield* Console.log(`✓ Signed in${connectedAs(identity)}`);
@@ -651,7 +639,6 @@ const connectLinkCommand = Command.make("link", {
     runCloudCommand(
       flags,
       Effect.gen(function* () {
-        yield* requireConnectAllowed;
         yield* Console.log("T3 Connect\n");
         const linked = yield* linkEnvironmentForConnect(flags);
         if (linked) {
@@ -746,7 +733,6 @@ const connectPublishCommand = Command.make("publish", {
         const secrets = yield* ServerSecretStore.ServerSecretStore;
         const tokens = yield* CliTokenManager.CloudCliTokenManager;
         const enabled = !flags.disable;
-        if (enabled) yield* requireConnectAllowed;
         yield* secrets.set(
           PUBLISH_AGENT_ACTIVITY_SECRET,
           stringToBytes(enabled ? "true" : "false"),

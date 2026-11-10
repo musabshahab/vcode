@@ -4,8 +4,6 @@ import {
   AuthMcpApprovalError,
   AuthMcpClientAccess,
   AuthMcpAuthorizationRequest,
-  isRuntimeModeAbove,
-  managedRuntimeModeCeilingMessage,
   parseMcpApprovalCode,
 } from "@t3tools/contracts";
 import { Radio as RadioPrimitive } from "@base-ui/react/radio";
@@ -91,11 +89,7 @@ export function ConnectAgentSurface() {
   const [loaded, setLoaded] = useState<Loaded>({ status: "loading" });
   const [requestedAccess, setAccess] = useState<AuthMcpClientAccess | null>(null);
   const [pairingCode, setPairingCode] = useState("");
-  const access = resolveMcpAccess(
-    requestedAccess,
-    loaded.status === "ready" ? loaded.details.runtimeModeCeiling : undefined,
-    pairingCode.trim().length > 0,
-  );
+  const access = resolveMcpAccess(requestedAccess, pairingCode.trim().length > 0);
   const [errorMessage, setErrorMessage] = useState("");
   const [pending, setPending] = useState<"approve" | "deny" | null>(null);
 
@@ -248,7 +242,7 @@ export function ConnectAgentSurface() {
                   key={option}
                   access={option}
                   selected={option === access}
-                  disabledReason={ceilingReason(details, option)}
+                  disabledReason={undefined}
                 />
               ))}
             </RadioGroup>
@@ -295,16 +289,6 @@ function ConnectAgentHeading({
   readonly description: ReactNode;
 }) {
   return <StandalonePageHeader context="Agent sign-in" title={title} description={description} />;
-}
-
-/** Why a managed policy keeps `access` from being granted, or undefined when it may be. */
-function ceilingReason(details: AuthMcpApprovalDetails, access: AuthMcpClientAccess) {
-  const ceiling = details.runtimeModeCeiling;
-  return ceiling === undefined ||
-    access === "read-only" ||
-    !isRuntimeModeAbove(access, ceiling.maxRuntimeMode)
-    ? undefined
-    : managedRuntimeModeCeilingMessage(ceiling.organization, ceiling.maxRuntimeMode);
 }
 
 /** One access level in a radio group; `description` replaces the level's own, null hides it. */

@@ -58,7 +58,7 @@ export function resolveLegacySessionCookieName(input: {
  * this machine. Unset means 127.0.0.1. Only a loopback literal or `localhost` counts: Node listens
  * on every interface for an empty host, and any other name resolves through DNS.
  */
-export function loopbackBindAddress(host: string | undefined): string | undefined {
+function loopbackBindAddress(host: string | undefined): string | undefined {
   if (host === undefined) return "127.0.0.1";
   const address = normalizeHostname(host);
   if (address === "localhost") return "127.0.0.1";
