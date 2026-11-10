@@ -43,8 +43,6 @@ import * as Statement from "effect/sql/Statement";
 import { vi } from "vite-plus/test";
 
 import * as AssetSigner from "./assets/AssetSigner.ts";
-import * as AgentSessionImporter from "./project/AgentSessionImporter.ts";
-import * as AgentSessionScanner from "./project/AgentSessionScanner.ts";
 import * as ProviderInstallation from "./provider/providerInstallation.ts";
 import * as BackgroundPolicy from "./background/BackgroundPolicy.ts";
 import * as CheckpointDiffQuery from "./checkpointing/CheckpointDiffQuery.ts";
@@ -752,8 +750,6 @@ const layerUnusedConfigRpcServices = Layer.mergeAll(
   Layer.mock(TextGenerators.TextGenerators)({}),
   Layer.mock(ProjectFaviconResolver.ProjectFaviconResolver)({}),
   Layer.mock(ProjectEnrichment.ProjectEnrichmentService)({}),
-  Layer.mock(AgentSessionImporter.AgentSessionImporter)({}),
-  Layer.mock(AgentSessionScanner.AgentSessionScanner)({}),
   Layer.mock(BackgroundPolicy.BackgroundPolicy)({}),
   Layer.mock(CheckpointDiffQuery.CheckpointDiffQuery)({}),
   Layer.mock(CommandOutputHub.CommandOutputHub)({}),

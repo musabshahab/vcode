@@ -125,8 +125,6 @@
   "src/preview/ServerBrowserContexts.test.ts": 0.6,
   "src/preview/ServerBrowserPage.test.ts": 1.2,
   "src/preview/ServerBrowserStream.test.ts": 1.5,
-  "src/project/AgentSessionImporter.test.ts": 1.5,
-  "src/project/AgentSessionScanner.test.ts": 0.8,
   "src/project/ManagedProjectFolders.test.ts": 1.7,
   "src/project/ProjectCloneTracker.test.ts": 0.5,
   "src/project/ProjectService.deletion.test.ts": 0.7,

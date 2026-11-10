@@ -1,41 +1,27 @@
 import { useAuth } from "@clerk/react";
 import { useAtomValue } from "@effect/atom-react";
 import type {
-  AgentSessionProjectCandidate,
   EnvironmentId,
-  ProjectId,
   ProviderInstanceId,
-  ScopedProjectRef,
   ServerConfig,
   ServerProvider,
 } from "@t3tools/contracts";
-import { scopeProjectRef, scopeThreadRef } from "@t3tools/client-runtime/environment";
+import { scopeThreadRef } from "@t3tools/client-runtime/environment";
 import { resolveProviderInstanceDisplayName as agentName } from "@t3tools/client-runtime/state/provider-instance-display";
 import {
   isAtomCommandInterrupted,
   squashAtomCommandFailure,
 } from "@t3tools/client-runtime/state/runtime";
 import {
-  AgentSessionSource,
   AuthProvidersManageScope,
   AuthRelayReadScope,
   AuthRelayWriteScope,
   AuthTerminalOperateScope,
-  CommandId,
-  AuthOrchestrationOperateScope,
-  ProviderDriverKind,
   ThreadId,
 } from "@t3tools/contracts";
 import { Link, useBlocker } from "@tanstack/react-router";
 import * as Schema from "effect/Schema";
-import {
-  CheckIcon,
-  ChevronDownIcon,
-  ChevronRightIcon,
-  PlusIcon,
-  SmartphoneIcon,
-  TerminalIcon,
-} from "lucide-react";
+import { CheckIcon, ChevronDownIcon, PlusIcon, SmartphoneIcon, TerminalIcon } from "lucide-react";
 import { useEffect, useEffectEvent, useRef, useState, type ReactNode } from "react";
 
 import { TYPOGRAPHY_ADVANCED_STORAGE_KEY } from "../../appearanceFonts";
@@ -48,16 +34,6 @@ import { hasCloudPublicConfig } from "../../cloud/publicConfig";
 import { workspaceAreaProps } from "../../lib/workspaceFocus";
 import { useT3ConnectAuthPrompt } from "../clerk/useT3ConnectAuthPrompt";
 import { completeOnboarding } from "../../onboarding/firstRun";
-import {
-  groupOnboardingProjects,
-  partitionOnboardingProjects,
-  onboardingProjectKey,
-  resolveOnboardingLandingProject,
-  isNewOnboardingProject,
-  resolveOnboardingProjectId,
-  type OnboardingProjectGroup,
-  splitOnboardingProjectPath,
-} from "../../onboarding/projectImport.logic";
 import {
   resolveOnboardingProviderInstallCommand,
   resolveOnboardingProviderLoginCommand,
@@ -72,23 +48,10 @@ import {
   welcomeAgentState,
   welcomeOffersPhone,
 } from "../../onboarding/welcomePage.logic";
-import {
-  StoredWelcomeImportSelection,
-  type WelcomeImportSelection,
-  welcomeImportSelectionKey,
-} from "../../onboarding/welcomeState";
-import { newProjectId, randomUUID } from "../../lib/utils";
-import { agentSessionImport } from "../../state/agentSessions";
-import { readProjects, useProjects, waitForProject } from "../../state/entities";
+import { randomUUID } from "../../lib/utils";
 import { useEnvironments, usePrimaryEnvironmentId } from "../../state/environments";
-import { useProjectScans } from "../../onboarding/useProjectScans";
-import { projectEnvironment } from "../../state/projects";
 import { serverEnvironment } from "../../state/server";
-import {
-  readEnvironmentScope,
-  useEnvironmentScope,
-  useEnvironmentsWithScope,
-} from "../../state/session";
+import { readEnvironmentScope, useEnvironmentScope } from "../../state/session";
 import { terminalEnvironment } from "../../state/terminal";
 import { useAtomCommand } from "../../state/use-atom-command";
 import { getProviderSummary } from "../settings/providerStatus";
@@ -98,30 +61,24 @@ import { readCodexSetupMode } from "../settings/CodexSetupSection.logic";
 import { TerminalViewport } from "../ThreadTerminalDrawer";
 import { ProviderInstanceIcon } from "../chat/ProviderInstanceIcon";
 import { Button } from "../ui/button";
-import { Checkbox } from "../ui/checkbox";
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from "../ui/collapsible";
 import { QRCodeSvg } from "../ui/qr-code";
-import { Tooltip, TooltipTrigger, TooltipPopup } from "../ui/tooltip";
-import { ScrollArea } from "../ui/scroll-area";
 import { SidebarInset } from "../ui/sidebar";
 import { toastManager } from "../ui/toast";
 import { WorkspacePageHeader } from "../WorkspacePageHeader";
 import { cn } from "../../lib/utils";
-import { formatRelativeTime } from "../../timestampFormat";
 
 const AGENT_ONBOARDING_THREAD_ID = ThreadId.make("onboarding-agent-setup");
-const SCAN_LIMIT_MESSAGE = "Scan limit reached. Some projects or conversations may be missing.";
 
 /**
- * First-run page for one computer: its agents, the projects found in agent history, and the
- * phone app. Every part is optional except one ready agent to start chatting.
+ * First-run page for one computer: its agents and the phone app. Every part is optional except one ready agent to start chatting.
  */
 export function WelcomePage({
   environmentId,
   onDone,
 }: {
   readonly environmentId: EnvironmentId;
-  readonly onDone: (projectRef?: ScopedProjectRef) => void | Promise<void>;
+  readonly onDone: () => void | Promise<void>;
 }) {
   const { environments } = useEnvironments();
   const label =
@@ -138,20 +95,7 @@ export function WelcomePage({
     cloud: hasCloudPublicConfig(),
     canShare: canReadRelay && canWriteRelay,
   });
-  const scans = useProjectScans([environmentId]);
-  const [storedSelection, storeSelection] = useLocalStorage(
-    welcomeImportSelectionKey(environmentId),
-    null,
-    StoredWelcomeImportSelection,
-  );
-  // The page keeps its own copy, so a failed write (a full quota) cannot undo a choice.
-  const [importSelection, setImportSelectionState] = useState(storedSelection);
-  const setImportSelection = (next: WelcomeImportSelection | null) => {
-    setImportSelectionState(next);
-    storeSelection(next);
-  };
-  const [isImporting, setIsImporting] = useState(false);
-  // True from Start until the landing; leaving earlier would drop the import or the landing.
+  // True from Start until the landing; leaving earlier would drop the landing.
   const holdPageRef = useRef(false);
   useBlocker({
     shouldBlockFn: () => {
@@ -164,18 +108,12 @@ export function WelcomePage({
       });
       return true;
     },
-    // Electron cancels a quit silently when unload is blocked. A later visit resumes the import.
+    // Electron cancels a quit silently when unload is blocked.
     enableBeforeUnload: false,
   });
   const finishingPromiseRef = useRef<Promise<boolean> | null>(null);
-  // Starting before the project list loads keeps saved picks, such as an import a quit cut short.
-  const keepChoicesRef = useRef(false);
   const completionErrorToastIdRef = useRef<ReturnType<typeof toastManager.add> | null>(null);
-  const finish = (
-    projectRef?: ScopedProjectRef,
-    importWarning?: string,
-    importedThreadCount = 0,
-  ) => {
+  const finish = () => {
     if (finishingPromiseRef.current !== null) return finishingPromiseRef.current;
     if (completionErrorToastIdRef.current !== null) {
       toastManager.close(completionErrorToastIdRef.current);
@@ -191,21 +129,7 @@ export function WelcomePage({
         }
         // Release before onDone so its own navigation is not blocked.
         holdPageRef.current = false;
-        await onDone(projectRef);
-        if (!keepChoicesRef.current) setImportSelection(null);
-        if (importWarning) {
-          toastManager.add({
-            type: "warning",
-            title: "Some history was not imported",
-            description: importWarning,
-            timeout: 0,
-          });
-        } else if (importedThreadCount > 0) {
-          toastManager.add({
-            type: "success",
-            title: `Imported ${importedThreadCount} ${importedThreadCount === 1 ? "thread" : "threads"}`,
-          });
-        }
+        await onDone();
         return true;
       })
       .catch(() => {
@@ -230,27 +154,8 @@ export function WelcomePage({
     finishingPromiseRef.current = completion;
     return completion;
   };
-  const projectImport = useProjectImport({
-    scans,
-    importSelection,
-    onImportSelectionChange: setImportSelection,
-    isImporting,
-    setIsImporting,
-    holdPageRef,
-    onDone: finish,
-  });
-  // Without import permission, starting simply skips the projects.
-  const selected = projectImport.canWrite ? projectImport.selected : [];
-  const newCount = selected.filter(projectImport.isNew).length;
   const start = () => {
-    keepChoicesRef.current = scans.some((scan) => scan.data === null);
-    if (selected.length === 0) {
-      projectImport.finishAfterImport();
-      return;
-    }
-    // Stored now, so after a restart mid-import these stay checked even once they exist.
-    projectImport.setSelectedKeys(new Set(selected.map((candidate) => candidate.key)));
-    void projectImport.runImport(selected);
+    void finish();
   };
 
   return (
@@ -271,24 +176,14 @@ export function WelcomePage({
               Setting up <span className="text-foreground">{label}</span>.
             </p>
             <div className="mt-10 border-t border-border/60">
-              <AgentsSection
-                environmentId={environmentId}
-                label={label}
-                isPrimary={isPrimary}
-                onImportSourceEnabled={() => scans[0]?.refresh()}
-              />
-              <ProjectsSection
-                scan={scans[0]}
-                projectImport={projectImport}
-                isImporting={isImporting}
-              />
+              <AgentsSection environmentId={environmentId} label={label} isPrimary={isPrimary} />
               {showPhone ? <PhoneSection environmentId={environmentId} /> : null}
             </div>
             <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
               {agentReady ? (
                 <span />
               ) : (
-                <Button variant="ghost-muted" disabled={isImporting} onClick={start}>
+                <Button variant="ghost-muted" onClick={start}>
                   Start without an agent
                 </Button>
               )}
@@ -296,16 +191,8 @@ export function WelcomePage({
                 {agentReady ? null : (
                   <span className="text-xs text-muted-foreground">Set up one agent to start.</span>
                 )}
-                <Button disabled={!agentReady || isImporting} onClick={start}>
-                  {isImporting
-                    ? selected.length > 0
-                      ? "Importing…"
-                      : "Starting…"
-                    : newCount > 0
-                      ? `Import ${newCount} ${newCount === 1 ? "project" : "projects"} and start`
-                      : selected.length > 0
-                        ? "Import threads and start"
-                        : "Start"}
+                <Button disabled={!agentReady} onClick={start}>
+                  Start
                 </Button>
               </div>
             </div>
@@ -366,8 +253,6 @@ function useWelcomeAgents(environmentId: EnvironmentId) {
   };
 }
 
-const isImportSource = Schema.is(AgentSessionSource);
-
 // The setup card opens below a long list, so bring it into view once.
 const revealOnMount = (node: HTMLElement | null) => node?.scrollIntoView({ block: "nearest" });
 
@@ -375,13 +260,11 @@ function AgentsSection({
   environmentId,
   label,
   isPrimary,
-  onImportSourceEnabled,
 }: {
   readonly environmentId: EnvironmentId;
   readonly label: string;
   readonly isPrimary: boolean;
   // The project scan only reads agents that are on, so turning one on can find more history.
-  readonly onImportSourceEnabled: () => void;
 }) {
   const { providers, serverConfig, checking, found, available } = useWelcomeAgents(environmentId);
   const refreshProviders = useAtomCommand(serverEnvironment.refreshProviders, {
@@ -491,7 +374,6 @@ function AgentsSection({
       return;
     }
     void refreshProviders({ environmentId, input: { instanceId: provider.instanceId } });
-    if (isImportSource(provider.driver)) onImportSourceEnabled();
   };
 
   // One action per agent, the same in the list and in the grid.
@@ -667,169 +549,6 @@ function AgentLogoStack({ providers }: { readonly providers: ReadonlyArray<Serve
         />
       ))}
     </span>
-  );
-}
-
-function ProjectsSection({
-  scan,
-  projectImport,
-  isImporting,
-}: {
-  readonly scan: ReturnType<typeof useProjectScans>[number] | undefined;
-  readonly projectImport: ReturnType<typeof useProjectImport>;
-  readonly isImporting: boolean;
-}) {
-  const [reviewing, setReviewing] = useState(false);
-  const {
-    canWrite,
-    candidates,
-    isNew,
-    recent,
-    selected,
-    selectedKeys,
-    setSelectedKeys,
-    visibleImportError,
-  } = projectImport;
-  if (scan === undefined) return null;
-  if (scan.isPending && candidates.length === 0) {
-    return (
-      <WelcomeSection title="Projects">
-        <p className="text-sm leading-10 text-muted-foreground">
-          Looking for projects in your {IMPORT_SOURCES_LABEL} history…
-        </p>
-      </WelcomeSection>
-    );
-  }
-  const retry = (
-    <Button variant="ghost" size="sm" onClick={scan.refresh}>
-      Retry
-    </Button>
-  );
-  if (scan.error !== null && candidates.length === 0) {
-    return (
-      <WelcomeSection title="Projects">
-        <div
-          role="alert"
-          className="flex min-h-10 items-center justify-between gap-3 text-sm text-muted-foreground"
-        >
-          <span>Could not check projects. {scan.error}</span>
-          {retry}
-        </div>
-      </WelcomeSection>
-    );
-  }
-  if (candidates.length === 0) {
-    return scan.data?.truncated ? (
-      <WelcomeSection title="Projects">
-        <p className="text-xs leading-10 text-muted-foreground" role="status">
-          {SCAN_LIMIT_MESSAGE}
-        </p>
-      </WelcomeSection>
-    ) : null;
-  }
-
-  const allKeys = candidates.map((candidate) => candidate.key);
-  // Checking the box picks recent new projects, else any new ones, else everything listed.
-  const fresh = candidates.filter(isNew);
-  const defaultKeys = (recent.length > 0 ? recent : fresh.length > 0 ? fresh : candidates).map(
-    (candidate) => candidate.key,
-  );
-  const partial =
-    selected.length > 0 &&
-    selected.length < candidates.length &&
-    !(selected.length === defaultKeys.length && defaultKeys.every((key) => selectedKeys.has(key)));
-  return (
-    <WelcomeSection title="Projects">
-      <div className="flex min-h-10 items-center gap-3 py-1">
-        <label className="flex min-w-0 flex-1 items-center gap-3">
-          <RowIcon>
-            <Checkbox
-              checked={canWrite && selected.length > 0}
-              indeterminate={canWrite && partial}
-              disabled={isImporting || !canWrite}
-              onCheckedChange={(checked) =>
-                setSelectedKeys(new Set(checked ? defaultKeys : []), { optedOut: !checked })
-              }
-            />
-          </RowIcon>
-          <span className="min-w-0 flex-1">
-            <span className="block text-sm font-medium text-foreground">
-              {canWrite && selected.length > 0
-                ? `Import ${selected.length} ${selected.length === 1 ? "project" : "projects"} and their threads`
-                : "Import projects and their threads"}
-            </span>
-            <span className="block text-xs text-muted-foreground">
-              From your {IMPORT_SOURCES_LABEL} history
-            </span>
-          </span>
-        </label>
-        {canWrite ? (
-          <Button
-            variant="ghost-muted"
-            size="xs"
-            aria-expanded={reviewing}
-            onClick={() => setReviewing((open) => !open)}
-          >
-            {reviewing ? "Hide" : `Review all ${candidates.length}`}
-            <ChevronDownIcon className={cn("size-3.5", reviewing && "rotate-180")} />
-          </Button>
-        ) : null}
-      </div>
-      {reviewing && canWrite ? (
-        // The negative margin lines the list's checkboxes up with the one above it.
-        <fieldset className="-mx-1.5 mt-1 min-w-0" disabled={isImporting}>
-          <div className="flex items-center justify-between gap-3 px-2 text-xs text-muted-foreground">
-            <span role="status">
-              {selected.length} of {candidates.length} selected
-            </span>
-            <div className="flex items-center gap-1">
-              <Button
-                variant="ghost"
-                size="xs"
-                disabled={selected.length === candidates.length}
-                onClick={() => setSelectedKeys(new Set(allKeys))}
-              >
-                Select all
-              </Button>
-              <Button
-                variant="ghost"
-                size="xs"
-                disabled={selected.length === 0}
-                onClick={() => setSelectedKeys(new Set())}
-              >
-                Select none
-              </Button>
-            </div>
-          </div>
-          <ScrollArea scrollFade className="mt-1 h-auto max-h-80">
-            <div className="space-y-0.5 pr-3">
-              <ImportCandidateList
-                candidates={candidates}
-                selectedKeys={selectedKeys}
-                onSelectionChange={setSelectedKeys}
-              />
-            </div>
-          </ScrollArea>
-        </fieldset>
-      ) : null}
-      {scan.data?.truncated ? (
-        <p className="pl-8 text-xs text-muted-foreground" role="status">
-          {SCAN_LIMIT_MESSAGE}
-        </p>
-      ) : null}
-      {scan.error !== null ? (
-        <div
-          role="alert"
-          className="flex items-center justify-between gap-3 pl-8 text-sm text-muted-foreground"
-        >
-          <span>Could not check projects again. {scan.error}</span>
-          {retry}
-        </div>
-      ) : null}
-      {visibleImportError ? (
-        <p className="pt-1 pl-8 text-sm text-destructive">{visibleImportError}</p>
-      ) : null}
-    </WelcomeSection>
   );
 }
 
@@ -1276,506 +995,6 @@ function AgentInstallTerminal({
         ) : null}
       </div>
     </div>
-  );
-}
-
-const IMPORT_PERMISSION_MESSAGE = "This connection cannot import projects or thread history.";
-
-// Creates the selected projects, then imports each one's agent history. Owns retry state so a
-// second Start resumes instead of recreating projects.
-function useProjectImport({
-  scans,
-  importSelection,
-  onImportSelectionChange,
-  isImporting,
-  setIsImporting,
-  holdPageRef,
-  onDone,
-}: {
-  readonly scans: ReturnType<typeof useProjectScans>;
-  readonly importSelection: WelcomeImportSelection | null;
-  readonly onImportSelectionChange: (next: WelcomeImportSelection) => void;
-  readonly isImporting: boolean;
-  readonly setIsImporting: (value: boolean) => void;
-  // Blocks leaving the page; onDone releases it before landing.
-  readonly holdPageRef: { current: boolean };
-  readonly onDone: (
-    projectRef?: ScopedProjectRef,
-    importWarning?: string,
-    importedThreadCount?: number,
-  ) => Promise<boolean>;
-}) {
-  const writableEnvironments = useEnvironmentsWithScope(scans, AuthOrchestrationOperateScope);
-  const createProject = useAtomCommand(projectEnvironment.create, { reportFailure: false });
-  const importThreads = useAtomCommand(agentSessionImport, { reportFailure: false });
-  const importWarningRef = useRef("");
-  // Per project, so a retry that skips finished projects still counts their threads.
-  const importedThreadsRef = useRef(new Map<string, number>());
-  const importedProjectsRef = useRef(new Map<string, ScopedProjectRef>());
-  const projectsWithImportedHistoryRef = useRef(new Map<string, ScopedProjectRef>());
-  const lastImportSelectionRef = useRef<ReadonlyArray<string>>([]);
-  const projectAttemptsRef = useRef(
-    new Map<string, { readonly projectId: ProjectId; readonly commandId: CommandId }>(),
-  );
-  const importGenerationRef = useRef(0);
-
-  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- bumps the import generation on mount and unmount so in-flight imports drop stale results
-  useEffect(() => {
-    importGenerationRef.current += 1;
-    return () => {
-      importGenerationRef.current += 1;
-    };
-  }, []);
-
-  const { available: candidates, recent: recentActive } = partitionOnboardingProjects(
-    scans.flatMap((scan) =>
-      (scan.data?.candidates ?? []).map((candidate) => ({
-        ...candidate,
-        environmentId: scan.environmentId,
-        key: onboardingProjectKey(scan.environmentId, candidate.path),
-      })),
-    ),
-  );
-  // Projects already in T3 Code stay in the list, but reopening the page does not import their
-  // history again unless the user picks them. The scan can be 30 s old, so the live list decides.
-  const projects = useProjects();
-  const isNewProject = isNewOnboardingProject(projects);
-  const isNew = (candidate: ImportCandidate) => isNewProject(candidate.environmentId, candidate);
-  const recent = recentActive.filter(isNew);
-  const recentKeys = new Set(recent.map((candidate) => candidate.key));
-  const knownKeys = new Set(importSelection?.knownKeys);
-  const pickedKeys = new Set(importSelection?.keys);
-  const selected = importSelection?.optedOut
-    ? []
-    : candidates.filter((candidate) =>
-        knownKeys.has(candidate.key)
-          ? pickedKeys.has(candidate.key)
-          : recentKeys.has(candidate.key),
-      );
-  const selectedKeys = new Set(selected.map((candidate) => candidate.key));
-  const setSelectedKeys = (keys: ReadonlySet<string>, { optedOut = false } = {}) =>
-    onImportSelectionChange({
-      knownKeys: candidates.map((candidate) => candidate.key),
-      keys: [...keys],
-      optedOut,
-    });
-
-  const canWrite = scans.every((scan) => writableEnvironments.has(scan.environmentId));
-  const canImport = selected.every((candidate) =>
-    writableEnvironments.has(candidate.environmentId),
-  );
-  const visibleImportError = canWrite && canImport ? "" : IMPORT_PERMISSION_MESSAGE;
-
-  const importedThreadTotal = () =>
-    lastImportSelectionRef.current.reduce(
-      (total, key) => total + (importedThreadsRef.current.get(key) ?? 0),
-      0,
-    );
-
-  const finishAfterImport = () => {
-    const projectRef = resolveOnboardingLandingProject(
-      lastImportSelectionRef.current,
-      projectsWithImportedHistoryRef.current,
-      importedProjectsRef.current,
-    );
-    // Busy until setup is saved, so Start cannot run the import again meanwhile.
-    setIsImporting(true);
-    if (projectRef === undefined) {
-      void onDone(undefined, importWarningRef.current, importedThreadTotal()).then((completed) => {
-        if (!completed) setIsImporting(false);
-      });
-      return;
-    }
-    holdPageRef.current = true;
-    const importGeneration = importGenerationRef.current;
-    // waitForProject gives up after its timeout, so a project that never reaches the client
-    // still finishes setup, just without landing in it.
-    void waitForProject(projectRef)
-      .then(
-        () => projectRef,
-        () => undefined,
-      )
-      .then(async (landing) => {
-        if (importGeneration !== importGenerationRef.current) {
-          holdPageRef.current = false;
-          return;
-        }
-        const completed = await onDone(landing, importWarningRef.current, importedThreadTotal());
-        if (!completed) setIsImporting(false);
-      });
-  };
-
-  const runImport = async (selection: typeof candidates) => {
-    if (isImporting) return;
-    const hasAccess = () =>
-      selection.every((candidate) =>
-        readEnvironmentScope(candidate.environmentId, AuthOrchestrationOperateScope),
-      );
-    // The permission message shows from the session's scopes.
-    const stopForDeniedAccess = () => setIsImporting(false);
-    if (!hasAccess()) {
-      stopForDeniedAccess();
-      return;
-    }
-    setIsImporting(true);
-    importWarningRef.current = "";
-    lastImportSelectionRef.current = selection.map((candidate) => candidate.key);
-    const importGeneration = importGenerationRef.current;
-    const importedThreads = importedThreadsRef.current;
-    const importedProjects = importedProjectsRef.current;
-    const projectAttempts = projectAttemptsRef.current;
-    let importedProjectsCount =
-      importedProjects.size > 0
-        ? selection.filter((candidate) => importedProjects.has(candidate.key)).length
-        : 0;
-    let skippedThreadCount = 0;
-    const refreshEnvironments = new Set<EnvironmentId>();
-    // Resolves false when the run stopped early: a newer run, an unmount, or lost access.
-    const importEach = async () => {
-      for (const candidate of selection) {
-        const { environmentId } = candidate;
-        if (importGeneration !== importGenerationRef.current) return false;
-        if (!hasAccess()) {
-          stopForDeniedAccess();
-          return false;
-        }
-        if (importedProjects.has(candidate.key)) continue;
-        let projectId = resolveOnboardingProjectId(readProjects(), environmentId, candidate);
-        if (projectId === null) {
-          let attempt = projectAttempts.get(candidate.key);
-          if (attempt === undefined) {
-            const nextProjectId = newProjectId();
-            attempt = {
-              projectId: nextProjectId,
-              commandId: CommandId.make(`onboarding:project:create:${nextProjectId}`),
-            };
-            projectAttempts.set(candidate.key, attempt);
-          }
-          projectId = attempt.projectId;
-          const result = await createProject({
-            environmentId,
-            input: {
-              projectId,
-              commandId: attempt.commandId,
-              title: candidate.title,
-              workspaceRoot: candidate.path,
-              createWorkspaceRootIfMissing: false,
-              defaultModelSelection: null,
-            },
-          });
-          if (importGeneration !== importGenerationRef.current) return false;
-          if (result._tag !== "Success") {
-            if (!isAtomCommandInterrupted(result)) {
-              projectAttempts.delete(candidate.key);
-              refreshEnvironments.add(environmentId);
-            }
-            continue;
-          }
-        }
-
-        if (!hasAccess()) {
-          stopForDeniedAccess();
-          return false;
-        }
-        const threadImportResult = await importThreads({
-          environmentId,
-          input: { projectId, expectedWorkspaceRoot: candidate.path },
-        });
-        if (importGeneration !== importGenerationRef.current) return false;
-        if (threadImportResult._tag === "Success") {
-          importedThreads.set(
-            candidate.key,
-            (importedThreads.get(candidate.key) ?? 0) + threadImportResult.value.importedCount,
-          );
-          skippedThreadCount += threadImportResult.value.skippedCount;
-          if (threadImportResult.value.importedCount > 0) {
-            projectsWithImportedHistoryRef.current.set(
-              candidate.key,
-              scopeProjectRef(environmentId, projectId),
-            );
-          }
-          if (threadImportResult.value.skippedCount === 0) {
-            importedProjectsCount += 1;
-            importedProjects.set(candidate.key, scopeProjectRef(environmentId, projectId));
-          }
-        } else if (!isAtomCommandInterrupted(threadImportResult)) {
-          projectAttempts.delete(candidate.key);
-          refreshEnvironments.add(environmentId);
-        }
-      }
-      return true;
-    };
-    holdPageRef.current = true;
-    const completed = await importEach().finally(() => {
-      holdPageRef.current = false;
-    });
-    if (!completed) return;
-    for (const scan of scans) {
-      if (refreshEnvironments.has(scan.environmentId)) scan.refresh();
-    }
-    setIsImporting(false);
-    const importedThreadCount = importedThreadTotal();
-    if (importedProjectsCount < selection.length) {
-      if (importedThreadCount > 0 && skippedThreadCount > 0) {
-        importWarningRef.current = `Imported ${importedThreadCount} ${importedThreadCount === 1 ? "thread" : "threads"}. ${skippedThreadCount} ${skippedThreadCount === 1 ? "thread" : "threads"} could not be imported.`;
-      } else if (skippedThreadCount > 0) {
-        importWarningRef.current = `${skippedThreadCount} ${skippedThreadCount === 1 ? "thread could" : "threads could"} not be imported.`;
-      } else if (importedThreadCount > 0) {
-        importWarningRef.current = `Imported ${importedThreadCount} ${importedThreadCount === 1 ? "thread" : "threads"}. Some thread history could not be imported.`;
-      } else {
-        importWarningRef.current = "Could not import thread history.";
-      }
-    }
-    finishAfterImport();
-  };
-
-  return {
-    canWrite,
-    candidates,
-    isNew,
-    recent,
-    selected,
-    selectedKeys,
-    setSelectedKeys,
-    visibleImportError,
-    runImport,
-    finishAfterImport,
-  };
-}
-
-type ImportCandidate = AgentSessionProjectCandidate & {
-  readonly environmentId: EnvironmentId;
-  readonly key: string;
-};
-
-function ImportCandidateList({
-  candidates,
-  selectedKeys,
-  onSelectionChange,
-}: {
-  readonly candidates: ReadonlyArray<ImportCandidate>;
-  readonly selectedKeys: ReadonlySet<string>;
-  readonly onSelectionChange: (next: ReadonlySet<string>) => void;
-}) {
-  const { repositories, other } = groupOnboardingProjects(candidates);
-  const setKeys = (keys: ReadonlyArray<string>, checked: boolean) => {
-    const next = new Set(selectedKeys);
-    for (const key of keys) {
-      if (checked) next.add(key);
-      else next.delete(key);
-    }
-    onSelectionChange(next);
-  };
-  const otherSelected = other.filter((candidate) => selectedKeys.has(candidate.key)).length;
-
-  return (
-    <>
-      {repositories.map((group) => (
-        <ImportRepositoryGroup
-          key={group.key}
-          group={group}
-          selectedKeys={selectedKeys}
-          onToggle={setKeys}
-        />
-      ))}
-      {other.length > 0 ? (
-        <Collapsible>
-          <div className="flex items-center gap-2.5 rounded-md px-2 py-1.5 hover:bg-muted/40">
-            <Checkbox
-              checked={otherSelected === other.length}
-              indeterminate={otherSelected > 0 && otherSelected < other.length}
-              onCheckedChange={(checked) =>
-                setKeys(
-                  other.map((candidate) => candidate.key),
-                  checked === true,
-                )
-              }
-            />
-            <CollapsibleTrigger className="group flex min-w-0 flex-1 items-center gap-1.5 text-left">
-              <ChevronRightIcon className="size-3.5 shrink-0 text-muted-foreground transition-transform group-data-panel-open:rotate-90" />
-              <span className="truncate text-sm text-muted-foreground">Other folders</span>
-              <span className="ml-auto shrink-0 text-xs text-muted-foreground tabular-nums">
-                {other.length} {other.length === 1 ? "folder" : "folders"}
-              </span>
-            </CollapsibleTrigger>
-          </div>
-          <CollapsiblePanel>
-            {other.map((candidate) => (
-              <ImportCandidateRow
-                key={candidate.key}
-                candidate={candidate}
-                path={candidate.path}
-                nested
-                checked={selectedKeys.has(candidate.key)}
-                onCheckedChange={(checked) => setKeys([candidate.key], checked)}
-              />
-            ))}
-          </CollapsiblePanel>
-        </Collapsible>
-      ) : null}
-    </>
-  );
-}
-
-function ImportRepositoryGroup({
-  group,
-  selectedKeys,
-  onToggle,
-}: {
-  readonly group: OnboardingProjectGroup<ImportCandidate>;
-  readonly selectedKeys: ReadonlySet<string>;
-  readonly onToggle: (keys: ReadonlyArray<string>, checked: boolean) => void;
-}) {
-  const keys = group.candidates.map((candidate) => candidate.key);
-  const selectedCount = keys.filter((key) => selectedKeys.has(key)).length;
-  const single = group.candidates.length === 1;
-  const only = group.candidates[0];
-  if (single && only !== undefined) {
-    return (
-      <ImportCandidateRow
-        candidate={only}
-        label={group.label}
-        path={only.path}
-        checked={selectedKeys.has(only.key)}
-        onCheckedChange={(checked) => onToggle([only.key], checked)}
-      />
-    );
-  }
-  return (
-    <Collapsible defaultOpen>
-      <div className="flex items-center gap-2.5 rounded-md px-2 py-1.5 hover:bg-muted/40">
-        <Checkbox
-          checked={selectedCount === keys.length}
-          indeterminate={selectedCount > 0 && selectedCount < keys.length}
-          onCheckedChange={(checked) => onToggle(keys, checked === true)}
-        />
-        <CollapsibleTrigger className="group flex min-w-0 flex-1 items-center gap-1.5 text-left">
-          <ChevronRightIcon className="size-3.5 shrink-0 text-muted-foreground transition-transform group-data-panel-open:rotate-90" />
-          <span className="truncate text-sm font-medium">{group.label}</span>
-          <ImportRowMeta
-            sources={[...new Set(group.candidates.flatMap((c) => c.sources))]}
-            threadCount={group.threadCount}
-            lastActiveAt={group.lastActiveAt}
-          />
-        </CollapsibleTrigger>
-      </div>
-      <CollapsiblePanel>
-        {group.candidates.map((candidate) => (
-          <ImportCandidateRow
-            key={candidate.key}
-            candidate={candidate}
-            path={candidate.path}
-            nested
-            checked={selectedKeys.has(candidate.key)}
-            onCheckedChange={(checked) => onToggle([candidate.key], checked)}
-          />
-        ))}
-      </CollapsiblePanel>
-    </Collapsible>
-  );
-}
-
-function ProjectPathText({
-  path,
-  className,
-}: {
-  readonly path: string;
-  readonly className?: string;
-}) {
-  const { name, parent } = splitOnboardingProjectPath(path);
-  return (
-    <span className={cn("flex min-w-0 items-baseline font-mono", className)}>
-      {parent.length > 0 ? <span className="truncate">{parent}</span> : null}
-      <span className="max-w-full shrink-0 truncate">{name}</span>
-    </span>
-  );
-}
-
-function ImportCandidateRow({
-  candidate,
-  label,
-  path,
-  nested = false,
-  checked,
-  onCheckedChange,
-}: {
-  readonly candidate: ImportCandidate;
-  readonly label?: string;
-  readonly path?: string;
-  readonly nested?: boolean;
-  readonly checked: boolean;
-  readonly onCheckedChange: (checked: boolean) => void;
-}) {
-  return (
-    <label
-      className={cn(
-        "flex cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 hover:bg-muted/40 has-disabled:cursor-default",
-        nested && "pl-8",
-      )}
-    >
-      <Checkbox checked={checked} onCheckedChange={(value) => onCheckedChange(value === true)} />
-      <Tooltip>
-        <TooltipTrigger
-          render={<span className="flex min-w-0 flex-1 items-baseline gap-2 truncate" />}
-        >
-          {label !== undefined ? (
-            <span className="truncate text-sm font-medium">{label}</span>
-          ) : null}
-          {path !== undefined ? (
-            <ProjectPathText
-              path={path}
-              className={label === undefined ? "text-xs" : "text-2xs text-muted-foreground"}
-            />
-          ) : null}
-        </TooltipTrigger>
-        <TooltipPopup variant="code">{candidate.path}</TooltipPopup>
-      </Tooltip>
-      <ImportRowMeta
-        sources={nested ? null : candidate.sources}
-        threadCount={candidate.threadCount}
-        lastActiveAt={candidate.lastActiveAt}
-      />
-    </label>
-  );
-}
-
-const IMPORT_SOURCE_NAMES: Record<AgentSessionSource, string> = {
-  claudeAgent: "Claude Code",
-  codex: "Codex",
-};
-const IMPORT_SOURCES_LABEL = new Intl.ListFormat("en", { type: "conjunction" }).format(
-  AgentSessionSource.literals.map((source) => IMPORT_SOURCE_NAMES[source]),
-);
-
-function ImportRowMeta({
-  sources,
-  threadCount,
-  lastActiveAt,
-}: {
-  readonly sources: ReadonlyArray<AgentSessionSource> | null;
-  readonly threadCount: number;
-  readonly lastActiveAt: string | null;
-}) {
-  const relative = lastActiveAt === null ? null : formatRelativeTime(lastActiveAt);
-  const age = relative === null ? "" : relative.suffix === null ? "now" : relative.value;
-  return (
-    <span className="ml-auto grid shrink-0 grid-cols-[1rem_1rem_1rem_2.5rem_2.25rem] items-center gap-x-1 text-xs text-muted-foreground tabular-nums">
-      {AgentSessionSource.literals.map((source) => (
-        <span key={source} className="flex size-4 items-center justify-center">
-          {sources?.includes(source) ? (
-            <span role="img" aria-label={IMPORT_SOURCE_NAMES[source]}>
-              <ProviderInstanceIcon
-                driverKind={ProviderDriverKind.make(source)}
-                displayName={IMPORT_SOURCE_NAMES[source]}
-                iconClassName="size-3"
-              />
-            </span>
-          ) : null}
-        </span>
-      ))}
-      <span className="text-right">{threadCount}</span>
-      <span className="text-right whitespace-nowrap">{age}</span>
-    </span>
   );
 }
 
