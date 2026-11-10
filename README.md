@@ -107,9 +107,24 @@ t3
 > Do not run `t3 update` or `t3 install`. They download the upstream project's releases, which do
 > not have the team features, and would replace this build.
 
+## First run
+
+The first time you open Ensemble it walks you through setup:
+
+1. **Create project.** A new project, a folder you already have, or a clone of a repository.
+2. **Set location.** The folder your projects live in. Later new projects go there too.
+3. **Connect providers.** Install and sign in to the agents you want. One is enough to start.
+4. **Assemble team.** Pick a recommended team, or choose a model for each role.
+5. **Connect GitHub.** Optional. Needed for private repositories and pull requests.
+6. **Review setup.** Nothing is created before this step.
+7. **First task.** Opens a thread with `/team` and your task, ready to send.
+
+You can skip any step, and open setup again from **Settings → About → Setup**.
+
 ## Set up the team
 
-Open **Settings → Threads → Subagent models**.
+Setup covers this the first time. To change it later, open
+**Settings → Threads → Subagent models**.
 
 1. **Pick a preset** from **Presets**, or choose a model for each role yourself. A role left on
    **Thread's model** uses whatever model the thread runs on.
