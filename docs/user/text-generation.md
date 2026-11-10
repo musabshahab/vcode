@@ -19,8 +19,7 @@ Go to **Settings → Providers → Text generators** and choose **Add generator*
   server makes the requests, so on a remote environment `localhost` means that machine, not yours.
 
 Give it a name if you add more than one from the same service. Your key is stored on the
-environment, like other [secrets](./secrets.md), and can come from a secret provider instead of
-being typed in.
+environment.
 
 T3 Code lists the service's models to check the connection, then shows the model picker for each
 text task so you can switch any of them to the new generator, or keep what they use. **Test** next

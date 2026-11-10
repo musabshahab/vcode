@@ -428,7 +428,7 @@ export function defineSourceControl<const Definition extends SourceControlDefini
   return definition;
 }
 
-export function isChangeRequestAuthorityOfProject(
+function isChangeRequestAuthorityOfProject(
   identity: ChangeRequestProjectIdentity,
   link: ChangeRequestLink | CommitLink,
 ): boolean {
@@ -512,7 +512,7 @@ export function parseGitRemoteHost(remoteUrl: string): GitRemoteHost | null {
 }
 
 /** What a remote on a host no definition claims reads as. */
-export function unknownRemoteProvider(remote: GitRemoteHost): SourceControlProviderInfo {
+function unknownRemoteProvider(remote: GitRemoteHost): SourceControlProviderInfo {
   return {
     kind: SourceControlProviderKind.make("unknown"),
     name: remote.host,

@@ -1,9 +1,4 @@
-import {
-  ClaudeSettings,
-  CodexSettings,
-  isProviderDriverKind,
-  ProviderDriverKind,
-} from "@t3tools/contracts";
+import { ClaudeSettings, CodexSettings, ProviderDriverKind } from "@t3tools/contracts";
 import { makeProviderClientRegistry, type ProviderIcon } from "@t3tools/provider-core/client";
 import { modelShortName } from "@t3tools/provider-core/modelShortName";
 
@@ -32,10 +27,6 @@ export const providerClients = makeProviderClientRegistry([
     settingsSchema: ClaudeSettings,
   },
 ]);
-
-export function getProviderClient(driver: string | null | undefined) {
-  return isProviderDriverKind(driver) ? providerClients.get(driver) : undefined;
-}
 
 export function resolveModelShortName(
   model: { readonly name: string; readonly shortName?: string | undefined },

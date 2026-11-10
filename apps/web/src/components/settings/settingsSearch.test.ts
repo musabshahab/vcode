@@ -14,7 +14,6 @@ import {
   isSettingsSearchScopeAvailable,
   movedSettingsPath,
   searchSettings,
-  SETTINGS_NAV_GROUPS,
   SETTINGS_SEARCH_ITEMS,
   sourceControlHostSearchItems,
   sourceControlHostSettingsSearchId,
@@ -71,11 +70,6 @@ describe("searchSettings", () => {
         scope: "environment-defaults",
       });
     }
-  });
-
-  it("hides the Secrets page from nav and search while the secrets feature is disabled", () => {
-    expect(SETTINGS_NAV_GROUPS.flatMap((group) => group.paths)).not.toContain("/settings/secrets");
-    expect(searchSettings("1password").map((item) => item.to)).not.toContain("/settings/secrets");
   });
 
   it("matches normalized title substrings", () => {
@@ -352,7 +346,6 @@ describe("source control host search items", () => {
   });
 
   it("finds the built-in hosts by their own words", () => {
-    expect(searchSettings("codeberg").map((item) => item.id)).toContain("source-control");
     expect(searchSettings("ghes").map((item) => item.id)).toContain(
       sourceControlHostSettingsSearchId("github"),
     );

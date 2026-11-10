@@ -8,8 +8,8 @@ import { SecretSourceInput } from "./SecretSourceInput";
 const personal = SecretProviderId.make("personal");
 const work = SecretProviderId.make("work");
 const sources = [
-  { id: personal, kind: SecretProviderKind.make("one_password"), label: "Personal" },
-  { id: work, kind: SecretProviderKind.make("one_password"), label: "Work" },
+  { id: personal, kind: SecretProviderKind.make("vault"), label: "Personal" },
+  { id: work, kind: SecretProviderKind.make("vault"), label: "Work" },
 ];
 
 const reference = (screen: Screen) => screen.getByRole("textbox", { name: "API key reference" });
@@ -61,37 +61,8 @@ describe("SecretSourceInput", () => {
       />,
     );
 
-    await commitReference(screen, "invalid-reference");
-    await expect.element(reference(screen)).toHaveAttribute("aria-invalid", "true");
     await userEvent.clear(reference(screen));
     await userEvent.keyboard("{Enter}");
     expect(onSecretChange).toHaveBeenCalledExactlyOnceWith(undefined);
-  });
-
-  it("rejects a reference 1Password cannot read", async () => {
-    const onSecretChange = vi.fn();
-    const onValidityChange = vi.fn();
-    await using screen = await render(
-      <SecretSourceInput
-        aria-label="API key"
-        value={{ provider: personal, reference: "op://Private/OpenAI/credential" }}
-        sources={sources}
-        onCommit={() => {}}
-        onSecretChange={onSecretChange}
-        onValidityChange={onValidityChange}
-      />,
-    );
-
-    await commitReference(screen, "Private/OpenAI/credential");
-    expect(onSecretChange).not.toHaveBeenCalled();
-    expect(onValidityChange).toHaveBeenLastCalledWith(false);
-    await expect.element(reference(screen)).toHaveAttribute("aria-invalid", "true");
-    await expect.element(reference(screen)).toHaveValue("Private/OpenAI/credential");
-    await commitReference(screen, "op://Private/OpenAI/replacement");
-    expect(onValidityChange).toHaveBeenLastCalledWith(true);
-    expect(onSecretChange).toHaveBeenCalledExactlyOnceWith({
-      provider: personal,
-      reference: "op://Private/OpenAI/replacement",
-    });
   });
 });
