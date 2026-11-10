@@ -461,6 +461,7 @@ const runCodex = async ({ testCase, sample, cwd, prompt, run, usage }: Session, 
       }),
     });
     const threadId = isRecord(started) && isRecord(started.thread) ? String(started.thread.id) : "";
+    let completed = false;
     const done = new Promise<void>((resolve) => {
       codex.handlers.request = (method, params) => {
         // The user closes a question, as the cases mock.
@@ -480,7 +481,7 @@ const runCodex = async ({ testCase, sample, cwd, prompt, run, usage }: Session, 
       };
       codex.handlers.notification = (method, params) => {
         if (method === "exit") {
-          run.stopReason = run.stopReason === "max_turns" ? "codex_stopped" : run.stopReason;
+          if (!completed) run.stopReason = "codex_stopped";
           resolve();
         }
         if (!isRecord(params)) return;
@@ -513,6 +514,7 @@ const runCodex = async ({ testCase, sample, cwd, prompt, run, usage }: Session, 
         }
         if (method === "turn/completed" && isRecord(params.turn)) {
           const { status, error } = params.turn;
+          completed = true;
           run.stopReason =
             status === "completed"
               ? "end_turn"
