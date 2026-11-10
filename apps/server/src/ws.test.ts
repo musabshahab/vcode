@@ -113,6 +113,7 @@ import * as ThreadLaunchService from "./orchestration-v2/ThreadLaunchService.ts"
 import * as ThreadSearch from "./orchestration-v2/ThreadSearch.ts";
 import * as UsageLimitSources from "./usage/UsageLimitSources.ts";
 import * as SubagentModelPresets from "./mcp/SubagentModelPresets.ts";
+import { TEAM_COMMAND } from "./provider/teamCommand.ts";
 import * as UsageService from "./usage/UsageService.ts";
 import * as VcsProvisioningService from "./vcs/VcsProvisioningService.ts";
 import * as VcsStatusBroadcaster from "./vcs/VcsStatusBroadcaster.ts";
@@ -1258,7 +1259,10 @@ it.effect("on-demand clients get provider config without workspace snapshots", (
     if (snapshot.type !== "snapshot") return yield* Effect.die("Missing initial snapshot");
     assert.isUndefined(snapshot.config.providers[0]?.workspaceSnapshots);
     // The cwd snapshot the client fetches carries the catalog, so only command names are sent.
-    assert.deepEqual(snapshot.config.providers[0]?.slashCommands, [{ name: "machine-command" }]);
+    assert.deepEqual(snapshot.config.providers[0]?.slashCommands, [
+      { name: "machine-command" },
+      { name: "team" },
+    ]);
     assert.deepEqual(snapshot.config.providers[0]?.skills, [
       { name: "machine-skill", path: "/skills/machine-skill", enabled: true },
     ]);
@@ -1287,6 +1291,7 @@ it.effect("on-demand clients get provider config without workspace snapshots", (
     assert.deepEqual(update.payload.providers[0]?.slashCommands, [
       { name: "machine-command" },
       { name: USAGE_LIMITS_COMMAND.name },
+      { name: "team" },
     ]);
     yield* server.write(0, { _tag: "Ack", requestId: configRequest });
     // A replacement that cannot scan a cwd sends its full machine catalog.
@@ -1296,7 +1301,10 @@ it.effect("on-demand clients get provider config without workspace snapshots", (
     yield* TestClock.adjust("1 second");
     const replaced = (yield* Queue.take(responses)) as ServerConfigStreamEvent;
     if (replaced.type !== "providerStatuses") return yield* Effect.die("Expected provider update");
-    assert.deepEqual(replaced.payload.providers[0]?.slashCommands, provider.slashCommands);
+    assert.deepEqual(
+      replaced.payload.providers[0]?.slashCommands.map((command) => command.name),
+      [...provider.slashCommands.map((command) => command.name), "team"],
+    );
     assert.deepEqual(replaced.payload.providers[0]?.skills, provider.skills);
 
     yield* server.write(0, {
@@ -1311,7 +1319,17 @@ it.effect("on-demand clients get provider config without workspace snapshots", (
     };
     assert.deepEqual(
       refreshed.providers.map((entry) => [entry.workspaceSnapshots, entry.slashCommands]),
-      [[[snapshotFor("/b", "2026-10-25T00:00:00.000Z")], []]],
+      [
+        [
+          [
+            {
+              ...snapshotFor("/b", "2026-10-25T00:00:00.000Z"),
+              slashCommands: [{ name: "b-command" }, TEAM_COMMAND],
+            },
+          ],
+          [],
+        ],
+      ],
     );
     // A failed scan still gives a client without the machine catalog its commands.
     scansCwd = true;
@@ -1334,7 +1352,7 @@ it.effect("on-demand clients get provider config without workspace snapshots", (
       {
         cwd: "/c",
         checkedAt: provider.checkedAt,
-        slashCommands: provider.slashCommands,
+        slashCommands: [...provider.slashCommands, TEAM_COMMAND],
         slashCommandsPending: true,
         skills: provider.skills,
       },

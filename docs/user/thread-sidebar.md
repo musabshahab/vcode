@@ -320,9 +320,12 @@ review to subagents on the models you chose for those roles. Steps that touch di
 in parallel. It has findings fixed, reviews once more, and reports what changed with a commit
 message. For a one-line change it does the edit itself and says so.
 
-`/team` works in any composer, from `t3 thread`, and in scheduled tasks. It is not in the command
-menu. Without it, a thread works as usual. Choose **New worktree** for the thread to keep the
-run's changes away from your checkout.
+Pick `/team` from the composer's `/` menu or type it. It also works from `t3 thread` and in
+scheduled tasks. Without it, a thread works as usual.
+
+A team run edits the thread's checkout, like any other thread. Choose **New worktree** for the
+thread to keep the changes away from the folder you are working in. A worktree starts from a
+commit, so it does not include changes you have not committed.
 
 The choice belongs to the environment and applies to threads you drive from any device. If a
 role's provider is turned off or signed out, the agent is told the subagent could not start; it
