@@ -395,20 +395,23 @@ it.layer(Layer.mergeAll(NodeServices.layer, NodeCrypto.layer))("AnalyticsService
     }),
   );
 
-  it.effect("does not send batch requests when telemetry is disabled", () =>
+  it.effect.each([
+    {
+      T3CODE_TELEMETRY_ENABLED: false,
+      T3CODE_POSTHOG_KEY: "phc_test_key",
+      T3CODE_POSTHOG_HOST: "http://localhost",
+    },
+    // Off unless an operator turns it on, and never without an account to send to.
+    { T3CODE_POSTHOG_KEY: "phc_test_key", T3CODE_POSTHOG_HOST: "http://localhost" },
+    { T3CODE_TELEMETRY_ENABLED: true, T3CODE_POSTHOG_HOST: "http://localhost" },
+  ])("does not send batch requests when telemetry is disabled: %o", (telemetryEnv) =>
     Effect.gen(function* () {
       const capturedPaths: Array<string> = [];
       const layerServerConfig = ServerConfig.ServerConfig.layerTest(process.cwd(), {
         prefix: "t3-telemetry-disabled-",
       });
       const layerTelemetry = AnalyticsService.layer.pipe(Layer.provideMerge(layerServerConfig));
-      const layerConfig = ConfigProvider.layer(
-        ConfigProvider.fromUnknown({
-          T3CODE_TELEMETRY_ENABLED: false,
-          T3CODE_POSTHOG_KEY: "phc_test_key",
-          T3CODE_POSTHOG_HOST: "http://localhost",
-        }),
-      );
+      const layerConfig = ConfigProvider.layer(ConfigProvider.fromUnknown(telemetryEnv));
       const layerBatchServer = HttpServer.serve(
         Effect.gen(function* () {
           const request = yield* HttpServerRequest.HttpServerRequest;
