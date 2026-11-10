@@ -1590,7 +1590,7 @@ export function ThreadsSettingsPanel() {
           serverScoped
           settingKeys={["addProjectBaseDirectory"]}
           {...searchableSetting("add-project-starts-in")}
-          description='Leave empty to use "~/" when the Add Project browser opens.'
+          description={`Where new projects are created and where the Add Project browser opens. Leave empty to browse from "~/" and create new projects in the app's data folder.`}
           resetAction={
             settings.addProjectBaseDirectory !==
             DEFAULT_UNIFIED_SETTINGS.addProjectBaseDirectory ? (
@@ -2100,7 +2100,7 @@ export function AboutSettingsPanel() {
         {primaryEnvironmentId === null ? null : (
           <SettingsRow
             {...searchableSetting("welcome-page")}
-            description="See your agents, import projects, and set up your phone."
+            description="Run setup again: a project, your providers, the team and GitHub."
             control={
               <Button size="sm" variant="outline" render={<Link to="/welcome" />}>
                 Open

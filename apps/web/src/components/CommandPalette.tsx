@@ -995,9 +995,14 @@ function OpenCommandPaletteDialog(props: {
     });
   };
 
-  const newProjectsRootFor = (environmentId: EnvironmentId | null): string | null =>
-    environments.find((environment) => environment.environmentId === environmentId)?.serverConfig
-      ?.newProjectsRoot ?? null;
+  // New projects go to the base folder the user set, else the server's own folder.
+  const newProjectsRootFor = (environmentId: EnvironmentId | null): string | null => {
+    const config = environments.find(
+      (environment) => environment.environmentId === environmentId,
+    )?.serverConfig;
+    if (config?.newProjectsRoot === undefined) return null;
+    return config.settings.addProjectBaseDirectory.trim() || config.newProjectsRoot;
+  };
 
   const startNewProject = (
     environmentId: EnvironmentId,

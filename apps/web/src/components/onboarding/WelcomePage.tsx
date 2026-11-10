@@ -385,7 +385,7 @@ interface AgentTerminalSession {
 }
 
 // Shared by the page (to enable Start) and the agents section, so both agree on what is ready.
-function useWelcomeAgents(environmentId: EnvironmentId) {
+export function useWelcomeAgents(environmentId: EnvironmentId) {
   const providers = useAtomValue(serverEnvironment.providersValueAtom(environmentId));
   const serverConfig = useAtomValue(serverEnvironment.configValueAtom(environmentId));
   const managedPolicy = serverConfig?.managedPolicy;
@@ -405,7 +405,7 @@ const revealOnMount = (node: HTMLElement | null) => node?.scrollIntoView({ block
 
 const ACP_REGISTRY_DRIVER_KIND = ProviderDriverKind.make("acpRegistry");
 
-function AgentsSection({
+export function AgentsSection({
   environmentId,
   label,
   isPrimary,

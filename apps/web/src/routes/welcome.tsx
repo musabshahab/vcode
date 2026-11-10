@@ -5,7 +5,7 @@ import * as Schema from "effect/Schema";
 import * as Option from "effect/Option";
 
 import { NoProjectsHero } from "../components/NoProjectsHero";
-import { WelcomePage } from "../components/onboarding/WelcomePage";
+import { SetupWizard } from "../components/onboarding/SetupWizard";
 import { useNewThreadHandler } from "../hooks/useHandleNewThread";
 import { useEnvironments, usePrimaryEnvironmentId } from "../state/environments";
 
@@ -44,15 +44,16 @@ function WelcomeRouteView() {
   if (waitingForCatalog) return null;
   if (environmentId === null || !isWelcomeRoute || dismissed) return <NoProjectsHero />;
   return (
-    <WelcomePage
+    <SetupWizard
       key={environmentId}
       environmentId={environmentId}
-      onDone={async (projectRef) => {
+      onDone={async (projectRef, prompt) => {
         setDismissed(true);
         if (projectRef !== undefined) {
-          await openNewThread(projectRef, { replace: true }).catch(() =>
-            navigate({ to: "/", replace: true }),
-          );
+          await openNewThread(projectRef, {
+            replace: true,
+            ...(prompt === undefined ? {} : { prompt }),
+          }).catch(() => navigate({ to: "/", replace: true }));
           return;
         }
         await navigate({ to: "/", replace: true });

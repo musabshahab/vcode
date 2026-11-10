@@ -71,7 +71,7 @@ const SUBAGENT_ROLE_ROWS = [
   },
 ] as const;
 
-const SUBAGENT_MODEL_PRESETS: ReadonlyArray<{
+export const SUBAGENT_MODEL_PRESETS: ReadonlyArray<{
   readonly id: SubagentModelPresetId;
   readonly label: string;
   readonly detail: string;
