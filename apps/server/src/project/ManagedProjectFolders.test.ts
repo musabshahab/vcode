@@ -89,6 +89,7 @@ const withScratch = <A, E>(
     E,
     | ManagedProjectFolders.ManagedProjectFolders
     | ProjectService.ProjectService
+    | ServerSettings.ServerSettingsService
     | NodeServices.NodeServices
     | Scope.Scope
   >,
@@ -370,6 +371,16 @@ it.effect("starts a named project as a committed repository, and suffixes a take
           yield* gitOutput(first.workspaceRoot, ["log", "--format=%s"]),
           "Initial commit",
         );
+
+        const chosen = path.join(baseDir, "my code");
+        const settings = yield* ServerSettings.ServerSettingsService;
+        yield* settings.updateSettings({ addProjectBaseDirectory: chosen });
+        const third = yield* folders.createNamedProject({ name: "Pinball Stats" });
+        assert.equal(third.workspaceRoot, path.join(chosen, "pinball-stats"));
+        // A folder that is not absolute on this machine falls back to the default.
+        yield* settings.updateSettings({ addProjectBaseDirectory: "relative/folder" });
+        const fourth = yield* folders.createNamedProject({ name: "Pinball Stats" });
+        assert.equal(fourth.workspaceRoot, path.join(root, "pinball-stats-3"));
         assert.equal(
           yield* gitOutput(first.workspaceRoot, ["rev-parse", "--abbrev-ref", "HEAD"]),
           "main",

@@ -187,6 +187,9 @@ const getAutoBootstrapThreadModelSelection = (): ModelSelection => ({
 interface AutoBootstrapWelcomeTargets {
   readonly bootstrapProjectId?: ProjectId;
   readonly bootstrapThreadId?: ThreadId;
+  /** Whether this start made them. A client shows first-run setup only for ones it did. */
+  readonly bootstrapProjectCreated?: boolean;
+  readonly bootstrapThreadCreated?: boolean;
 }
 
 export const autoPullProjects = Effect.fn("autoPullProjects")(function* (
@@ -271,10 +274,12 @@ const resolveAutoBootstrapWelcomeTargets = Effect.gen(function* () {
 
   let bootstrapProjectId: ProjectId | undefined;
   let bootstrapThreadId: ThreadId | undefined;
+  let bootstrapProjectCreated = false;
+  let bootstrapThreadCreated = false;
 
   if (serverConfig.autoBootstrapProjectFromCwd) {
     const threadModelSelection = getAutoBootstrapThreadModelSelection();
-    const { project } = yield* projects.bootstrap({
+    const { project, created } = yield* projects.bootstrap({
       commandId: CommandId.make(yield* randomUUID),
       projectId: ProjectId.make(yield* randomUUID),
       title: path.basename(serverConfig.cwd) || "project",
@@ -318,15 +323,17 @@ const resolveAutoBootstrapWelcomeTargets = Effect.gen(function* () {
         );
       bootstrapProjectId = project.id;
       bootstrapThreadId = launched?.threadId;
+      bootstrapThreadCreated = launched !== undefined;
     } else {
       bootstrapProjectId = project.id;
       bootstrapThreadId = existingThread.id;
     }
+    bootstrapProjectCreated = created;
   }
 
   return {
-    ...(bootstrapProjectId ? { bootstrapProjectId } : {}),
-    ...(bootstrapThreadId ? { bootstrapThreadId } : {}),
+    ...(bootstrapProjectId ? { bootstrapProjectId, bootstrapProjectCreated } : {}),
+    ...(bootstrapThreadId ? { bootstrapThreadId, bootstrapThreadCreated } : {}),
   } satisfies AutoBootstrapWelcomeTargets;
 });
 
