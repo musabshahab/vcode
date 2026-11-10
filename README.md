@@ -25,7 +25,8 @@ subscriptions or API keys. Nothing is resold.
   lead stops delegating and asks you.
 - **Isolation and undo.** Run a task in its own git worktree. Every turn is checkpointed, so you
   can view the diff and restore.
-- **Three surfaces.** Web, desktop (Electron), and CLI. On a phone, open the web app in a browser.
+- **Three surfaces.** Web, desktop (Electron), and CLI. On a phone, the web app
+  [installs to the home screen](./docs/user/remote-access.md#install-the-web-app-on-a-phone).
 
 ## Requirements
 
@@ -236,6 +237,14 @@ WantedBy=default.target
 `t3 up` and `t3 service` set up a background service and remote access for the upstream
 project's installed releases. They have not been tried with a build from this repository.
 [Remote access](./docs/user/remote-access.md) covers Tailscale, HTTPS and pairing in depth.
+
+### On a phone
+
+Start the server with `--lan`, or with `--tailscale-serve` for an `https` address, and open the
+pairing link on the phone. From there the web app can be added to the home screen and opens full
+screen. Android offers a full install only over `https`. An iPhone's installed app asks for a
+pairing token the first time: run `t3 pair` and enter the token it prints. See
+[installing on a phone](./docs/user/remote-access.md#install-the-web-app-on-a-phone).
 
 State lives in `~/.t3`. Pass `--base-dir <folder>` to keep it elsewhere, and pass the same flag to
 every other command so it finds that server.

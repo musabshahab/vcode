@@ -195,6 +195,23 @@ tailscale serve --https=443 --set-path=/ off
 If that port is already in use, choose another with
 `--tailscale-serve-port`. See `t3 pair --help` for other pairing options.
 
+### Install the web app on a phone
+
+The web app can sit on a phone's home screen and open full screen, without a browser bar. The
+phone must be able to reach the server, as above; nothing works offline.
+
+On Android, open the pairing link in Chrome, then choose **Add to Home screen** and **Install**
+from Chrome's menu. Chrome offers **Install** only on an `https` address, such as
+[Tailscale HTTPS](#tailscale-https). On a plain `http` address it adds a shortcut that opens in a
+browser tab. Touch and hold the installed icon for **New thread**.
+
+On an iPhone, open the server's address in Safari, then choose **Add to Home Screen** from the
+Share menu. The installed app keeps its own sign-in, separate from Safari, so it asks for a
+pairing token the first time you open it. Run `t3 pair` on the host and enter the token it prints.
+
+An installed web app does not deliver the system notifications a desktop browser can show when a
+thread finishes.
+
 ### Hosted web app
 
 [app.t3.codes](https://app.t3.codes) needs an HTTPS endpoint. It connects directly
