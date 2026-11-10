@@ -223,7 +223,7 @@ export function ConnectAgentSurface() {
             value={pairingCode}
           />
           <p className="text-xs text-muted-foreground">
-            Get one from Use T3 Code in another app (MCP), Settings → Sharing & access, or{" "}
+            Get one from Use Ensemble in another app (MCP), Settings → Sharing & access, or{" "}
             <code>t3 auth pairing create</code> on this machine.
           </p>
         </div>

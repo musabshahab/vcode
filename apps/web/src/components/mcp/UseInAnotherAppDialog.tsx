@@ -77,7 +77,7 @@ export function UseInAnotherAppDialogHost() {
 
 function UseInAnotherAppDialog({ requested }: { readonly requested: EnvironmentId | null }) {
   const { environment, label } = useAccessEnvironment(requested);
-  const title = `Use T3 Code in another app (MCP) · ${label ?? "T3 Code"}`;
+  const title = `Use Ensemble in another app (MCP) · ${label ?? "Ensemble"}`;
   return (
     <Dialog open onOpenChange={(open) => (open ? undefined : close())}>
       <WizardPopup>
@@ -408,7 +408,7 @@ function GateScreen({
         </GateMessage>
       );
     case "update":
-      return <GateMessage title={`Update T3 Code on ${name}`} />;
+      return <GateMessage title={`Update Ensemble on ${name}`} />;
     case "no-relay-read":
       return (
         <GateMessage
@@ -467,7 +467,7 @@ function GateScreen({
           ) : (
             <div className="space-y-2 text-sm">
               <CommandBlock command="t3 connect link" />
-              <p>Restart T3 Code on {name}.</p>
+              <p>Restart Ensemble on {name}.</p>
               {checkAgain}
             </div>
           )}
