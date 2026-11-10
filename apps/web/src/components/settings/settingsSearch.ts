@@ -295,6 +295,14 @@ export const SETTINGS_SEARCH_ITEMS = [
     environmentOnly: true,
   },
   {
+    id: "delegation-budget",
+    title: "Budget per request",
+    to: "/settings/threads",
+    scope: "environment-defaults",
+    searchTerms: ["subagent delegate team cost spend limit dollars cap"],
+    environmentOnly: true,
+  },
+  {
     id: "subagent-model-implementation",
     title: "Implementation subagents",
     to: "/settings/threads",

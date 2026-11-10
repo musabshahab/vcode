@@ -15,6 +15,7 @@ import { useAtomCommand } from "../../state/use-atom-command";
 import { ProviderModelPicker } from "../chat/ProviderModelPicker";
 import { TraitsPicker } from "../chat/TraitsPicker";
 import { Button } from "../ui/button";
+import { DraftInput } from "../ui/draft-input";
 import { Menu, MenuItem, MenuPopup, MenuTrigger } from "../ui/menu";
 import { toastManager } from "../ui/toast";
 import { searchableSetting } from "./settingsSearch";
@@ -28,6 +29,7 @@ import {
 import { useScopedModelDisabledReason } from "./useScopedModelAvailability";
 import {
   useScopedSettings,
+  useScopedSettingsMixed,
   useScopedSettingsWriteAllowed,
   useUpdateScopedSettings,
 } from "./useScopedSettings";
@@ -154,6 +156,7 @@ export function SubagentModelsSettings() {
   const entries = providerInstanceEntriesFor(providers, settings, null);
   const modelDisabledReason = useScopedModelDisabledReason(settings, entries);
   const canWrite = useScopedSettingsWriteAllowed();
+  const mixedBudget = useScopedSettingsMixed(["delegationBudgetUsd"]);
 
   // Older servers drop the patch, so a saved choice would silently not apply.
   const supported =
@@ -163,6 +166,23 @@ export function SubagentModelsSettings() {
         candidate.serverConfig?.environment.capabilities.teamRoleModelSelections === true,
     );
   if (scope.kind === "project" || scope.kind === "checkout" || !supported) return null;
+
+  const supportsBudget = connectedEnvironments.every(
+    (candidate) => candidate.serverConfig?.environment.capabilities.delegationBudget === true,
+  );
+  const setBudget = (draft: string) => {
+    const text = draft.trim().replace(/^\$/, "");
+    const amount = text === "" ? null : Number(text);
+    if (amount !== null && !(Number.isFinite(amount) && amount > 0)) {
+      toastManager.add({
+        type: "error",
+        title: "Budget not saved",
+        description: "Enter an amount in dollars above zero, or leave it empty for no limit.",
+      });
+      return;
+    }
+    updateSettings({ delegationBudgetUsd: amount });
+  };
 
   // An unset role shows where the picker opens, not a saved choice.
   const threadModel = resolveProjectDefaultProviderModelSelection(providers, settings, null);
@@ -182,6 +202,37 @@ export function SubagentModelsSettings() {
       title="Subagent models"
       headerAction={canWrite ? <SubagentModelPresetMenu /> : null}
     >
+      {supportsBudget ? (
+        <SettingsRow
+          serverScoped
+          settingKeys={["delegationBudgetUsd"]}
+          {...searchableSetting("delegation-budget")}
+          description="In dollars at API prices. Once a request's subagents have used this much, no more start until you reply. Empty is no limit."
+          resetAction={
+            mixedBudget || settings.delegationBudgetUsd !== null ? (
+              <SettingResetButton
+                label="subagent budget"
+                onClick={() => updateSettings({ delegationBudgetUsd: null })}
+              />
+            ) : null
+          }
+          control={
+            <DraftInput
+              size="sm"
+              inputMode="decimal"
+              className="w-full sm:w-24"
+              value={
+                mixedBudget || settings.delegationBudgetUsd === null
+                  ? ""
+                  : String(settings.delegationBudgetUsd)
+              }
+              onCommit={setBudget}
+              placeholder={mixedBudget ? "Mixed" : "No limit"}
+              aria-label="Budget per request in dollars"
+            />
+          }
+        />
+      ) : null}
       {SUBAGENT_ROLE_ROWS.map(({ role, item, description }) => {
         const stored = target?.settings.teamRoleModelSelections[role];
         const mixed = targets.some(

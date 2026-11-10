@@ -127,6 +127,7 @@ import {
   teamRoleSelection,
 } from "./delegatedTaskModes.ts";
 import { isLiveCallerShell, threadNotFound } from "./threadAccess.ts";
+import * as DelegationBudget from "./DelegationBudget.ts";
 import * as SecretRequests from "../secrets/SecretRequests.ts";
 import * as PeerForwarding from "../peer/PeerForwarding.ts";
 import * as RemoteDelegation from "../peer/RemoteDelegation.ts";
@@ -226,6 +227,9 @@ export class OrchestratorMcpService extends Context.Service<
 >()("t3/mcp/OrchestratorMcpService") {}
 
 const isThreadManagementError = Schema.is(ThreadManagementService.ThreadManagementError);
+
+// Cents are enough except below ten cents, where they would round a real amount to nothing.
+const usd = (amount: number) => `$${amount.toFixed(amount < 0.1 ? 3 : 2)}`;
 
 function failure(code: OrchestratorMcpFailure["code"], message: string): OrchestratorMcpFailure {
   return new OrchestratorMcpFailure({ code, message });
@@ -1039,6 +1043,8 @@ const make = Effect.gen(function* () {
   const gitDriver = yield* GitVcsDriver.GitVcsDriver;
   const serverSettings = yield* ServerSettings.ServerSettingsService;
   const remoteDelegation = yield* RemoteDelegation.RemoteDelegation;
+  // Optional so the service still builds where no price table exists, such as its own tests.
+  const delegationBudget = yield* Effect.serviceOption(DelegationBudget.DelegationBudget);
 
   const requireProject = (projectId: ProjectId) =>
     projects.getById(projectId).pipe(
@@ -2485,6 +2491,18 @@ const make = Effect.gen(function* () {
         operation: "delegate-task",
       });
       const isRetryOfAcceptedDelegation = yield* threadManagement.hasReceipt(commandId);
+      if (Option.isSome(delegationBudget) && !isRetryOfAcceptedDelegation) {
+        const spend = yield* delegationBudget.value.exceeded({
+          threadId: scope.thread.threadId,
+          runId: parentRun.id,
+        });
+        if (Option.isSome(spend)) {
+          return yield* failure(
+            "budget_reached",
+            `This request's delegates have used about ${usd(spend.value.spentUsd)} of the ${usd(spend.value.budgetUsd)} budget the user set. Start no more delegates. Tell the user what is done and what is left, and ask whether to continue. Their reply starts a new budget.`,
+          );
+        }
+      }
       const settings = yield* serverSettings.getSettings.pipe(
         Effect.mapError(() => failure("orchestration_error", "Unable to read server settings.")),
       );

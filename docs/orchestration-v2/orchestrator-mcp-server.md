@@ -276,6 +276,12 @@ on its `childThreadId`. After the original task completes, that follow-up runs a
 fresh task in the child thread; it does not reopen the completed task or change its
 published result.
 
+With `delegationBudgetUsd` set, a request whose delegated tasks have already used
+that much at list prices gets `budget_reached` instead of a new task. The spend
+covers the tasks the parent's current run delegated and any tasks under them, so
+the user's next message starts a new budget. The parent's own turn is not
+counted: a provider reports a turn's usage only when the turn ends.
+
 Delegation requires an active parent run owned by the MCP credential's
 provider session. The request becomes the V2 command
 `delegated_task.request`.
@@ -574,6 +580,7 @@ thread_not_sendable
 thread_not_interruptible
 invalid_request
 orchestration_error
+budget_reached
 ```
 
 ## Code Ownership

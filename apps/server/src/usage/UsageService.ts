@@ -45,6 +45,7 @@ import {
   lookupRate,
   parseRateTable,
   type RateTable,
+  type TokenRates,
 } from "./usagePricing.ts";
 import {
   listTranscriptFiles,
@@ -149,10 +150,10 @@ export class UsageService extends Context.Service<
   {
     readonly readSummary: (input: UsageSummaryInput) => Effect.Effect<UsageSummary, UsageReadError>;
     readonly refreshRates: Effect.Effect<UsagePricing>;
-    /** USD per million output tokens for each model with a known or custom price. */
-    readonly outputPricesPerMillion: (
+    /** List or custom rates, in USD per token, for each model that has them. */
+    readonly tokenRates: (
       models: ReadonlyArray<string>,
-    ) => Effect.Effect<ReadonlyMap<string, number>>;
+    ) => Effect.Effect<ReadonlyMap<string, TokenRates>>;
   }
 >()("t3/usage/UsageService") {}
 
@@ -947,22 +948,22 @@ export const make = Effect.gen(function* () {
     return yield* Deferred.await(deferred);
   });
 
-  const outputPricesPerMillion = Effect.fn("UsageService.outputPricesPerMillion")(function* (
+  const tokenRates = Effect.fn("UsageService.tokenRates")(function* (
     models: ReadonlyArray<string>,
   ) {
     const [settings] = yield* Effect.all([Effect.option(readSettings), ensureRates(false)]);
     const overrides = createOverrideRateTable(
       Option.match(settings, { onNone: () => ({}), onSome: (value) => value.usagePriceOverrides }),
     );
-    const prices = new Map<string, number>();
+    const known = new Map<string, TokenRates>();
     for (const model of models) {
       const rate = overrides.get(model.trim()) ?? lookupRate(rates, model);
-      if (rate !== null) prices.set(model, rate.outputCostPerToken * 1_000_000);
+      if (rate !== null) known.set(model, rate);
     }
-    return prices;
+    return known;
   });
 
-  return { readSummary, refreshRates, outputPricesPerMillion, awaitPersisted } as const;
+  return { readSummary, refreshRates, tokenRates, awaitPersisted } as const;
 });
 
 export const layer = Layer.effect(UsageService, make);

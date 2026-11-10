@@ -253,6 +253,7 @@ export const make = Effect.gen(function* () {
       usagePriceOverrides: true,
       usageModelAliases: true,
       teamRoleModelSelections: true,
+      delegationBudget: true,
       threadPinning: true,
       threadPinReorder: true,
       threadActiveReorder: true,

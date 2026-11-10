@@ -296,6 +296,17 @@ Presets rank models by list price, and review with a different provider when it 
 comparable model. A model without a known price is left out; give it one under
 [Model prices](./usage.md#set-custom-model-prices) to include it. Adjust any role afterwards.
 
+### Cap what subagents spend
+
+Set **Budget per request** in **Settings → Threads → Subagent models** to limit what the
+subagents of one request may use, in dollars at API prices. When they reach it, the agent starts
+no more subagents, tells you what is done and what is left, and asks whether to continue. Your
+reply starts a new budget.
+
+The budget counts subagents only. The agent's own work on the request is not counted, and neither
+is usage a provider does not report or a model without a known price. On a subscription the
+figure is an estimate of the equivalent API cost, not a charge.
+
 ### Run a task with the team
 
 Start a message with `/team` to have the agent lead a team on it:

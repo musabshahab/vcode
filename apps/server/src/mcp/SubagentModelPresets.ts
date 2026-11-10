@@ -141,14 +141,21 @@ const make = Effect.gen(function* () {
           .listed.filter((model) => !model.isLegacy)
           .map((model) => ({ provider, model: model.slug })),
       );
-    const prices = yield* usage.outputPricesPerMillion(offered.map(({ model }) => model));
+    const rates = yield* usage.tokenRates(offered.map(({ model }) => model));
     return {
       presets: recommendSubagentModelPresets(
         offered.flatMap(({ provider, model }) => {
-          const price = prices.get(model);
-          return price === undefined
+          const rate = rates.get(model);
+          return rate === undefined
             ? []
-            : [{ instanceId: provider.instanceId, driver: provider.driver, model, price }];
+            : [
+                {
+                  instanceId: provider.instanceId,
+                  driver: provider.driver,
+                  model,
+                  price: rate.outputCostPerToken * 1_000_000,
+                },
+              ];
         }),
       ),
     };

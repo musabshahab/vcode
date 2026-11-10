@@ -1343,6 +1343,8 @@ const teamRoleFields = <Value extends Schema.Top>(value: Value) => ({
 export const TeamRoleModelSelections = Schema.Struct(teamRoleFields(ModelSelection));
 export type TeamRoleModelSelections = typeof TeamRoleModelSelections.Type;
 
+const DelegationBudgetUsd = Schema.Number.check(Schema.isFinite(), Schema.isGreaterThan(0));
+
 export const SubagentModelPresetId = Schema.Literals(["balanced", "budget", "maxQuality"]);
 export type SubagentModelPresetId = typeof SubagentModelPresetId.Type;
 
@@ -1574,6 +1576,11 @@ export const ServerSettings = Schema.Struct({
 
   teamRoleModelSelections: TeamRoleModelSelections.pipe(
     Schema.withDecodingDefault(Effect.succeed({})),
+  ),
+
+  /** USD at list prices one request's delegated tasks may use before new ones are refused; null is no limit. */
+  delegationBudgetUsd: Schema.NullOr(DelegationBudgetUsd).pipe(
+    Schema.withDecodingDefault(Effect.succeed(null)),
   ),
 
   /** Sent by the Usage tab with each summary request to this environment; edit in settings.json. Invalid values are ignored. */
@@ -1961,6 +1968,7 @@ export const ServerSettingsPatch = Schema.Struct({
   teamRoleModelSelections: Schema.optionalKey(
     Schema.Struct(teamRoleFields(Schema.NullOr(ModelSelection))),
   ),
+  delegationBudgetUsd: Schema.optionalKey(Schema.NullOr(DelegationBudgetUsd)),
 });
 export type ServerSettingsPatch = typeof ServerSettingsPatch.Type;
 
