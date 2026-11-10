@@ -69,22 +69,6 @@ Download the `.deb` from [GitHub Releases](https://github.com/pingdotgg/t3code/r
 sudo apt install ./T3-Code-*.deb
 ```
 
-#### Arch Linux (AUR)
-
-Stable:
-
-```bash
-yay -S t3code-bin
-```
-
-Nightly:
-
-```bash
-yay -S t3code-nightly-bin
-```
-
-The AUR packaging is maintained in this repository under [`packaging/aur`](./packaging/aur).
-
 #### Nix (nixpkgs)
 
 ```bash

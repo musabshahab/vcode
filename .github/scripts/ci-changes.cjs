@@ -22,15 +22,12 @@ const RUNS_EVERYTHING = [
 const EXTRA_OWNERS = [
   // Vite configs and tsconfigs of these apps import scripts/lib directly.
   [/^scripts\/lib\//, ["@t3tools/desktop", "@t3tools/mobile", "@t3tools/web", "t3"]],
-  // scripts/build-desktop-artifact.ts reads the GNOME extension manifest.
-  [/^apps\/desktop\/gnome-extension\//, ["@t3tools/scripts"]],
   [/^native\/browser-secret\//, ["@t3tools/desktop"]],
-  [/^native\/kde-snap-shot\//, ["@t3tools/desktop"]],
   [/^native\/libghostty-vt\//, ["@t3tools/web"]],
   // apps/server/src/cloud/ConnectReachability.test.ts checks the guide's headings.
   [/^docs\/user\/t3-connect-troubleshooting\.md$/, ["t3"]],
 ];
-const RUST = /^native\/(resource-monitor|kde-snap-shot|hyprland-snap-shot)\//;
+const RUST = /^native\/resource-monitor\//;
 
 // These tests read other packages without declaring dependencies.
 const TEST_ONLY_DEPS = {

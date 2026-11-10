@@ -1,5 +1,5 @@
 import "vite-plus/test/config";
-import { defaultInclude, defineConfig } from "vite-plus";
+import { defineConfig } from "vite-plus";
 
 import { isDesktopRuntimeExternalDependency } from "../../scripts/lib/desktop-external-packages.ts";
 import { loadRepoEnv } from "../../scripts/lib/public-config.ts";
@@ -74,17 +74,12 @@ export default defineConfig({
     },
     {
       format: "cjs",
-      outDir: "dist-electron",
+      outDir: "dist-electron/electron",
       dts: false,
       sourcemap: true,
       outExtensions: () => ({ js: ".cjs" }),
       define: publicConfigDefine,
-      entry: [
-        "src/electron/WindowsForegroundFocusWorker.ts",
-        "src/snapShot/GlobalShiftShortcutWorker.ts",
-        "src/snapShot/RegionSnapShotWorker.ts",
-        "src/snapShot/SnapShotAccessibilityWorker.ts",
-      ],
+      entry: ["src/electron/WindowsForegroundFocusWorker.ts"],
       clean: false,
       deps: {
         alwaysBundle: (id) => !id.startsWith("node:") && !isMainProcessExternal(id),
@@ -151,7 +146,6 @@ export default defineConfig({
     },
   ],
   test: {
-    include: [...defaultInclude, "../../native/kde-snap-shot/src/*.test.ts"],
     // The Windows lane runs workspace suites concurrently; filesystem-heavy
     // desktop integration tests can exceed Vitest's 5 second default there.
     testTimeout: 15_000,
