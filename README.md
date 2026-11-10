@@ -1,153 +1,296 @@
-# T3 Code
+# Ensemble
 
-T3 Code is an "agent harness control surface". It enables control of the agents on your machine with a best-in-class mobile app ([iOS](https://apps.apple.com/us/app/t3-code-remote-claude-more/id6787819824), [Android](https://play.google.com/store/apps/details?id=com.t3tools.t3code)), [web app](https://app.t3.codes) and [Electron-based desktop app](https://t3.codes).
+Ensemble runs coding tasks with a team of AI agents, each on the model that suits its job. A lead
+plans the work and hands research, implementation, testing and review to subagents. You choose
+which model does which job, cap what the team may spend, and watch it work from a web app, a
+desktop app, or the command line.
 
-Works with your subscriptions on Claude Code, Codex, Cursor, Grok Build, OpenCode, Google Antigravity, and fx. If they're set up on your computer, T3 Code can control them.
+It drives the coding agents you already have (Claude Code, Codex, and others), with your own
+subscriptions or API keys. Nothing is resold.
 
-## "Wait, what are you selling me?"
+> [!NOTE]
+> Ensemble is built on an open-source base whose names it has not replaced yet. The command is
+> still `t3`, the data folder is still `~/.t3`, and the app's own screens and the guides under
+> [docs/](./docs) still say T3 Code. Only this README uses the new name.
 
-Nothing. We built T3 Code because we wanted the best possible development experience with agents. We were inspired by existing solutions like the Codex desktop app, Conductor, Claude Desktop and Cursor Glass, but none met our bar.
+## What you get
 
-We wanted something performant, remote-ready, and truly open. If we ever go the wrong direction, we want you to have everything you need to fork and build the editor that you want.
+- **A team per task.** Type `/team` before a task. The lead plans, splits the work into steps
+  with the files each step owns, and delegates by role: research, implementation, test, review.
+- **A model per role.** Reviews can run on a different provider from the one that wrote the code,
+  so a second model family checks the first.
+- **Presets.** Balanced, Budget and Max quality fill every role from the models your providers
+  offer, with a rough cost for a typical task.
+- **A budget.** A dollar limit on what one request's subagents may use. When it is reached the
+  lead stops delegating and asks you.
+- **Isolation and undo.** Run a task in its own git worktree. Every turn is checkpointed, so you
+  can view the diff and restore.
+- **Three surfaces.** Web, desktop (Electron), and CLI. On a phone, open the web app in a browser.
 
-## Installation
+## Requirements
 
-> [!WARNING]
-> T3 Code currently supports Codex, Claude, Cursor, Grok Build, OpenCode, Antigravity, and fx. Install and authenticate at least one provider before use:
->
-> - Codex: install [Codex CLI](https://developers.openai.com/codex/cli) and run `codex login`
-> - Claude: install [Claude Code](https://claude.com/product/claude-code) and run `claude auth login`
-> - Cursor: install [Cursor CLI](https://cursor.com/cli) and run `agent login`
-> - Grok Build: install [Grok Build CLI](https://x.ai/cli) and run `grok login`
-> - OpenCode: install [OpenCode](https://opencode.ai) and run `opencode auth login`
-> - Antigravity: enable it in Settings, then use **Install Antigravity** and **Sign in with Google**. No CLI is required.
-> - fx: install [fx](https://fx.sh) and run `fx login` on the machine running the T3 Code server ([setup guide](./docs/user/providers-fx.md))
+- Git, and Node 26. The `vp` tool below provides the right Node version.
+- At least one coding agent, installed and signed in on the machine that runs Ensemble:
+  - **Claude Code:** `claude auth login`
+  - **Codex:** `codex login`, or **Connect with ChatGPT** in Settings → Providers
+- A second provider is optional, and is what lets a different model family do the review.
 
-### Command line
+## Install and run
 
-```bash
-curl -fsSL https://t3.codes/install.sh | sh
-```
-
-On Windows, in PowerShell:
-
-```powershell
-irm https://t3.codes/install.ps1 | iex
-```
-
-Then run `t3` to start the server and open the local web app. `t3 service install` keeps it running in the background, `t3 update` moves to a newer release, and `t3 --help` has the full reference.
-
-To try it once without installing, run `npx t3@latest`. It offers to install the `t3` command for you.
-
-### Desktop app
-
-Install the latest version of the desktop app from [GitHub Releases](https://github.com/pingdotgg/t3code/releases), or from your favorite package registry:
-
-#### Windows (`winget`)
-
-```bash
-winget install T3Tools.T3Code
-```
-
-#### Windows (`scoop`)
-
-```bash
-scoop install extras/t3code
-```
-
-#### macOS (Homebrew)
-
-```bash
-brew install --cask t3-code
-```
-
-#### Debian, Ubuntu (`.deb`)
-
-Download the `.deb` from [GitHub Releases](https://github.com/pingdotgg/t3code/releases), then:
-
-```bash
-sudo apt install ./T3-Code-*.deb
-```
-
-#### Arch Linux (AUR)
-
-Stable:
-
-```bash
-yay -S t3code-bin
-```
-
-Nightly:
-
-```bash
-yay -S t3code-nightly-bin
-```
-
-The AUR packaging is maintained in this repository under [`packaging/aur`](./packaging/aur).
-
-#### Nix (nixpkgs)
-
-```bash
-nix profile add github:NixOS/nixpkgs/nixos-unstable#t3code
-```
-
-The package is maintained in [nixpkgs](https://github.com/NixOS/nixpkgs/tree/nixos-unstable/pkgs/by-name/t3/t3code)
-and includes the desktop app (`t3code-desktop`) and the `t3` command.
-See [Nix installation](./docs/user/install.md#nix-nixpkgs) for NixOS configuration and updates.
-
-## Some notes
-
-We are very very early in this project. Expect bugs.
-
-We are (mostly) not accepting contributions yet. Small fixes may be considered. Big features will not be.
-
-## Documentation
-
-Full docs live in [docs/](./docs). There's no docs site yet.
-
-- [FAQ](./docs/user/faq.md)
-- [Install and first run](./docs/user/install.md)
-- [Permission modes](./docs/user/permission-modes.md)
-- [Keyboard shortcuts](./docs/user/keybindings.md)
-- [Project settings](./docs/user/project-settings.md)
-- [Appearance preferences](./docs/user/appearance.md)
-- [Remote access from a phone or another machine](./docs/user/remote-access.md)
-- [Connect Claude Code, Codex, ChatGPT and other agents over MCP](./docs/user/outside-agents.md)
-- [Keeping app and server in sync](./docs/user/updating.md)
-- [Source control integrations](./docs/user/source-control.md)
-- Multiple accounts: [Codex](./docs/user/providers-codex.md) · [Claude](./docs/user/providers-claude.md)
-- [Run T3 Code as a background service](./docs/user/background-service.md)
-
-Building from source? Start at [docs/internals/overview.md](./docs/internals/overview.md).
-
-## If you REALLY want to contribute still.... read this first
-
-### Install `vp`
-
-T3 Code uses Vite+ so you'll need to install the global `vp` command-line tool.
-
-#### macOS / Linux
+Ensemble is run from this repository. There are no published builds.
 
 ```bash
 curl -fsSL https://vite.plus | bash
 ```
 
-#### Windows
-
 ```bash
-irm https://vite.plus/ps1 | iex
+git clone https://github.com/musabshahab/vcode.git
 ```
 
-Checkout their getting started guide for more information: https://viteplus.dev/guide/
-
-### Install dependencies
+```bash
+cd vcode
+```
 
 ```bash
 vp i
 ```
 
-Read [CONTRIBUTING.md](./CONTRIBUTING.md) before reporting a bug or opening a PR.
+### Try it
 
-Have a feature request? Start an [Ideas discussion](https://github.com/pingdotgg/t3code/discussions/categories/ideas).
+```bash
+vp run dev
+```
 
-Need support? Join the [Discord](https://discord.gg/jn4EGJjrvv).
+This starts the server and the web app and prints a pairing URL. Open that URL; the bare address
+does not sign a new browser in. For the desktop app, use `vp run dev:desktop` instead.
+
+### Build it
+
+```bash
+(cd apps/web && vp build)
+```
+
+```bash
+(cd apps/server && vp pack)
+```
+
+```bash
+alias t3="node $PWD/apps/server/dist/bin.mjs"
+```
+
+```bash
+t3
+```
+
+`t3` starts the server and opens the web app. `t3 serve` does the same without a browser, and
+`t3 --help` lists every command. The examples below assume the alias.
+
+> [!WARNING]
+> Do not run `t3 update` or `t3 install`. They download the upstream project's releases, which do
+> not have the team features, and would replace this build.
+
+## Set up the team
+
+Open **Settings → Threads → Subagent models**.
+
+1. **Pick a preset** from **Presets**, or choose a model for each role yourself. A role left on
+   **Thread's model** uses whatever model the thread runs on.
+2. **Set a budget** in **Budget per request** if you want a cap. It is in dollars at API prices.
+3. **Override per project** if one codebase needs a different team: choose the project in the
+   sentence at the top of Settings, then set its roles.
+
+How presets choose: they rank the models your providers offer by list price, and pick each role
+from a tier of that ranking. The reviewer comes from a different provider than the implementer
+when that provider has a comparable model. The cost shown is a rough guide for a mid-sized task,
+not a quote.
+
+### Add Codex next to Claude
+
+With both signed in, a preset puts the implementation on one and the review on the other. To do
+it by hand, set **Implementation subagents** to a Claude model and **Review subagents** to a Codex
+model, or the reverse.
+
+Codex can also run on an API key through a custom model provider, for example OpenRouter. Put the
+provider in a `config.toml` in a folder of its own:
+
+```toml
+model = "openai/gpt-6.1-terra"
+model_provider = "openrouter"
+
+[model_providers.openrouter]
+name = "OpenRouter"
+base_url = "https://openrouter.ai/api/v1"
+env_key = "OPENROUTER_API_KEY"
+wire_api = "responses"
+```
+
+Then in **Settings → Providers**, add a Codex instance, choose **Configure manually**, set
+**CODEX_HOME path** to that folder, add `OPENROUTER_API_KEY` under **Environment variables**, and
+add the model ID under **Custom models**.
+
+## Use the team
+
+In the composer, pick `/team` from the `/` menu or type it:
+
+```text
+/team Add rate limiting to the public API routes, with tests
+```
+
+From a terminal, in the project's folder:
+
+```bash
+t3 project add .
+```
+
+```bash
+t3 thread start . "/team Add rate limiting to the public API routes, with tests" --wait
+```
+
+Add `--worktree main` to run it in a new worktree based on `main`.
+
+What happens:
+
+1. The lead reads enough to plan, and names the files each step owns.
+2. Research questions go to research subagents, in parallel.
+3. Each implementation step goes to its own subagent. Steps that share no files run in parallel.
+   A step whose files another running step holds waits for it.
+4. A test subagent runs the project's checks.
+5. A review subagent reviews the whole change. The lead has findings fixed and reviews once more.
+6. The lead reports what changed, the test result, the review verdict and what is still open,
+   with a commit message.
+
+For a one-line change the lead does the edit itself and says no team was needed. Without `/team`
+a thread is a single agent, as usual.
+
+### Debug with the team
+
+Describe the failure and what you expect. The research role finds the cause, the test role
+reproduces it, and the review role checks the fix:
+
+```text
+/team The nightly export job fails with "connection reset" after about ten minutes. Find the
+cause, fix it, and add a test that would have caught it.
+```
+
+Give it what you have: the error text, the failing command, a log path. If you only want the
+cause and not a fix, say so in the task.
+
+### Ship with the team
+
+The team works in your checkout or a worktree and stops at a commit message. Committing, pushing
+and opening a pull request are your call, from the thread's branch controls or by asking:
+
+```text
+/team Bump the version, update the changelog from the commits since the last tag, and open a
+pull request.
+```
+
+Agents run the commands you allow. For anything that pushes, publishes or deploys, set the thread
+to **Supervised** so each command waits for your approval. See
+[permission modes](./docs/user/permission-modes.md).
+
+## Manage a run
+
+- **Watch it.** The thread shows each subagent as it starts and finishes. **Agents** opens any of
+  them to read what it did.
+- **Stop it.** Stop on the thread also stops its subagents.
+- **Answer it.** When a subagent needs an approval or an answer, the lead's thread asks you.
+- **Read the change.** The diff panel shows what changed. Each turn has a checkpoint you can
+  restore.
+- **Keep it apart.** Choose **New worktree** for the thread to keep the changes out of the folder
+  you are working in. A worktree starts from a commit, so it lacks your uncommitted changes.
+- **See what it cost.** **Usage** breaks spending down by model and shows subscription limits.
+- **Read it later.** `t3 thread list` and `t3 thread show <id>` print threads and transcripts.
+
+## Deploy Ensemble on another machine
+
+Agents run where the server runs, with that machine's files and sign-ins. To use a server from
+other devices, build it there as above and start it without a browser:
+
+```bash
+t3 serve --lan --port 3773
+```
+
+`--lan` accepts connections from your local network and tailnet. Use `--host` to bind one address.
+Then make a pairing link and open it on the other device:
+
+```bash
+t3 pair
+```
+
+To keep it running, start it from your own process manager. A systemd user unit, for example:
+
+```ini
+[Unit]
+Description=Ensemble server
+
+[Service]
+WorkingDirectory=%h/vcode
+ExecStart=/usr/bin/env node apps/server/dist/bin.mjs serve --lan --port 3773
+Restart=on-failure
+
+[Install]
+WantedBy=default.target
+```
+
+`t3 up` and `t3 service` set up a background service and remote access for the upstream
+project's installed releases. They have not been tried with a build from this repository.
+[Remote access](./docs/user/remote-access.md) covers Tailscale, HTTPS and pairing in depth.
+
+State lives in `~/.t3`. Pass `--base-dir <folder>` to keep it elsewhere, and pass the same flag to
+every other command so it finds that server.
+
+## Debug Ensemble itself
+
+- **A role's model does not run.** The lead is told why, for example that the provider is signed
+  out. Open **Settings → Providers** and refresh. A role never falls back to another model.
+- **No presets offered.** Presets need two models with a known price. Give a model a price under
+  **Usage → Model prices**.
+- **A step is refused.** Another running step holds one of its files; the lead waits and retries.
+- **Delegation stops early.** The budget was reached. Reply to continue; your reply starts a new
+  budget.
+- **Logs.** The server's trace is under `logs/` in the data folder. `t3 trace` reads it.
+- **A broken data folder.** `t3 doctor` inspects and repairs it.
+- **While developing.** `vp run dev` restarts the server whenever a server file changes. A run in
+  progress resumes afterwards.
+
+## What is enforced, and what is asked
+
+| Rule                                       | How it holds                                                      |
+| ------------------------------------------ | ----------------------------------------------------------------- |
+| Each role runs on its model                | Enforced. An unavailable model fails the step; nothing falls back |
+| Budget per request                         | Enforced for subagents. The lead's own work is not counted        |
+| Two review rounds per `/team` request      | Enforced                                                          |
+| Steps that share files do not run together | Enforced, for the files a step declares                           |
+| A step changes only its own files          | Asked of the agent, not enforced. Check the diff                  |
+| One retry on a stronger model              | Asked of the lead, not enforced                                   |
+| The pipeline's order                       | Asked of the lead, and checked by the evals in [evals/](./evals)  |
+
+Costs are estimates at API list prices. On a subscription they are not charges. Usage a provider
+does not report, and models without a known price, count as nothing.
+
+## Develop
+
+```bash
+vp run check:changed
+```
+
+runs the fast checks for the files you changed: format, lint, types and the tests beside them.
+[AGENTS.md](./AGENTS.md) has the working rules, [docs/internals/overview.md](./docs/internals/overview.md)
+the architecture, and [evals/README.md](./evals/README.md) how to check a change to the text
+agents read.
+
+## More
+
+- [Running tasks with the team, roles, presets and budget](./docs/user/thread-sidebar.md#give-a-role-its-own-model)
+- [Permission modes](./docs/user/permission-modes.md)
+- [Remote access](./docs/user/remote-access.md)
+- [Codex accounts](./docs/user/providers-codex.md) · [Claude accounts](./docs/user/providers-claude.md)
+- [Usage and limits](./docs/user/usage.md)
+- [Source control](./docs/user/source-control.md)
+- [Using it from scripts and other agents](./docs/user/outside-agents.md)
+
+## Credits and licence
+
+Ensemble is built on [T3 Code](https://github.com/pingdotgg/t3code), which is MIT licensed. The
+[LICENSE](./LICENSE) file carries its copyright notice and applies to this repository.

@@ -296,6 +296,9 @@ Presets rank models by list price, and review with a different provider when it 
 comparable model. A model without a known price is left out; give it one under
 [Model prices](./usage.md#set-custom-model-prices) to include it. Adjust any role afterwards.
 
+Each preset shows a rough cost for the subagents of a mid-sized task at API prices, next to the
+cost with the strongest model in every role. It is a guide for comparing presets, not a quote.
+
 ### Cap what subagents spend
 
 Set **Budget per request** in **Settings → Threads → Subagent models** to limit what the
@@ -332,7 +335,9 @@ A team run edits the thread's checkout, like any other thread. Choose **New work
 thread to keep the changes away from the folder you are working in. A worktree starts from a
 commit, so it does not include changes you have not committed.
 
-The choice belongs to the environment and applies to threads you drive from any device. If a
+The choice belongs to the environment and applies to threads you drive from any device. To give
+one project its own role models, choose it in the sentence at the top of Settings and set its
+roles; a project's set replaces the environment's, and resetting a row returns to it. If a
 role's provider is turned off or signed out, the agent is told the subagent could not start; it
 does not run on another model.
 
