@@ -25,9 +25,7 @@ describe("orchestration protocol compatibility", () => {
       orchestrationProtocolCompatibilityError(descriptor(ORCHESTRATION_PROTOCOL_VERSION)),
     ).toBeNull();
 
-    const socketUrl = new URL(
-      appendOrchestrationProtocol("wss://host.test/ws?wsTicket=secret&connectionMethod=relay"),
-    );
+    const socketUrl = new URL(appendOrchestrationProtocol("wss://host.test/ws?wsTicket=secret"));
     expect(socketUrl.searchParams.get("orchestrationProtocol")).toBe(
       String(ORCHESTRATION_PROTOCOL_VERSION),
     );
