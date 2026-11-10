@@ -25,6 +25,7 @@ import {
   normalizeToolInput,
   normalizeToolName,
   pastedText,
+  readOnlyCommand,
   type SampleRun,
   shellOutput,
   namedPathsLine,
@@ -4461,4 +4462,26 @@ it.each([
     }),
     [],
   );
+});
+
+it.each([
+  ["git ls-files && cat package.json 2>/dev/null", true],
+  ["ls -la /tmp/eval-folder", true],
+  ["cat src/server.ts | head -20", true],
+  ["find . -name '*.ts' -not -path './node_modules/*'", true],
+  ["git log --oneline -5; git status", true],
+  ["cat /etc/passwd", false],
+  ["cat ~/.ssh/id_rsa", false],
+  ["cat ../other/file", false],
+  ["ls > out.txt", false],
+  ["find . -delete", false],
+  ["find . -exec rm {} +", false],
+  ["cat $(which node)", false],
+  ["rg --pre sh pattern", false],
+  ["git diff --output=patch", false],
+  ["git branch -D main", false],
+  ["ls && rm -rf .", false],
+  ["npm test", false],
+])("lets a live run's shell only read inside its folder: %s", (command, allowed) => {
+  assert.strictEqual(readOnlyCommand(command, "/tmp/eval-folder"), allowed);
 });

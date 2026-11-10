@@ -672,7 +672,9 @@ export const buildBase = (
   };
 };
 
-type Base = ReturnType<typeof buildBase> & {
+type Base = Omit<ReturnType<typeof buildBase>, "model"> & {
+  /** A model from the table, or for a live Codex run whichever id that Codex reports. */
+  readonly model: string;
   readonly codex?: typeof ResponsesRequest.Type;
   /** What T3's SubagentStart hooks give a native subagent. */
   readonly subagentContext?: string;
@@ -682,7 +684,7 @@ type Base = ReturnType<typeof buildBase> & {
 const buildCodexBase = (
   template: typeof ResponsesRequest.Type,
   options: {
-    readonly model: Model;
+    readonly model: string;
     readonly keepUserInstructions: boolean;
     readonly effort?: string | undefined;
     readonly subagent?: boolean;
@@ -2468,7 +2470,7 @@ const main = Effect.gen(function* () {
         )
       : decodeCapture(template).pipe(
           Effect.flatMap((capture) => {
-            const built = buildBase(capture.request.provider_native, {
+            const built: Base = buildBase(capture.request.provider_native, {
               model: flags.model,
               keepUserInstructions,
               subagent: role === "delegated-child",
@@ -2644,6 +2646,83 @@ const main = Effect.gen(function* () {
   yield* fs.writeFileString(path.join(out, "summary.md"), summary);
   yield* Effect.log(`Wrote ${rows.length} samples to ${out}.\n\n${summary}`);
 });
+
+/**
+ * For `live.ts`, which drives a real harness instead of replaying a request: the case's sample
+ * with every T3 tool loaded (the harness defers and loads tools itself) and the tools to serve it.
+ * A Codex `model` is whichever id that Codex reports.
+ */
+export const liveSample = Effect.fn("evaluateMcpToolUse.liveSample")(function* (
+  testCase: McpToolUseCase,
+  harness: "claude" | "codex",
+  model: string,
+) {
+  const fs = yield* FileSystem.FileSystem;
+  const path = yield* Path.Path;
+  const bytes = yield* fs.readFile(
+    path.join(import.meta.dirname, "templates", `${harness}.json.gz`),
+  );
+  const template = new TextDecoder().decode(NodeZlib.gunzipSync(bytes));
+  const options = {
+    keepUserInstructions: false,
+    subagent: testCase.setup.role === "delegated-child",
+    links: testCase.setup.linkedEnvironments === true,
+    deviceAccess: testCase.setup.world?.deviceAgentAccess !== false,
+  };
+  const claudeModel = Object.keys(MODELS).find(
+    (id): id is Exclude<Model, `gpt-${string}`> => id === model && !id.startsWith("gpt-"),
+  );
+  const base: Base =
+    harness === "codex" || claudeModel === undefined
+      ? buildCodexBase((yield* decodeCodexCapture(template)).request.provider_native, {
+          ...options,
+          model,
+        })
+      : buildBase((yield* decodeCapture(template)).request.provider_native, {
+          ...options,
+          model: claudeModel,
+        });
+  const sample = makeSample(testCase, base);
+  const tools = visibleT3Tools(options);
+  sample.tools.push(...tools);
+  return { sample, tools };
+});
+
+/** A T3 tool's answer for a live sample: the case's mock, else T3's default. No model is called. */
+export const answerLiveToolCall = (sample: Sample, call: typeof ToolUse.Type) =>
+  answerToolCall(
+    sample,
+    {
+      apiKey: "",
+      model: "claude-sonnet-5-5",
+      effort: "high",
+      maxSteps: 0,
+      shellModel: "claude-haiku-5-5",
+    },
+    call,
+  );
+
+const READ_ONLY_PROGRAM =
+  /^(?:ls|cat|head|tail|wc|pwd|rg|grep|find|git (?:status|ls-files|log|diff|show|rev-parse))(?:\s|$)/;
+/**
+ * Whether a shell command only reads, and only inside `cwd`. A live Claude Code run allows these
+ * so the agent can look around the case's folder; anything else it asks for is refused.
+ */
+export const readOnlyCommand = (command: string, cwd: string) => {
+  const local = command.replaceAll(cwd, ".");
+  return (
+    !/[`$<~]|\.\.|(?:^|\s)\/(?!dev\/null)|-(?:exec|execdir|ok|delete|fprint|fls|-pre|-output)/.test(
+      local,
+    ) &&
+    local
+      .replaceAll(/\s*2>(?:\/dev\/null|&1)/g, "")
+      .split(/&&|\|\||[;|\n]/)
+      .every((part) => !part.includes(">") && READ_ONLY_PROGRAM.test(part.trim()))
+  );
+};
+
+/** A tool use as the graders read it. */
+export const liveCall = recordedCall;
 
 if (import.meta.main) {
   main.pipe(

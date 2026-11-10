@@ -21,6 +21,47 @@ pnpm mcp-tool-use --model claude-opus-5-5 --out runs/opus
 - Cost: the existing non-device suite costs about $9 on Sonnet and $17 on Opus. The 16 device cases at 3 samples each cost about $5.70–5.90 on Opus and $2.90–3.40 on Sonnet (main's text–#25661), including the Haiku shell simulator; dry runs cost $0. Results record token costs for the agent and shell simulator. Codex proxy charges are outside that total; only its shell simulator is priced here, about $0.60–0.70 for the device cases.
 - A rate limit or overload (429, 529 or another 5xx) is retried with backoff for up to about 4 minutes. A sample that still fails gets an `error` in `results.jsonl`, is left out of every pass rate, and is listed in the summary; the tokens it spent still count toward the cost.
 
+## Live runs on a subscription
+
+`live.ts` runs the same cases through the real Claude Code or Codex harness on the machine's own
+sign-in, so a subscription pays instead of an API key. Use it by default for cases it can run,
+and keep the replay runner above for the rest.
+
+```sh
+cd evals
+pnpm mcp-tool-use:live --case team-run-delegates-by-role --out runs/live-check
+pnpm mcp-tool-use:live --out runs/live
+pnpm mcp-tool-use:live --harness codex --model gpt-6.1-sol --out runs/live-codex
+```
+
+- Each sample is one fresh session in a temporary folder holding the case's files. T3's
+  instructions reach the harness as in the product (Claude Code's system prompt, Codex's turn
+  context), and T3's tools are served over HTTP with their real names, descriptions and schemas,
+  answered from the case's mocks. The session is not saved to your Claude Code or Codex history.
+- Nothing outside that folder is changed. Claude Code gets T3's tools, the file tools and
+  read-only shell commands inside the folder (`ls`, `cat`, `rg`, `git status` and the like); a
+  hook refuses everything else, including the network and native subagents. Codex runs in its
+  own sandbox with writes limited to the folder and no network, and the runner approves T3's
+  tools and declines every other request. A refused call is still recorded, so `notCalls` and
+  `callsMustNot` checks still see the attempt.
+- Claude Code runs without your settings, memory files and MCP servers. Codex has no switch
+  for that: your Codex config, `AGENTS.md` and MCP servers are part of the sample. Point
+  `CODEX_HOME` at a clean signed-in home for results you compare.
+- Samples run one at a time, since a plan's limits are shared with your own work. The summary
+  reports tokens, and for Claude Code what they would have cost at API prices.
+- Without `--case`, every case a live run can represent is run. It skips, and lists, cases that
+  need earlier turns replayed, a side chat, a delegated or native child, a simulated machine
+  (commits, pull requests, devices, shell checks), or the other harness.
+- A sample is one turn. A lead that delegates with `mode:"wait"` gets a task that is still
+  running, as after a timed-out wait, so it ends its turn there; checks on later steps fail.
+- Flags: `--harness claude|codex` (default `claude`), `--model` (`claude-sonnet-5-5` or
+  `claude-opus-5-5` for Claude Code, default Sonnet; required for Codex, any model id your Codex
+  offers), `--effort` (default `medium`), `--samples <n>` (default 1), `--max-turns <n>`
+  (default 12; for Codex a cap on tool calls, plus 4), and `--claude <path>` or `--codex <path>`
+  for a binary that is not on `PATH`.
+- Compare live results only with other live results on the same harness. The model sees the
+  real harness and a real folder here, a replayed capture and a simulated shell there.
+
 ## Add a case
 
 Cases are JSON lines in `cases/`, one file per area. The case schema in `run.ts` (`McpToolUseCase`) documents every field.
