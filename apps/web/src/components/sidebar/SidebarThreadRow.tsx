@@ -1269,11 +1269,8 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
               {title}
               {teamToggle}
               {teamTask ? (
-                <span
-                  aria-hidden
-                  className="inline-flex min-w-0 shrink items-center gap-1 text-xs text-secondary-label"
-                >
-                  <span className="max-w-24 truncate">{modelLabel}</span>
+                // The title needs the width; the lead's team card names each agent's model.
+                <span aria-hidden className="inline-flex shrink-0 items-center">
                   <SidebarProviderStack
                     thread={thread}
                     providerEntryByInstanceId={props.providerEntryByInstanceId}
@@ -1336,7 +1333,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
                         )}
                       >
                         <TopStatusIcon icon={topStatus.icon} className="size-3" />
-                        {topStatus.label}
+                        <span className={teamTask ? "sr-only" : undefined}>{topStatus.label}</span>
                       </span>
                     ) : (
                       <span className="text-xs">
