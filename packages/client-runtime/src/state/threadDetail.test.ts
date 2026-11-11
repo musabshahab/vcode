@@ -2,10 +2,15 @@ import {
   EnvironmentId,
   EventId,
   MessageId,
+  ProviderInstanceId,
   RunId,
+  TeamAgentId,
+  TeamPlanId,
+  TeamTaskId,
   TurnItemId,
   type OrchestrationV2ThreadProjection,
   type OrchestrationV2TurnItem,
+  type TeamPlan,
 } from "@codenine/contracts";
 import { describe, expect, it } from "@effect/vitest";
 import * as DateTime from "effect/DateTime";
@@ -124,6 +129,68 @@ describe("lastVisitedAtAtom", () => {
     expect(registry.get(details.lastVisitedAtAtom(ref))).toBe(later);
     unmountQuiet();
     unmountVisit();
+    registry.dispose();
+  });
+});
+
+describe("teamAtom", () => {
+  const team: TeamPlan = {
+    id: TeamPlanId.make("plan-1"),
+    revision: 1,
+    status: "running",
+    goal: "Ship it",
+    agents: [
+      {
+        id: TeamAgentId.make("builder"),
+        label: "Builder",
+        role: "implement",
+        modelSelection: { instanceId: ProviderInstanceId.make("codex"), model: "gpt-fast" },
+        workspace: "shared",
+      },
+    ],
+    tasks: [
+      {
+        id: TeamTaskId.make("a"),
+        title: "Task a",
+        brief: "Do a.",
+        agentId: TeamAgentId.make("builder"),
+        dependsOn: [],
+        status: "running",
+        attempt: 1,
+        threadId: null,
+        result: null,
+        startedAt: null,
+        completedAt: null,
+      },
+    ],
+    maxParallelPerProvider: 2,
+    proposedAt: "2026-06-20T00:00:00.000Z",
+    updatedAt: "2026-06-20T00:00:00.000Z",
+  };
+
+  it("holds the plan through thread events that carry an equal copy", () => {
+    const projection = { ...v2Projection, thread: { ...v2Projection.thread, team } };
+    const state = Atom.make(
+      AsyncResult.success({ ...EMPTY_ENVIRONMENT_THREAD_STATE, data: Option.some(projection) }),
+    );
+    const ref = { environmentId: EnvironmentId.make("env"), threadId: v2ThreadId };
+    const teamAtom = createEnvironmentThreadDetailAtoms(() => state).teamAtom(ref);
+    const registry = AtomRegistry.make();
+    registry.mount(teamAtom);
+    const push = (next: TeamPlan) =>
+      registry.set(
+        state,
+        AsyncResult.success({
+          ...EMPTY_ENVIRONMENT_THREAD_STATE,
+          data: Option.some({ ...projection, thread: { ...projection.thread, team: next } }),
+        }),
+      );
+
+    push(structuredClone(team));
+    expect(registry.get(teamAtom)).toBe(team);
+    const settled = { ...team, tasks: [{ ...team.tasks[0]!, status: "completed" as const }] };
+    push(settled);
+    expect(registry.get(teamAtom)).toBe(settled);
     registry.dispose();
   });
 });

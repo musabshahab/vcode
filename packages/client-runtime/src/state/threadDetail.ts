@@ -3,6 +3,7 @@ import {
   OrchestrationV2TurnItem,
   type OrchestrationV2ThreadProjection,
   type ScopedThreadRef,
+  type TeamPlan,
 } from "@codenine/contracts";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
@@ -41,6 +42,7 @@ import {
 } from "./threadRequests.ts";
 import { arrayElementsEqual, parseThreadKey, threadKey } from "./entities.ts";
 import { getProjectionArrayReplacementIndex } from "./orchestrationV2Projection.ts";
+import { sameTeamPlan } from "../team.ts";
 
 const EMPTY_VISIBLE_TURN_ITEMS: OrchestrationV2ThreadProjection["visibleTurnItems"] = Object.freeze(
   [],
@@ -540,6 +542,20 @@ export function createEnvironmentThreadDetailAtoms<E>(
     }).pipe(Atom.setIdleTTL(0), Atom.withLabel(`environment-thread-pending-requests:${key}`));
   });
 
+  // Every thread event on a lead carries its whole plan; readers keep the same value until it changes.
+  const teamAtomFamily = Atom.family((key: string) => {
+    let source: TeamPlan | null = null;
+    let value: TeamPlan | null = null;
+    return Atom.make((get) => {
+      const team = Option.getOrNull(get(threadStateValueAtomFamily(key)).data)?.thread.team ?? null;
+      if (team !== source) {
+        source = team;
+        if (!sameTeamPlan(value, team)) value = team;
+      }
+      return value;
+    }).pipe(Atom.setIdleTTL(0), Atom.withLabel(`environment-thread-team:${key}`));
+  });
+
   const statusAtomFamily = Atom.family((key: string) =>
     Atom.make((get) => get(threadStateValueAtomFamily(key)).status).pipe(
       Atom.setIdleTTL(0),
@@ -581,6 +597,7 @@ export function createEnvironmentThreadDetailAtoms<E>(
     updatedAtAtom: (ref: ScopedThreadRef) => updatedAtAtomFamily(threadKey(ref)),
     lastVisitedAtAtom: (ref: ScopedThreadRef) => lastVisitedAtAtomFamily(threadKey(ref)),
     pendingRequestsAtom: (ref: ScopedThreadRef) => pendingRequestsAtomFamily(threadKey(ref)),
+    teamAtom: (ref: ScopedThreadRef) => teamAtomFamily(threadKey(ref)),
     queueWorkflowAtom: (ref: ScopedThreadRef) => queueWorkflowAtomFamily(threadKey(ref)),
     queuedCountAtom: (ref: ScopedThreadRef) => queuedCountAtomFamily(threadKey(ref)),
     runStopAtom: (ref: ScopedThreadRef) => runStopAtomFamily(threadKey(ref)),
