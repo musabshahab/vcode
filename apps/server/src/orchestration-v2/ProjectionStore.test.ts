@@ -959,7 +959,7 @@ it.effect("SQL shells flag only an active turn blocked solely on Codenine thread
     const delegation = {
       ...wait,
       id: TurnItemId.make("item:thread-wait:delegation"),
-      toolName: "codenine-thread_opencode2-adapter_delegate_task",
+      toolName: "mcp__codenine__delegate_task",
       input: { task: "Review", mode: "async" },
     };
     yield* updateItem(delegation);
