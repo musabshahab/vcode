@@ -56,6 +56,8 @@ export function SidebarTeamToggle(props: {
   count: number;
   expanded: boolean;
   attention: TeamThreadAttention | null;
+  /** Off when the row already shows the team icon. */
+  showIcon: boolean;
   onToggle: () => void;
 }) {
   const label = `${props.expanded ? "Hide" : "Show"} the team's ${props.count} ${props.count === 1 ? "thread" : "threads"}`;
@@ -77,7 +79,7 @@ export function SidebarTeamToggle(props: {
           />
         }
       >
-        <UsersIcon aria-hidden className="size-3" />
+        {props.showIcon ? <UsersIcon aria-hidden className="size-3" /> : null}
         {props.count}
         {props.attention !== null ? <SidebarAttentionDot attention={props.attention} /> : null}
         <ChevronRightIcon aria-hidden className={cn("size-3", props.expanded && "rotate-90")} />

@@ -20,7 +20,10 @@ import {
   resolveThreadActivityTimestamp,
 } from "@codenine/client-runtime/state/thread-sort";
 import { type EnvironmentThreadSearchMatch } from "@codenine/client-runtime/state/thread-search";
-import type { TeamThreadAttention } from "@codenine/client-runtime/state/team-threads";
+import {
+  teamTaskStatusLabel,
+  type TeamThreadAttention,
+} from "@codenine/client-runtime/state/team-threads";
 import {
   formatWorkingDurationLabel,
   resolveThreadProviderStack,
@@ -98,6 +101,8 @@ import {
   ThreadWorktreeIndicator,
   prStatusIndicator,
   resolveThreadPullRequestBadge,
+  TeamTaskIcon,
+  TeamTaskStatus,
   terminalStatusFromRunningIds,
   type TerminalStatusIndicator,
   useLinkedThreadPullRequest,
@@ -528,7 +533,7 @@ function TopStatusIcon(props: { icon: keyof typeof TOP_STATUS_ICONS; className: 
 
 type SidebarThreadRowProps = {
   thread: SidebarThreadSummary;
-  // "folder" is a one-line row inside a boring sidebar project folder;
+  // "folder" is a one-line row inside a project folder;
   // "folder-multiline" adds the card's branch and PR line under it;
   // "team" is a one-line team task row under its lead.
   variant: "card" | "slim" | "folder" | "folder-multiline" | "team";
@@ -782,6 +787,12 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
                       }
                     : null;
   const isWokeStatus = topStatus?.icon === "woke";
+  // A task's lead shows its team's status unless its own request or work says more.
+  const teamSummary = thread.source.teamSummary ?? null;
+  const rowStatus =
+    teamSummary !== null && (topStatus?.icon === "waiting" || topStatus?.icon === "done")
+      ? null
+      : topStatus;
 
   const branchMismatch = resolveLocalCheckoutBranchMismatch({
     effectiveEnvMode: thread.worktreePath === null ? "local" : "worktree",
@@ -1003,7 +1014,8 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
 
   const accessibility = resolveSidebarRowAccessibility({
     title: thread.title,
-    statusLabel: topStatus?.label ?? null,
+    statusLabel:
+      rowStatus?.label ?? (teamSummary === null ? null : teamTaskStatusLabel(teamSummary)),
     projectDisplayName: props.projectDisplayName,
     isActive: props.isActive,
   });
@@ -1055,6 +1067,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
         count={props.teamTaskCount}
         expanded={props.teamExpanded}
         attention={props.teamAttention}
+        showIcon={teamSummary === null}
         onToggle={() => onToggleTeam(threadKey)}
       />
     ) : null;
@@ -1140,6 +1153,16 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
         <EnvironmentMachineIcon aria-hidden kind={props.environmentMachine} className="size-3.5" />
       </span>
     ) : null;
+  // Folder rows mark a lead at the start of the row instead.
+  const agentIcon =
+    teamSummary === null ? (
+      <SidebarProviderStack
+        thread={thread}
+        providerEntryByInstanceId={props.providerEntryByInstanceId}
+      />
+    ) : variant === "card" ? (
+      <TeamTaskIcon />
+    ) : null;
   const diff = latestRunDiff(thread);
   // Only the trailing icons would remain, so the row moves them to the title line instead.
   const metaLineEmpty =
@@ -1182,20 +1205,14 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
         className="pointer-events-none ml-auto inline-flex shrink-0 items-center gap-1"
       >
         {remoteMachineIcon}
-        <SidebarProviderStack
-          thread={thread}
-          providerEntryByInstanceId={props.providerEntryByInstanceId}
-        />
+        {agentIcon}
       </span>
     </div>
   );
   const titleLineIcons = metaLineEmpty ? (
     <span aria-hidden className="inline-flex shrink-0 items-center gap-1">
       {remoteMachineIcon}
-      <SidebarProviderStack
-        thread={thread}
-        providerEntryByInstanceId={props.providerEntryByInstanceId}
-      />
+      {agentIcon}
     </span>
   ) : null;
 
@@ -1252,6 +1269,10 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
             {/* `contents` keeps one-line rows a single flex row. */}
             <div className={multiline ? "flex h-6 min-w-0 items-center gap-2.5" : "contents"}>
               {accessibleTitle}
+              {inFolder && teamSummary !== null ? (
+                // Sits left of the title, which stays in line with the folder's other rows.
+                <TeamTaskIcon className="-ms-6" />
+              ) : null}
               {inFolder || teamTask ? null : (
                 <span
                   className={cn(
@@ -1324,17 +1345,19 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
                         />
                         <TooltipPopup side="top">Dismiss Woke notification</TooltipPopup>
                       </Tooltip>
-                    ) : (inFolder || teamTask) && topStatus ? (
+                    ) : (inFolder || teamTask) && rowStatus ? (
                       // Folder and team rows have no status line, so the status takes the time slot.
                       <span
                         className={cn(
                           "inline-flex items-center gap-1 text-xs font-medium",
-                          topStatus.className,
+                          rowStatus.className,
                         )}
                       >
-                        <TopStatusIcon icon={topStatus.icon} className="size-3" />
-                        <span className={teamTask ? "sr-only" : undefined}>{topStatus.label}</span>
+                        <TopStatusIcon icon={rowStatus.icon} className="size-3" />
+                        <span className={teamTask ? "sr-only" : undefined}>{rowStatus.label}</span>
                       </span>
+                    ) : teamSummary !== null ? (
+                      <TeamTaskStatus summary={teamSummary} />
                     ) : (
                       <span className="text-xs">
                         <RelativeTimeLabel
@@ -1492,7 +1515,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
                       snoozeMenuOpen && "pointer-events-none absolute right-0 opacity-0",
                     )}
                   >
-                    {topStatus ? (
+                    {rowStatus ? (
                       isWokeStatus ? (
                         <Tooltip>
                           <TooltipTrigger
@@ -1503,11 +1526,11 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
                                 onClick={handleAcknowledgeWokeClick}
                                 className={cn(
                                   "inline-flex cursor-pointer items-center gap-1 rounded-sm font-medium outline-none hover:underline focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
-                                  topStatus.className,
+                                  rowStatus.className,
                                 )}
                               >
                                 <AlarmClockIcon aria-hidden className="size-4 shrink-0" />
-                                <span role="status">{topStatus.label}</span>
+                                <span role="status">{rowStatus.label}</span>
                               </button>
                             }
                           />
@@ -1517,14 +1540,14 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
                         <span
                           className={cn(
                             "inline-flex items-center gap-1 font-medium",
-                            topStatus.className,
+                            rowStatus.className,
                           )}
                         >
-                          <TopStatusIcon icon={topStatus.icon} className="size-4" />
+                          <TopStatusIcon icon={rowStatus.icon} className="size-4" />
                           {/* Not a live region: a collapsed sidebar is inert, so
                             BackgroundThreadAnnouncer and the open thread's
                             timeline speak status changes instead. */}
-                          {topStatus.label}
+                          {rowStatus.label}
                           {status === "preparing" || status === "working" ? (
                             <span aria-hidden>
                               <WorkingDuration startedAt={resolveWorkingStartedAt(thread)} />
@@ -1536,6 +1559,8 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
                           ) : null}
                         </span>
                       )
+                    ) : teamSummary !== null ? (
+                      <TeamTaskStatus summary={teamSummary} />
                     ) : (
                       <RelativeTimeLabel timestamp={resolveThreadActivityTimestamp(thread)} />
                     )}
@@ -1658,7 +1683,7 @@ export const SidebarSearchResultRow = memo(function SidebarSearchResultRow(props
     useThreadShell(scopeThreadRef(props.thread.environmentId, props.thread.id)) ?? props.thread;
   const accessibility = resolveSidebarRowAccessibility({
     title: thread.title,
-    statusLabel: null,
+    statusLabel: thread.source.teamSummary ? teamTaskStatusLabel(thread.source.teamSummary) : null,
     projectDisplayName: props.projectDisplayName,
     isActive: props.isRouteActive,
   });
@@ -1791,6 +1816,9 @@ export const SidebarSearchResultRow = memo(function SidebarSearchResultRow(props
                   settled={props.isSettled}
                 />
               </span>
+              {thread.source.teamSummary ? (
+                <TeamTaskStatus summary={thread.source.teamSummary} />
+              ) : null}
               <span className="w-8 shrink-0 text-right text-xs text-muted-foreground/55 tabular-nums">
                 <RelativeTimeLabel timestamp={resolveThreadActivityTimestamp(thread)} />
               </span>

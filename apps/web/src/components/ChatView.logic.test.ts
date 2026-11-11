@@ -5,6 +5,7 @@ import {
   snapshotComposerSend,
   withMessageContext,
   deriveAvailableRevertTurnCounts,
+  presentThreadShellFromProjection,
 } from "./ChatView.logic";
 import { recallCheckoutIsRepo, rememberCheckoutIsRepo } from "./ChatView.logic";
 import { ProviderDriverKind, type ServerProvider } from "@codenine/contracts";
@@ -21,6 +22,9 @@ import {
   ProviderThreadId,
   ThreadId,
   RunId,
+  TeamAgentId,
+  TeamPlanId,
+  TeamTaskId,
   TurnItemId,
   type OrchestrationV2ProjectedTurnItem,
   type WorktreeSetupSnapshot,
@@ -1117,5 +1121,60 @@ describe("deriveAvailableRevertTurnCounts", () => {
   it("offers nothing without a provider session to rewind", () => {
     expect(deriveAvailableRevertTurnCounts(projection({ providerSessionId: null })).size).toBe(0);
     expect(deriveAvailableRevertTurnCounts(null).size).toBe(0);
+  });
+});
+
+describe("presentThreadShellFromProjection", () => {
+  it("carries a lead's team summary, as shells from the thread list do", () => {
+    const base = makeThreadProjectionFixture();
+    const task = (id: string, status: "completed" | "running") => ({
+      id: TeamTaskId.make(id),
+      title: id,
+      brief: id,
+      agentId: TeamAgentId.make("builder"),
+      dependsOn: [],
+      status,
+      attempt: 1,
+      threadId: null,
+      result: null,
+      startedAt: null,
+      completedAt: null,
+    });
+    const team = {
+      id: TeamPlanId.make("plan-1"),
+      revision: 2,
+      status: "running" as const,
+      goal: "Ship it",
+      agents: [
+        {
+          id: TeamAgentId.make("builder"),
+          label: "Builder",
+          role: "implement" as const,
+          modelSelection: base.thread.modelSelection,
+          workspace: "shared" as const,
+        },
+      ],
+      tasks: [task("build", "completed"), task("test", "running")],
+      maxParallelPerProvider: 2,
+      proposedAt: now,
+      updatedAt: now,
+    };
+    const shell = (projection: typeof base) =>
+      presentThreadShellFromProjection(environmentId, projection.thread.id, projection, {
+        updatedAt: projection.updatedAt,
+        lastVisitedAt: null,
+      });
+
+    expect(shell({ ...base, thread: { ...base.thread, team } }).source.teamSummary).toEqual({
+      planId: team.id,
+      status: "running",
+      revision: 2,
+      total: 2,
+      completed: 1,
+      failed: 0,
+      running: 1,
+      cancelled: 0,
+    });
+    expect(shell(base).source.teamSummary).toBeUndefined();
   });
 });

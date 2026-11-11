@@ -18,7 +18,7 @@ export function sidebarFolderRowId(projectKey: string) {
 }
 
 /**
- * A project folder in the boring sidebar. It reads like a shelf header: a trailing
+ * A project folder in the sidebar grouped by project. It reads like a shelf header: a trailing
  * count and chevron, with the count and a status dot only while it is closed, so a
  * closed folder still says when a hidden thread needs you.
  */
@@ -32,6 +32,10 @@ export const SidebarProjectFolderHeader = memo(function SidebarProjectFolderHead
 }) {
   const { group, collapsed, hiddenThreads } = props;
   const rowId = sidebarFolderRowId(group.projectKey);
+  const label = group.isScratch ? "Chats without a project" : group.displayName;
+  const newChatLabel = group.isScratch
+    ? "New chat without a project"
+    : `New chat in ${group.displayName}`;
   const localLastVisitedAtById = useUiStateStore((state) => state.threadLastVisitedAtById);
   const dot = collapsed
     ? resolveSidebarFolderDot(
@@ -64,7 +68,7 @@ export const SidebarProjectFolderHeader = memo(function SidebarProjectFolderHead
       >
         <ProjectFavicon project={group} className="size-4 shrink-0" />
         <span className="min-w-0 flex-1 truncate text-sm font-medium text-sidebar-foreground/90">
-          {group.displayName}
+          {label}
         </span>
         {dot ? <SidebarAttentionDot attention={dot} /> : null}
         {collapsed && hiddenThreads.length > 0 ? (
@@ -89,14 +93,14 @@ export const SidebarProjectFolderHeader = memo(function SidebarProjectFolderHead
                 data-sidebar-action-for={rowId}
                 size="icon-xs"
                 variant="ghost-muted"
-                aria-label={`New chat in ${group.displayName}`}
+                aria-label={newChatLabel}
                 onClick={() => props.onNewThread(group)}
               />
             }
           >
             <SquarePenIcon aria-hidden />
           </TooltipTrigger>
-          <TooltipPopup>New chat in {group.displayName}</TooltipPopup>
+          <TooltipPopup>{newChatLabel}</TooltipPopup>
         </Tooltip>
       </span>
     </li>

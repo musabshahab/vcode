@@ -12,11 +12,14 @@ import {
   resolveEnvironmentMachineKind,
   type EnvironmentId,
   type ScopedThreadRef,
+  type TeamPlanStatus,
+  type TeamPlanSummary,
   type ThreadLinkedPullRequest,
   type ThreadPullRequestLink,
   type VcsStatusResult,
 } from "@codenine/contracts";
-import { FolderGit2Icon, TerminalIcon } from "lucide-react";
+import { teamTaskStatusLabel } from "@codenine/client-runtime/state/team-threads";
+import { FolderGit2Icon, TerminalIcon, UsersIcon } from "lucide-react";
 import { useEnvironment, usePrimaryEnvironmentId } from "../state/environments";
 import { EnvironmentMachineIcon } from "./EnvironmentMachineIcon";
 import { useProject } from "../state/entities";
@@ -641,6 +644,35 @@ function ThreadStatusLabel({
       </TooltipTrigger>
       <TooltipPopup side="top">{status.label}</TooltipPopup>
     </Tooltip>
+  );
+}
+
+const TEAM_TASK_STATUS_CLASS_NAME: Record<TeamPlanStatus, string> = {
+  proposed: "text-warning-foreground",
+  running: "text-info-foreground",
+  completed: "text-success-foreground",
+  failed: "text-error-foreground",
+  cancelled: "text-secondary-label",
+};
+
+/** Where a task's team stands, on its lead's row: Review, Running 2/3, Done, Failed 1. */
+export function TeamTaskStatus({ summary }: { summary: TeamPlanSummary }) {
+  return (
+    <span
+      className={cn(
+        "shrink-0 text-xs font-medium tabular-nums",
+        TEAM_TASK_STATUS_CLASS_NAME[summary.status],
+      )}
+    >
+      {teamTaskStatusLabel(summary)}
+    </span>
+  );
+}
+
+/** Marks a task's lead row where a chat shows its agent. */
+export function TeamTaskIcon({ className }: { className?: string }) {
+  return (
+    <UsersIcon aria-hidden className={cn("size-3.5 shrink-0 text-muted-foreground", className)} />
   );
 }
 

@@ -33,6 +33,7 @@ import {
 import {
   createInboxReturnTracker,
   isThreadWorking,
+  selectNeedsYou,
 } from "@codenine/client-runtime/state/thread-inbox";
 import { sortSettledThreads } from "@codenine/client-runtime/state/thread-sort";
 import { groupTeamThreads, withTeamTaskRows } from "@codenine/client-runtime/state/team-threads";
@@ -263,6 +264,7 @@ import {
 } from "./sidebar/SidebarThreadRow";
 import { SidebarDraftBlock } from "./sidebar/SidebarDraftBlock";
 import { SidebarTeamTasksContext } from "./sidebar/SidebarTeamTasks";
+import { SidebarNeedsYou } from "./sidebar/SidebarNeedsYou";
 import {
   SidebarProjectFolderHeader,
   sidebarFolderRowId,
@@ -322,6 +324,7 @@ const sidebarProviderEntriesAtom = Atom.make((get) => {
 
 const EMPTY_PROVIDER_ENTRIES: ReadonlyMap<string, SidebarProviderEntry> = new Map();
 const EMPTY_THREADS: readonly EnvironmentThreadShell[] = [];
+const NO_NEEDS_YOU: ReturnType<typeof selectNeedsYou<EnvironmentThreadShell>> = [];
 
 const SETTLED_TAIL_INITIAL_COUNT = 10;
 const SETTLED_TAIL_PAGE_COUNT = 25;
@@ -600,6 +603,11 @@ function useSidebarThreads(input: {
   }
   return {
     ...partition,
+    // Grouped by project, the threads waiting on the user gather above the folders.
+    needsYou:
+      folderGroups === null
+        ? NO_NEEDS_YOU
+        : selectNeedsYou([...partition.pinnedThreads, ...partition.activeThreads]),
     pinnedThreads,
     activeThreads,
     workingThreads,
@@ -1340,6 +1348,7 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
 
   const {
     workingShelfEnabled,
+    needsYou,
     pinnedThreads,
     draggableThreadKeys,
     activeReorderableThreadKeys,
@@ -3342,6 +3351,14 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
                 {threadSearch.isPending ? "Searching thread messages…" : "No threads found"}
               </p>
             )
+          ) : null}
+          {!isSearchingThreads && needsYou.length > 0 ? (
+            <SidebarNeedsYou
+              entries={needsYou}
+              activeKey={routeRowThreadKey}
+              projectNameByKey={projectDisplayNameByKey}
+              onOpen={navigateToThread}
+            />
           ) : null}
           {!isSearchingThreads ? (
             <TooltipProvider

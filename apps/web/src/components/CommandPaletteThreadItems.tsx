@@ -15,7 +15,7 @@ import {
 import type { EnvironmentId, ThreadId } from "@codenine/contracts";
 import { useAtomValue } from "@effect/atom-react";
 import { useNavigate } from "@tanstack/react-router";
-import { MessageSquareIcon } from "lucide-react";
+import { MessageSquareIcon, UsersIcon } from "lucide-react";
 import { useState } from "react";
 
 import {
@@ -39,6 +39,7 @@ import { buildThreadActionItems, ITEM_ICON_CLASS } from "./CommandPalette.logic"
 import { useEnvironmentLookups, useProjectLookups } from "./CommandPaletteLookups";
 import { ThreadCommandSubtitle } from "./ThreadCommandSubtitle";
 import {
+  TeamTaskStatus,
   ThreadRowLeadingStatus,
   ThreadRowTrailingStatus,
   ThreadSearchPullRequestNumber,
@@ -133,10 +134,16 @@ export function useCommandPaletteThreadItems(input: {
       : {}),
     ...(activeThread ? { activeThread } : {}),
     projectByKey,
-    icon: <MessageSquareIcon className={ITEM_ICON_CLASS} />,
+    icon: (thread) =>
+      thread.source.teamSummary ? (
+        <UsersIcon className={ITEM_ICON_CLASS} />
+      ) : (
+        <MessageSquareIcon className={ITEM_ICON_CLASS} />
+      ),
     renderLeadingContent: (thread) => <ThreadRowLeadingStatus thread={thread} />,
     renderTrailingContent: (thread) => (
       <>
+        {thread.source.teamSummary ? <TeamTaskStatus summary={thread.source.teamSummary} /> : null}
         <ThreadSearchPullRequestNumber
           thread={thread}
           query={threadSearchQuery}

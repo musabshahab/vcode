@@ -6,6 +6,7 @@ import {
 import { checkpointFileTotals } from "@codenine/client-runtime/state/thread-checkpoints";
 import { COMPACT_COMMAND_PATTERN } from "@codenine/client-runtime/state/context-window";
 import { derivePendingBackgroundWork } from "@codenine/shared/orchestrationV2PendingBackgroundWork";
+import { teamPlanSummary } from "@codenine/shared/team";
 import {
   latestUnheldRun,
   usageLimitRunPresentedAsLatest,
@@ -1289,6 +1290,10 @@ export function presentThreadShellFromProjection(
       itemCount: projection.turnItems.length,
       visibleItemCount: projection.visibleTurnItems.length,
       updatedAt,
+      // The server derives a lead's summary from its plan in the same way.
+      ...(projection.thread.team == null
+        ? {}
+        : { teamSummary: teamPlanSummary(projection.thread.team) }),
     }),
     latestRun,
     runtime,
