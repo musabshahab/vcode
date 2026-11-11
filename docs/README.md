@@ -1,9 +1,8 @@
 # Codenine docs
 
 Codenine is early. These pages describe what the code does today: Codex and Claude threads,
-delegation to subagents, checkpoints and diffs, the terminal, worktrees, and pull requests. The
-team feature (a lead agent proposing a team of subagents) is not built yet and is not documented
-here.
+delegation to subagents, teams that a lead agent proposes and you approve, checkpoints and diffs,
+the terminal, worktrees, and pull requests.
 
 ## Using Codenine
 
