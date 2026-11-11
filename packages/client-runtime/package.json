@@ -315,6 +315,10 @@
       "types": "./src/state/pendingUserInput.ts",
       "default": "./src/state/pendingUserInput.ts"
     },
+    "./state/team-threads": {
+      "types": "./src/state/teamThreads.ts",
+      "default": "./src/state/teamThreads.ts"
+    },
     "./state/thread-requests": {
       "types": "./src/state/threadRequests.ts",
       "default": "./src/state/threadRequests.ts"
