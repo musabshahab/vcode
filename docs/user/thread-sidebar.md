@@ -267,6 +267,28 @@ To choose what the thread details card shows, right-click the card or open
 shortcuts, such as Open in editor and project scripts. **Reset to default** brings
 back the standard rows.
 
+## Run a team
+
+A team splits one job across several agents, each on the model that fits its part, so a quick
+model can do the routine work while a stronger one reviews. Ask the agent for one, for example
+"propose a team for this: one agent writes the code, one tests it, one reviews". The proposed team
+appears above the composer with its agents, their models and effort, and its tasks in order.
+
+Nothing runs until you approve. Before that you can change an agent's model or effort, add an
+agent, remove one that has no tasks, move a task to another agent, remove a task, and edit a
+task's brief. Changes stay on this device until you choose **Save** or **Approve**. If the team
+changes while you edit, for example because the agent proposed a new one, the card shows the new
+team and tells you your changes were not applied.
+
+Each task runs in a thread of its own, which you can open from the card. A task starts once the
+tasks it follows are done, with at most two running at a time on each provider. When the team
+finishes or gets stuck on a failed task, the agent that proposed it reads the results and goes on.
+
+- **Cancel team** stops the tasks that are running. Tasks that have not started never start.
+- **Retry** runs a failed or cancelled task again in a new thread. To retry on a different model,
+  such as a stronger one, choose another agent of the team from the menu beside it.
+  A cancelled team cannot be retried; ask the agent for a new one.
+
 ## Side chats
 
 A side chat lets you ask a question about a thread without adding to it. It starts
