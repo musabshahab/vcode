@@ -109,6 +109,20 @@ export function useCommandPaletteThreadItems(input: {
   const [now] = useState(() => Date.now());
 
   const { environments } = useEnvironments();
+  const titleByThreadKey = new Map(
+    threads.map(
+      (thread) =>
+        [scopedThreadKey(scopeThreadRef(thread.environmentId, thread.id)), thread.title] as const,
+    ),
+  );
+  const teamLeadTitleOf = (thread: (typeof threads)[number]) => {
+    const teamTask = thread.source.teamTask;
+    return teamTask === undefined
+      ? null
+      : (titleByThreadKey.get(
+          scopedThreadKey(scopeThreadRef(thread.environmentId, teamTask.rootThreadId)),
+        ) ?? null);
+  };
   const threadItems = buildThreadActionItems({
     threads,
     ...(environments.length > 1
@@ -149,6 +163,7 @@ export function useCommandPaletteThreadItems(input: {
           isCurrent={
             thread.id === activeThread?.id && thread.environmentId === activeThread.environmentId
           }
+          teamLeadTitle={teamLeadTitleOf(thread)}
           driverKind={providerEntry?.driverKind ?? null}
           providerDisplayName={
             thread.runtime?.providerName ?? providerEntry?.displayName ?? modelInstanceId

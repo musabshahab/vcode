@@ -1,5 +1,5 @@
 import type { ProviderDriverKind } from "@codenine/contracts";
-import { FolderGit2Icon, FolderIcon, GitBranchIcon } from "lucide-react";
+import { FolderGit2Icon, FolderIcon, GitBranchIcon, UsersIcon } from "lucide-react";
 import { ProjectFavicon, type ProjectFaviconProject } from "./ProjectFavicon";
 import { ProviderInstanceIcon } from "./chat/ProviderInstanceIcon";
 import { cn } from "~/lib/utils";
@@ -36,6 +36,8 @@ export function ThreadCommandSubtitle(props: {
   branch: string | null;
   worktreePath: string | null;
   isCurrent: boolean;
+  /** On a team task thread: the title of the lead it works for. */
+  teamLeadTitle?: string | null;
   driverKind?: ProviderDriverKind | null;
   providerDisplayName?: string | null;
   variant?: ThreadCommandSubtitleVariant;
@@ -47,9 +49,10 @@ export function ThreadCommandSubtitle(props: {
     variant !== "favicon-workspace" && props.driverKind != null && props.providerDisplayName;
 
   const projectLabel = props.projectTitle?.trim() || null;
+  const teamLeadLabel = props.teamLeadTitle?.trim() || null;
   const branchLabel = props.branch?.trim() || null;
 
-  if (!projectLabel && !branchLabel && !props.isCurrent && !showHarness) {
+  if (!projectLabel && !teamLeadLabel && !branchLabel && !props.isCurrent && !showHarness) {
     return null;
   }
 
@@ -75,9 +78,20 @@ export function ThreadCommandSubtitle(props: {
         </span>
       ) : null}
 
-      {branchLabel ? (
+      {teamLeadLabel ? (
         <>
           {projectLabel ? <CommandPaletteMetaDot /> : null}
+          <span className="inline-flex min-w-0 items-center gap-1">
+            <UsersIcon className={COMMAND_PALETTE_META_ICON_CLASS} aria-hidden />
+            <span className="sr-only">Team of </span>
+            <span className="min-w-0 truncate">{teamLeadLabel}</span>
+          </span>
+        </>
+      ) : null}
+
+      {branchLabel ? (
+        <>
+          {projectLabel || teamLeadLabel ? <CommandPaletteMetaDot /> : null}
           <span className="inline-flex min-w-0 items-center gap-1">
             <WorkspaceIcon variant={variant} isWorktree={isWorktree} />
             <MiddleTruncate value={branchLabel} />
@@ -87,7 +101,7 @@ export function ThreadCommandSubtitle(props: {
 
       {showHarness && props.driverKind ? (
         <>
-          {projectLabel || branchLabel ? <CommandPaletteMetaDot /> : null}
+          {projectLabel || teamLeadLabel || branchLabel ? <CommandPaletteMetaDot /> : null}
           <ProviderInstanceIcon
             driverKind={props.driverKind}
             displayName={props.providerDisplayName ?? props.driverKind}
@@ -98,7 +112,9 @@ export function ThreadCommandSubtitle(props: {
 
       {props.isCurrent ? (
         <>
-          {projectLabel || branchLabel || showHarness ? <CommandPaletteMetaDot /> : null}
+          {projectLabel || teamLeadLabel || branchLabel || showHarness ? (
+            <CommandPaletteMetaDot />
+          ) : null}
           <span className="shrink-0">Current thread</span>
         </>
       ) : null}

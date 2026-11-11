@@ -20,6 +20,7 @@ import {
   resolveThreadActivityTimestamp,
 } from "@codenine/client-runtime/state/thread-sort";
 import { type EnvironmentThreadSearchMatch } from "@codenine/client-runtime/state/thread-search";
+import type { TeamThreadAttention } from "@codenine/client-runtime/state/team-threads";
 import {
   formatWorkingDurationLabel,
   resolveThreadProviderStack,
@@ -117,6 +118,7 @@ import { Menu, MenuItem, MenuItemDetail, MenuPopup, MenuSeparator, MenuTrigger }
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { MiddleTruncate } from "../ui/middle-truncate";
 import { useThreadHasUnsentDraft } from "../../composerDraftStore";
+import { SidebarTeamTasks, SidebarTeamToggle } from "./SidebarTeamTasks";
 
 // The fields thread rows show. Provider status pushes refresh `checkedAt`,
 // status and auth on every provider; leaving those out keeps each
@@ -468,6 +470,13 @@ export function SortableThreadRow(
   // Keyed by variant so a card/slim switch remounts the row.
   return <SidebarThreadRow key={rowProps.variant} {...rowProps} thread={thread} sortable={bag} />;
 }
+
+/** A row outside the drag list, such as a team task under its lead; it moves with that row. */
+export function StaticThreadRow(props: Omit<SidebarThreadRowProps, "sortable">) {
+  const thread =
+    useThreadShell(scopeThreadRef(props.thread.environmentId, props.thread.id)) ?? props.thread;
+  return <SidebarThreadRow key={props.variant} {...props} thread={thread} />;
+}
 export type SidebarSweepAction = "settle" | "unsettle" | "unsnooze";
 const dropVerbBadge: Record<SidebarDropVerb, ReactNode> = {
   pin: (
@@ -520,9 +529,15 @@ function TopStatusIcon(props: { icon: keyof typeof TOP_STATUS_ICONS; className: 
 type SidebarThreadRowProps = {
   thread: SidebarThreadSummary;
   // "folder" is a one-line row inside a boring sidebar project folder;
-  // "folder-multiline" adds the card's branch and PR line under it.
-  variant: "card" | "slim" | "folder" | "folder-multiline";
+  // "folder-multiline" adds the card's branch and PR line under it;
+  // "team" is a one-line team task row under its lead.
+  variant: "card" | "slim" | "folder" | "folder-multiline" | "team";
   navigationParent?: string | undefined;
+  /** On a team lead: how many task rows it holds, which it draws below itself. */
+  teamTaskCount: number;
+  teamExpanded: boolean;
+  teamAttention: TeamThreadAttention | null;
+  onToggleTeam: (threadKey: string) => void;
   variantAction: SidebarSweepAction;
   settlementSupported: boolean;
   snoozeSupported: boolean;
@@ -1033,6 +1048,17 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
     </span>
   );
   const accessibleTitle = isRenaming ? null : <span className="sr-only">{thread.title}</span>;
+  const { onToggleTeam } = props;
+  const teamToggle =
+    props.teamTaskCount > 0 ? (
+      <SidebarTeamToggle
+        count={props.teamTaskCount}
+        expanded={props.teamExpanded}
+        attention={props.teamAttention}
+        onToggle={() => onToggleTeam(threadKey)}
+      />
+    ) : null;
+  const teamTasks = props.teamTaskCount > 0 ? <SidebarTeamTasks leadKey={threadKey} /> : null;
 
   const prBadgeShape = supportsMultiplePullRequests
     ? resolveThreadPullRequestBadge(thread.pullRequests)
@@ -1176,6 +1202,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
   if (variant !== "card") {
     const multiline = variant === "folder-multiline";
     const inFolder = variant === "folder" || multiline;
+    const teamTask = variant === "team";
     return (
       <li
         data-thread-item={threadKey}
@@ -1198,7 +1225,13 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
                 data-sidebar-parent={props.navigationParent}
                 aria-label={accessibility.label}
                 aria-current={accessibility.current}
-                data-testid={inFolder ? "sidebar-row-folder" : "sidebar-row-slim"}
+                data-testid={
+                  teamTask
+                    ? "sidebar-row-team"
+                    : inFolder
+                      ? "sidebar-row-folder"
+                      : "sidebar-row-slim"
+                }
                 aria-busy={isRegeneratingTitle || undefined}
                 className={cn(
                   rowSurfaceClassName,
@@ -1207,6 +1240,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
                     : "flex h-9 items-center gap-2.5 px-2.5",
                   // Lines titles up with the folder name, past its chevron and icon.
                   inFolder && "ps-9",
+                  teamTask && "h-8 gap-2 px-2",
                 )}
                 onClick={handleClick}
                 onDoubleClick={handleDoubleClick}
@@ -1218,7 +1252,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
             {/* `contents` keeps one-line rows a single flex row. */}
             <div className={multiline ? "flex h-6 min-w-0 items-center gap-2.5" : "contents"}>
               {accessibleTitle}
-              {inFolder ? null : (
+              {inFolder || teamTask ? null : (
                 <span
                   className={cn(
                     "flex shrink-0 items-center transition-opacity",
@@ -1233,6 +1267,19 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
               )}
               {draftIndicator}
               {title}
+              {teamToggle}
+              {teamTask ? (
+                <span
+                  aria-hidden
+                  className="inline-flex min-w-0 shrink items-center gap-1 text-xs text-secondary-label"
+                >
+                  <span className="max-w-24 truncate">{modelLabel}</span>
+                  <SidebarProviderStack
+                    thread={thread}
+                    providerEntryByInstanceId={props.providerEntryByInstanceId}
+                  />
+                </span>
+              ) : null}
               {multiline ? titleLineIcons : null}
               {pinIndicator}
               {multiline ? null : terminalStatusIcon}
@@ -1263,7 +1310,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
                         <AlarmClockIcon aria-hidden className="size-3" />
                         {props.snoozeWakeLabelText}
                       </span>
-                    ) : (inFolder ? isWokeStatus : isWoke) ? (
+                    ) : (inFolder || teamTask ? isWokeStatus : isWoke) ? (
                       <Tooltip>
                         <TooltipTrigger
                           render={
@@ -1280,8 +1327,8 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
                         />
                         <TooltipPopup side="top">Dismiss Woke notification</TooltipPopup>
                       </Tooltip>
-                    ) : inFolder && topStatus ? (
-                      // Folder rows have no status line, so the status takes the time slot.
+                    ) : (inFolder || teamTask) && topStatus ? (
+                      // Folder and team rows have no status line, so the status takes the time slot.
                       <span
                         className={cn(
                           "inline-flex items-center gap-1 text-xs font-medium",
@@ -1368,6 +1415,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
           </TooltipTrigger>
           {detailsTooltip}
         </Tooltip>
+        {teamTasks}
       </li>
     );
   }
@@ -1558,6 +1606,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
             </div>
             <div className="mt-1 flex min-w-0 items-center gap-1.5">
               {title}
+              {teamToggle}
               {isRegeneratingTitle ? (
                 <span role="status" className="sr-only">
                   Regenerating title
@@ -1570,6 +1619,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
         </TooltipTrigger>
         {detailsTooltip}
       </Tooltip>
+      {teamTasks}
     </li>
   );
 });

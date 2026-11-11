@@ -284,6 +284,10 @@ Each task runs in a thread of its own, which you can open from the card. A task 
 tasks it follows are done, with at most two running at a time on each provider. When the team
 finishes or gets stuck on a failed task, the agent that proposed it reads the results and goes on.
 
+In the sidebar, the agents' threads appear under the thread that proposed the team, and the team
+count on that row shows or hides them. When the team finishes or is cancelled, they are settled for
+you.
+
 - **Cancel team** stops the tasks that are running. Tasks that have not started never start.
 - **Retry** runs a failed or cancelled task again in a new thread. To retry on a different model,
   such as a stronger one, choose another agent of the team from the menu beside it.

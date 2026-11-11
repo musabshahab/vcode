@@ -35,6 +35,7 @@ import {
   isThreadWorking,
 } from "@codenine/client-runtime/state/thread-inbox";
 import { sortSettledThreads } from "@codenine/client-runtime/state/thread-sort";
+import { groupTeamThreads, withTeamTaskRows } from "@codenine/client-runtime/state/team-threads";
 import {
   nextShownOrder,
   threadSearchMatchKey,
@@ -76,6 +77,7 @@ import {
   useRef,
   useState,
   useSyncExternalStore,
+  type ComponentProps,
   type KeyboardEvent as ReactKeyboardEvent,
   type MouseEvent as ReactMouseEvent,
   type ReactNode,
@@ -192,6 +194,7 @@ import {
   resolveSidebarSweepKeys,
   resolveSidebarDropTarget,
   resolveSidebarDropVerb,
+  resolveSidebarFolderDot,
   resolveSidebarThreadSection,
   resolveSidebarReorderableThreadKeys,
   searchSidebarThreads,
@@ -254,10 +257,12 @@ import { useThreadRouteTarget } from "../hooks/useThreadRouteTarget";
 import {
   SidebarSearchResultRow,
   SortableThreadRow,
+  StaticThreadRow,
   type SidebarProviderEntry,
   type SidebarSweepAction,
 } from "./sidebar/SidebarThreadRow";
 import { SidebarDraftBlock } from "./sidebar/SidebarDraftBlock";
+import { SidebarTeamTasksContext } from "./sidebar/SidebarTeamTasks";
 import {
   SidebarProjectFolderHeader,
   sidebarFolderRowId,
@@ -357,6 +362,16 @@ function scrollSidebarToTop(content: HTMLElement | null) {
   content?.closest("[data-slot=scroll-area-viewport]")?.scrollTo({ top: 0 });
 }
 
+/** The lead's row key for a team task thread, which the sidebar draws under that lead. */
+function teamLeadKey(
+  thread: Pick<SidebarThreadSummary, "environmentId" | "source">,
+): string | null {
+  const teamTask = thread.source.teamTask;
+  return teamTask === undefined
+    ? null
+    : scopedThreadKey(scopeThreadRef(thread.environmentId, teamTask.rootThreadId));
+}
+
 function threadShellKey(thread: Pick<SidebarThreadSummary, "environmentId" | "id">): string {
   return scopedThreadKey(scopeThreadRef(thread.environmentId, thread.id));
 }
@@ -452,6 +467,10 @@ function useSidebarThreads(input: {
     false,
     Schema.Boolean,
   );
+  // A team's own toggle lasts for the session; until then its group follows its tasks.
+  const [teamExpandedByLead, setTeamExpandedByLead] = useState<ReadonlyMap<string, boolean>>(
+    () => new Map(),
+  );
   // Shared with the old per-project sidebar, so folders keep their open state.
   const projectExpandedById = useUiStateStore((store) => store.projectExpandedById);
   const setProjectExpanded = useUiStateStore((store) => store.setProjectExpanded);
@@ -476,40 +495,62 @@ function useSidebarThreads(input: {
     clockKey: `${nowMinute}:${snoozeWakeClock}:${inboxReturnsVersion}`,
   });
 
-  const { pinnedThreads, activeThreads, workingThreads, snoozedThreads, settledThreads } =
-    partition;
   // Older settled threads load in pages; the shelf lists them only as far as they are loaded.
   const olderSettledShelf = useOlderSettledShelf({
     scopes: olderSettledScopes([...serverConfigs.keys()], scopedProjectKeys),
     expanded: settledShelfExpanded,
     visibleCount: settledVisibleCount,
   });
-  const listedSettledThreads = settledThreads.filter(olderSettledShelf.isListed);
+  // Team task threads leave their sections for a place under their lead.
+  const teams = groupTeamThreads({
+    sections: {
+      pinned: partition.pinnedThreads,
+      active: partition.activeThreads,
+      working: partition.workingThreads,
+      snoozed: partition.snoozedThreads,
+      settled: partition.settledThreads.filter(olderSettledShelf.isListed),
+    },
+    keyOf: threadShellKey,
+    leadKeyOf: teamLeadKey,
+    openKey: routeRowThreadKey,
+    expandedByLead: teamExpandedByLead,
+    attentionOf: (thread) => resolveSidebarFolderDot([thread]),
+  });
+  const {
+    pinned: pinnedThreads,
+    active: activeThreads,
+    working: workingThreads,
+    snoozed: snoozedThreads,
+    settled: listedSettledThreads,
+  } = teams.sections;
+  const settledThreads =
+    teams.leadKeyByTaskKey.size === 0
+      ? partition.settledThreads
+      : partition.settledThreads.filter(
+          (thread) => !teams.leadKeyByTaskKey.has(threadShellKey(thread)),
+        );
+  // The row that holds the open thread, which a closed shelf or folder still shows.
+  const openRowKey = teams.openRowKey;
   useOlderSettledShelfGrowth(olderSettledShelf, listedSettledThreads);
   const settledCount =
     settledThreads.length + olderSettledShelf.unloadedCount(partition.visibleThreads);
   const visibleSettledThreads = (() => {
     const visible = listedSettledThreads.slice(0, settledVisibleCount);
-    if (
-      routeRowThreadKey !== null &&
-      !visible.some((thread) => threadShellKey(thread) === routeRowThreadKey)
-    ) {
-      const routeThread = settledThreads.find(
-        (thread) => threadShellKey(thread) === routeRowThreadKey,
-      );
+    if (openRowKey !== null && !visible.some((thread) => threadShellKey(thread) === openRowKey)) {
+      const routeThread = settledThreads.find((thread) => threadShellKey(thread) === openRowKey);
       if (routeThread !== undefined) visible.push(routeThread);
     }
     return visible.length === settledThreads.length ? settledThreads : visible;
   })();
   const renderedSettledThreads = settledShelfExpanded
     ? visibleSettledThreads
-    : routeThreadOnly(visibleSettledThreads, routeRowThreadKey);
+    : routeThreadOnly(visibleSettledThreads, openRowKey);
   const visibleSnoozedThreads = snoozedShelfExpanded
     ? snoozedThreads
-    : routeThreadOnly(snoozedThreads, routeRowThreadKey);
+    : routeThreadOnly(snoozedThreads, openRowKey);
   const visibleWorkingThreads = workingShelfExpanded
     ? workingThreads
-    : routeThreadOnly(workingThreads, routeRowThreadKey);
+    : routeThreadOnly(workingThreads, openRowKey);
   const projectFolders =
     folderGroups === null
       ? null
@@ -522,44 +563,63 @@ function useSidebarThreads(input: {
             group: folder.group,
             collapsed,
             // A closed folder still shows the open thread, and hints at the rest.
-            threads: collapsed
-              ? routeThreadOnly(folder.threads, routeRowThreadKey)
-              : folder.threads,
+            threads: collapsed ? routeThreadOnly(folder.threads, openRowKey) : folder.threads,
+            // A hidden lead hides its team too, so the folder's dot and count include them.
             hiddenThreads: collapsed
-              ? folder.threads.filter((thread) => threadShellKey(thread) !== routeRowThreadKey)
+              ? folder.threads.flatMap((thread) =>
+                  threadShellKey(thread) === openRowKey
+                    ? []
+                    : [thread, ...(teams.groups.get(threadShellKey(thread))?.tasks ?? [])],
+                )
               : EMPTY_THREADS,
           };
         });
-  const orderedThreads = [
-    ...pinnedThreads,
-    ...(projectFolders === null
-      ? activeThreads
-      : projectFolders.flatMap((folder) => folder.threads)),
-    ...visibleWorkingThreads,
-    ...visibleSnoozedThreads,
-    ...renderedSettledThreads,
-  ];
+  const orderedThreads = withTeamTaskRows(
+    [
+      ...pinnedThreads,
+      ...(projectFolders === null
+        ? activeThreads
+        : projectFolders.flatMap((folder) => folder.threads)),
+      ...visibleWorkingThreads,
+      ...visibleSnoozedThreads,
+      ...renderedSettledThreads,
+    ],
+    teams,
+    threadShellKey,
+  );
+  // Each thread's own section, nested or not, for the actions that act on it.
   const sectionByThreadKey = new Map<string, SidebarSection>();
   for (const [list, section] of [
-    [pinnedThreads, "pinned"],
-    [activeThreads, "active"],
-    [workingThreads, "working"],
-    [snoozedThreads, "snoozed"],
-    [settledThreads, "settled"],
+    [partition.pinnedThreads, "pinned"],
+    [partition.activeThreads, "active"],
+    [partition.workingThreads, "working"],
+    [partition.snoozedThreads, "snoozed"],
+    [partition.settledThreads, "settled"],
   ] as const) {
     for (const thread of list) sectionByThreadKey.set(threadShellKey(thread), section);
   }
   return {
     ...partition,
+    pinnedThreads,
+    activeThreads,
+    workingThreads,
+    snoozedThreads,
+    settledThreads,
     threads,
     workingShelfEnabled,
     searchableThreads: [
-      ...pinnedThreads,
-      ...activeThreads,
-      ...workingThreads,
-      ...snoozedThreads,
-      ...settledThreads,
+      ...partition.pinnedThreads,
+      ...partition.activeThreads,
+      ...partition.workingThreads,
+      ...partition.snoozedThreads,
+      ...partition.settledThreads,
     ],
+    teamGroups: teams.groups,
+    openRowKey,
+    toggleTeam: (leadKey: string) =>
+      setTeamExpandedByLead((current) =>
+        new Map(current).set(leadKey, !(teams.groups.get(leadKey)?.expanded ?? false)),
+      ),
     settledVisibleCount,
     settledCount,
     olderSettledShelf,
@@ -585,8 +645,8 @@ function useSidebarThreads(input: {
     visibleWorkingThreads,
     orderedThreadKeys: orderedThreads.map(threadShellKey),
     threadByKey: new Map(orderedThreads.map((thread) => [threadShellKey(thread), thread] as const)),
-    settledThreadKeys: new Set(settledThreads.map(threadShellKey)),
-    snoozedThreadKeys: new Set(snoozedThreads.map(threadShellKey)),
+    settledThreadKeys: new Set(partition.settledThreads.map(threadShellKey)),
+    snoozedThreadKeys: new Set(partition.snoozedThreads.map(threadShellKey)),
     sectionByThreadKey,
     pinnedKeys: pinnedThreads.map(threadShellKey),
     activeKeys: activeThreads.map(threadShellKey),
@@ -1314,6 +1374,9 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
     activeKeys,
     pinnedKeysById,
     activeKeysById,
+    teamGroups,
+    openRowKey,
+    toggleTeam,
   } = useSidebarThreads({
     projectScopeKey,
     scopedProjectKeys,
@@ -1405,6 +1468,7 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
     setActiveSearchResultIndex((activeSearchResultIndex + step + count) % count);
   };
 
+  const toggleTeamStable = useStableCallback(toggleTeam);
   const orderedThreadKeysRef = useRef(orderedThreadKeys);
   // Read changing maps/sets through refs so streamed events preserve row callbacks.
   const threadByKeyRef = useRef(threadByKey);
@@ -1976,6 +2040,7 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
     projectFolders
       ?.map((folder) => `${folder.group.projectKey}:${folder.threads.length}`)
       .join("\n") ?? "",
+    [...teamGroups].map(([leadKey, group]) => `${leadKey}:${group.shown.length}`).join("\n"),
     visibleDraftSessionCount,
     routeDraftIdForRows ?? "",
   ].join("\0");
@@ -2024,7 +2089,7 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
     ...(draggedActiveOrder === undefined ? {} : { activeOrder: draggedActiveOrder }),
     settledExpanded: settledShelfExpanded,
     settledVisibleCount,
-    routeThreadKey: routeRowThreadKey,
+    routeThreadKey: openRowKey,
     snoozedThreadCount: snoozedThreads.length,
   });
   const draggedThreadKey = dragState?.activeKey;
@@ -3314,21 +3379,110 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
                       const renderThreadRow = (
                         thread: EnvironmentThreadShell,
                         section: SidebarSection,
-                        // The tree row of the project folder this row sits in.
-                        folderRow?: string,
+                        // The tree row of the project folder or team lead this row sits in.
+                        parentRow?: { readonly kind: "folder" | "team"; readonly id: string },
                       ) => {
                         const threadKey = scopedThreadKey(
                           scopeThreadRef(thread.environmentId, thread.id),
                         );
                         const isCard =
                           section === "active" || section === "pinned" || section === "working";
-                        const rowVariant = folderRow
-                          ? folderRowsMultiline
-                            ? "folder-multiline"
-                            : "folder"
-                          : isCard
-                            ? "card"
-                            : "slim";
+                        const rowVariant =
+                          parentRow?.kind === "team"
+                            ? "team"
+                            : parentRow
+                              ? folderRowsMultiline
+                                ? "folder-multiline"
+                                : "folder"
+                              : isCard
+                                ? "card"
+                                : "slim";
+                        const team = teamGroups.get(threadKey);
+                        const rowProps = {
+                          thread,
+                          variant: rowVariant,
+                          navigationParent:
+                            parentRow?.id ??
+                            (section === "working" || section === "snoozed" || section === "settled"
+                              ? `shelf:${section}`
+                              : undefined),
+                          teamTaskCount: team?.tasks.length ?? 0,
+                          teamExpanded: team?.expanded ?? false,
+                          teamAttention: team?.attention ?? null,
+                          onToggleTeam: toggleTeamStable,
+                          variantAction:
+                            section === "snoozed"
+                              ? "unsnooze"
+                              : section === "settled"
+                                ? "unsettle"
+                                : "settle",
+                          settlementSupported: serverConfigs.has(thread.environmentId),
+                          snoozeSupported: serverConfigs.has(thread.environmentId),
+                          pinningSupported: serverConfigs.has(thread.environmentId),
+                          isPinned: thread.pinnedAt != null,
+                          dropVerb:
+                            dragState?.activeKey === threadKey
+                              ? resolveSidebarDropVerb(dragState.activeSection, dragTargetSection)
+                              : null,
+                          dragOverPinned:
+                            dragState?.activeKey === threadKey && dragTargetSection === "pinned",
+                          sweepAction: actionSweep?.keys.has(threadKey) ? actionSweep.action : null,
+                          snoozeWakeLabelText:
+                            section === "snoozed" && thread.snoozedUntil != null
+                              ? snoozeWakeLabel(thread.snoozedUntil, {
+                                  now: new Date().toISOString(),
+                                })
+                              : null,
+                          wokeAt: threadWokeAt(thread, { now: snoozeNow }),
+                          isActive: routeRowThreadKey === threadKey,
+                          revealRef: routeRowThreadKey === threadKey ? revealActiveRow : undefined,
+                          isRouteThread: routeThreadKey === threadKey,
+                          openPullRequestsInRightPanel: routeThreadRef !== null,
+                          jumpLabel: showJumpHints ? (jumpLabelByKey.get(threadKey) ?? null) : null,
+                          currentEnvironmentId: primaryEnvironmentId,
+                          environmentLabel: environmentLabelById.get(thread.environmentId) ?? null,
+                          environmentMachine:
+                            environmentMachineById.get(thread.environmentId) ?? "server",
+                          scratchMachineLabel: scratchMachineLabelFor(thread),
+                          project:
+                            projectByKey.get(`${thread.environmentId}:${thread.projectId}`) ?? null,
+                          projectDisplayName:
+                            projectDisplayNameByKey.get(
+                              `${thread.environmentId}:${thread.projectId}`,
+                            ) ?? null,
+                          providerEntryByInstanceId:
+                            providerEntriesByEnvironment.get(thread.environmentId) ??
+                            EMPTY_PROVIDER_ENTRIES,
+                          timestampFormat: timestampFormat,
+                          onThreadClick: handleThreadClick,
+                          onThreadActivate: navigateToThread,
+                          onStartRename: startThreadRename,
+                          onRenameTitleChange: setRenamingTitle,
+                          onCommitRename: commitThreadRename,
+                          onCancelRename: cancelThreadRename,
+                          isRenaming: renamingThreadKey === threadKey,
+                          renamingTitle: renamingThreadKey === threadKey ? renamingTitle : "",
+                          onContextMenu: handleThreadContextMenu,
+                          onSettle: attemptSettle,
+                          onActionSweepStart: startActionSweep,
+                          onUnsettle: attemptUnsettle,
+                          onSnooze: attemptSnooze,
+                          onUnsnooze: attemptUnsnooze,
+                          onUnpin: attemptUnpin,
+                          onAcknowledgeWoke: acknowledgeWoke,
+                          onFileDropThreads: handleThreadFileDrop,
+                        } satisfies ComponentProps<typeof StaticThreadRow>;
+                        if (parentRow?.kind === "team") {
+                          // Under its lead, outside the drag list: it moves with the lead's row.
+                          return (
+                            <StaticThreadRow
+                              key={threadKey}
+                              {...rowProps}
+                              dropVerb={null}
+                              dragOverPinned={false}
+                            />
+                          );
+                        }
                         return (
                           <SortableThreadRow
                             key={threadKey}
@@ -3339,94 +3493,7 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
                               !draggableThreadKeys.has(threadKey) ||
                               optimisticDrop !== null
                             }
-                            thread={thread}
-                            variant={rowVariant}
-                            navigationParent={
-                              folderRow ??
-                              (section === "working" ||
-                              section === "snoozed" ||
-                              section === "settled"
-                                ? `shelf:${section}`
-                                : undefined)
-                            }
-                            variantAction={
-                              section === "snoozed"
-                                ? "unsnooze"
-                                : section === "settled"
-                                  ? "unsettle"
-                                  : "settle"
-                            }
-                            settlementSupported={serverConfigs.has(thread.environmentId)}
-                            snoozeSupported={serverConfigs.has(thread.environmentId)}
-                            pinningSupported={serverConfigs.has(thread.environmentId)}
-                            isPinned={thread.pinnedAt != null}
-                            dropVerb={
-                              dragState?.activeKey === threadKey
-                                ? resolveSidebarDropVerb(dragState.activeSection, dragTargetSection)
-                                : null
-                            }
-                            dragOverPinned={
-                              dragState?.activeKey === threadKey && dragTargetSection === "pinned"
-                            }
-                            sweepAction={
-                              actionSweep?.keys.has(threadKey) ? actionSweep.action : null
-                            }
-                            snoozeWakeLabelText={
-                              section === "snoozed" && thread.snoozedUntil != null
-                                ? snoozeWakeLabel(thread.snoozedUntil, {
-                                    now: new Date().toISOString(),
-                                  })
-                                : null
-                            }
-                            wokeAt={threadWokeAt(thread, { now: snoozeNow })}
-                            isActive={routeRowThreadKey === threadKey}
-                            revealRef={
-                              routeRowThreadKey === threadKey ? revealActiveRow : undefined
-                            }
-                            isRouteThread={routeThreadKey === threadKey}
-                            openPullRequestsInRightPanel={routeThreadRef !== null}
-                            jumpLabel={
-                              showJumpHints ? (jumpLabelByKey.get(threadKey) ?? null) : null
-                            }
-                            currentEnvironmentId={primaryEnvironmentId}
-                            environmentLabel={
-                              environmentLabelById.get(thread.environmentId) ?? null
-                            }
-                            environmentMachine={
-                              environmentMachineById.get(thread.environmentId) ?? "server"
-                            }
-                            scratchMachineLabel={scratchMachineLabelFor(thread)}
-                            project={
-                              projectByKey.get(`${thread.environmentId}:${thread.projectId}`) ??
-                              null
-                            }
-                            projectDisplayName={
-                              projectDisplayNameByKey.get(
-                                `${thread.environmentId}:${thread.projectId}`,
-                              ) ?? null
-                            }
-                            providerEntryByInstanceId={
-                              providerEntriesByEnvironment.get(thread.environmentId) ??
-                              EMPTY_PROVIDER_ENTRIES
-                            }
-                            timestampFormat={timestampFormat}
-                            onThreadClick={handleThreadClick}
-                            onThreadActivate={navigateToThread}
-                            onStartRename={startThreadRename}
-                            onRenameTitleChange={setRenamingTitle}
-                            onCommitRename={commitThreadRename}
-                            onCancelRename={cancelThreadRename}
-                            isRenaming={renamingThreadKey === threadKey}
-                            renamingTitle={renamingThreadKey === threadKey ? renamingTitle : ""}
-                            onContextMenu={handleThreadContextMenu}
-                            onSettle={attemptSettle}
-                            onActionSweepStart={startActionSweep}
-                            onUnsettle={attemptUnsettle}
-                            onSnooze={attemptSnooze}
-                            onUnsnooze={attemptUnsnooze}
-                            onUnpin={attemptUnpin}
-                            onAcknowledgeWoke={acknowledgeWoke}
-                            onFileDropThreads={handleThreadFileDrop}
+                            {...rowProps}
                           />
                         );
                       };
@@ -3464,11 +3531,10 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
                             );
                             for (const thread of folder.threads) {
                               items.push(
-                                renderThreadRow(
-                                  thread,
-                                  "active",
-                                  sidebarFolderRowId(folder.group.projectKey),
-                                ),
+                                renderThreadRow(thread, "active", {
+                                  kind: "folder",
+                                  id: sidebarFolderRowId(folder.group.projectKey),
+                                }),
                               );
                             }
                           }
@@ -3584,7 +3650,20 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
                             break;
                         }
                       }
-                      return items;
+                      // A thread's own section decides its actions, also under its lead.
+                      const renderTeamTasks = (leadKey: string) =>
+                        (teamGroups.get(leadKey)?.shown ?? []).map((task) =>
+                          renderThreadRow(
+                            task,
+                            sectionByThreadKey.get(threadShellKey(task)) ?? "active",
+                            { kind: "team", id: leadKey },
+                          ),
+                        );
+                      return (
+                        <SidebarTeamTasksContext value={renderTeamTasks}>
+                          {items}
+                        </SidebarTeamTasksContext>
+                      );
                     })()}
                     {settledShelfExpanded && hiddenSettledCount > 0 ? (
                       <li className="list-none">
