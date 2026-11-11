@@ -342,7 +342,7 @@ describe("teamStatusText", () => {
   it.each([
     [summary("proposed", 0), "Waiting for your approval", null],
     [summary("running"), "Running · 1 of 3 done", "1 of 3 done"],
-    [summary("failed", 1, 1), "Stuck · 1 of 3 done, 1 failed", "1 of 3 done, 1 failed"],
+    [summary("failed", 1, 1), "Failed · 1 of 3 done, 1 failed", "1 of 3 done, 1 failed"],
     [summary("completed", 3), "Done", "3 of 3 done"],
     [summary("cancelled"), "Cancelled", "1 of 3 done"],
   ] as const)("%j reads %s", (input, line, progress) => {

@@ -369,7 +369,7 @@ const TEAM_STATUS_LABELS: Record<TeamPlanStatus, string> = {
   proposed: "Waiting for your approval",
   running: "Running",
   completed: "Done",
-  failed: "Stuck",
+  failed: "Failed",
   cancelled: "Cancelled",
 };
 
