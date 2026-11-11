@@ -245,6 +245,17 @@ returns its existing status, and its child thread still stops, including later
 runs and watch wakes. Published task results remain available. It accepts an
 optional cancellation reason.
 
+### `propose_team`
+
+Proposes a team plan on the calling thread: a goal, agents (each with a role, a
+`target` resolved as `delegate_task` resolves one, and a `shared` or `worktree`
+workspace), and tasks that name an agent and the tasks they depend on. It starts
+nothing. The plan waits for approval through the `team.approve` command, and the
+caller is woken when the plan finishes or gets stuck. Calling it again replaces a
+plan that is not running. A team agent's thread cannot call it, and delegated
+children do not see it. [Team tasks](../internals/team-tasks.md) covers how an
+approved plan runs.
+
 ### `create_threads`
 
 Creates between one and twenty ordinary top-level Codenine threads:

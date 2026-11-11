@@ -57,6 +57,7 @@ source alone does not explain. Most code changes do not need an internal documen
 - [Adding a provider](./internals/adding-a-provider.md)
 - [Model classification](./internals/model-manifest.md)
 - [Context handoffs](./internals/context-handoffs.md)
+- [Team tasks](./internals/team-tasks.md)
 - [Remote environments](./internals/remote.md)
 - [Server updates](./internals/server-updates.md)
 - [Environment auth](./internals/environment-auth.md)

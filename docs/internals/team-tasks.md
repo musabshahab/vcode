@@ -1,0 +1,50 @@
+# Team tasks
+
+A lead thread holds a team plan in `thread.team`: agents, tasks, and each task's state. The
+decisions below span the orchestrator, the effect worker, thread launch, and the MCP tools. The
+transitions themselves are in
+[`TeamPlan.ts`](../../apps/server/src/orchestration-v2/TeamPlan.ts) and
+[`@codenine/shared/team`](../../packages/shared/src/team.ts).
+
+## A team task is a launched thread, not a delegated task
+
+`delegated_task.request` needs a live parent run, and its result returns into that run. A lead ends
+its turn after it proposes a team, and the user may approve hours later. So
+[`TeamTaskService`](../../apps/server/src/orchestration-v2/TeamTaskService.ts) starts each task as
+an ordinary top-level thread through `ThreadLaunchService`, marked with `thread.teamTask`. The lead
+is not its parent in `lineage`, and none of the delegated-task machinery (completion delivery,
+`task_status`, `task_cancel`) applies to it.
+
+A retry launches a new thread for the next attempt. Never send a retry into the earlier thread:
+moving it to another model would switch a provider session mid-conversation, which is the cost the
+team exists to avoid.
+
+## The plan lives in the thread payload
+
+Plan changes are `thread.metadata-updated` events, so the thread stream delivers them with no new
+event type or table. Two things follow:
+
+- Every thread event on the lead carries the whole plan, including `thread.visited`. The limits in
+  [`team.ts`](../../packages/contracts/src/team.ts) bound that payload. Keep per-task output in the
+  task's own thread, not in the plan.
+- A plan this build cannot decode reads as `null` instead of failing the thread, so a client older
+  than its server keeps the thread and loses only the plan.
+
+Only the server may set `teamTask`: a thread with it reports its result into the lead's plan, so a
+client's `thread.create` has the field removed, and `team.task.settle` is an internal command.
+Forks and delegated children reset both fields.
+
+## Effects run on the lead's lane
+
+`team-task.launch`, `team-task.stop`, and `team.lead-wake` are queued under the lead thread's id,
+whichever task they act on. The outbox runs one thread's effects in order, which is what keeps a
+cancel's stop behind the launch of the same task. Each effect rereads the plan and does nothing
+when the task or plan has moved on, so replaying one after a restart is safe.
+
+[`TeamTaskReactor`](../../apps/server/src/orchestration-v2/TeamTaskReactor.ts) settles a task when
+its thread's work has ended, by the same rule that decides a delegated task has a result
+(`delegatedTaskProgress`). It only sees events while the server runs: a run that ends during a
+restart leaves its task `running` until the user cancels the team.
+
+`runtimeLayer.layer` leaves `TeamTaskService` unprovided, because it does not include thread launch.
+`layerProduction` provides it; a test built on `layer` supplies its own.

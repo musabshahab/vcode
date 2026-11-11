@@ -19,8 +19,10 @@ What works today is the base the team feature will be built on:
 - A terminal, Git worktrees, pull request creation and pull request status
 - A desktop app (Electron) and a web app that mirrors it
 
-What is coming: the team feature itself (the lead proposing a team, the roster you can edit, and
-handoffs between agents) is not built yet. A terminal app is planned next. More providers, such as
+What is coming: the team feature. The server can already hold a team a lead agent proposes, start
+its tasks once the team is approved, and hand each result to the next agent. There is no screen yet
+to review, edit, or approve a team, so you cannot use it from the apps. A terminal app is planned
+next. More providers, such as
 OpenRouter models, may follow.
 
 Codenine is self-hosted. There is no hosted service, no website, and no published release yet, so
