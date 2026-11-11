@@ -106,6 +106,28 @@ it.layer(NodeServices.layer)("ensurePinnedRuntimeInstalled", (it) => {
     }),
   );
 
+  it.effect("downloads nothing without a configured release base URL", () =>
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem;
+      const path = yield* Path.Path;
+      const baseDir = yield* fs.makeTempDirectoryScoped({ prefix: "t3-pinned-unconfigured-" });
+      const requests: string[] = [];
+      const error = yield* ensurePinnedRuntimeInstalled({
+        baseDir,
+        version,
+        fs,
+        path,
+        platform: "linux",
+        arch: "x64",
+        httpClient: releaseHttpClient(yield* validChecksums, requests),
+        runner: extractingRunner(fs, path),
+        validate: () => Effect.void,
+      }).pipe(Effect.flip);
+      assert.include(error.message, "T3CODE_RELEASE_BASE_URL");
+      assert.deepEqual(requests, []);
+    }),
+  );
+
   it.effect("cleans up an interrupted download without reporting verification or extraction", () =>
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem;
@@ -142,6 +164,7 @@ it.layer(NodeServices.layer)("ensurePinnedRuntimeInstalled", (it) => {
         platform: "linux",
         arch: "x64",
         httpClient: client,
+        releaseBaseUrl: "https://releases.example/download",
         runner: extractingRunner(fs, path),
         validate: () => Effect.die("must not validate an interrupted archive"),
         onProgress: (event) => {
@@ -207,6 +230,7 @@ it.layer(NodeServices.layer)("ensurePinnedRuntimeInstalled", (it) => {
         platform: "linux",
         arch: "x64",
         httpClient: releaseHttpClient(`${"0".repeat(64)}  ${archiveName}\n`),
+        releaseBaseUrl: "https://releases.example/download",
         runner: extractingRunner(fs, path, commands),
         validate: () => Effect.die("must not validate an unverified archive"),
       }).pipe(Effect.flip);
@@ -233,6 +257,7 @@ it.layer(NodeServices.layer)("ensurePinnedRuntimeInstalled", (it) => {
         platform: "linux",
         arch: "x64",
         httpClient: releaseHttpClient(yield* validChecksums),
+        releaseBaseUrl: "https://releases.example/download",
         runner: extractingRunner(fs, path),
         validate: (staging) =>
           Effect.gen(function* () {
@@ -264,6 +289,7 @@ it.layer(NodeServices.layer)("ensurePinnedRuntimeInstalled", (it) => {
         platform: "linux",
         arch: "x64",
         httpClient: releaseHttpClient(yield* validChecksums),
+        releaseBaseUrl: "https://releases.example/download",
         runner: extractingRunner(fs, path),
         validate: () =>
           Effect.fail(new PinnedRuntimeInstallError({ step: "validating the staged runtime" })),
@@ -296,6 +322,7 @@ it.layer(NodeServices.layer)("ensurePinnedRuntimeInstalled", (it) => {
         platform: "linux",
         arch: "x64",
         httpClient: releaseHttpClient(yield* validChecksums),
+        releaseBaseUrl: "https://releases.example/download",
         runner: extractingRunner(fs, path),
         validate: () => Effect.void,
       });
@@ -325,6 +352,7 @@ it.layer(NodeServices.layer)("ensurePinnedRuntimeInstalled", (it) => {
         platform: "linux",
         arch: "x64",
         httpClient: releaseHttpClient(yield* validChecksums, requests),
+        releaseBaseUrl: "https://releases.example/download",
         runner: extractingRunner(fs, path),
         validate: (paths) =>
           Effect.gen(function* () {

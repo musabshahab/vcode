@@ -1,5 +1,9 @@
 # Updating T3 Code
 
+This build checks for no updates until whoever builds or runs it names where releases come from;
+see [Releases](../operations/release.md) for the settings. Until then, the update paths below stay
+idle.
+
 The app you use and the server running your agents can be on different machines.
 When a server is behind your web or desktop app, the update button at the bottom
 of the sidebar and **Settings → Environments** offer to update it.

@@ -12,6 +12,7 @@ import * as Semaphore from "effect/Semaphore";
 import { HttpClient, HttpClientError, HttpClientRequest, HttpClientResponse } from "effect/http";
 
 import {
+  CLI_RELEASE_BASE_URL_ENV,
   CLI_RELEASE_CHECKSUMS_FILE,
   cliArchiveFileName,
   cliArchivePlatformKey,
@@ -117,10 +118,15 @@ interface PinnedRuntimeInstallInput {
 
 const fetchReleaseAsset = Effect.fn("cloud.pinned_runtime.fetch_release_asset")(function* (
   httpClient: HttpClient.HttpClient,
-  url: string,
+  url: string | null,
   step: string,
   onProgress?: (progress: PinnedRuntimeProgress) => void,
 ) {
+  if (url === null) {
+    return yield* new PinnedRuntimeInstallError({
+      step: `${step}: release downloads are off; set ${CLI_RELEASE_BASE_URL_ENV}`,
+    });
+  }
   // Bound stalls while holding the install lock, but allow transfers that keep
   // receiving bytes to finish regardless of their total duration.
   return yield* httpClient.execute(HttpClientRequest.get(url)).pipe(

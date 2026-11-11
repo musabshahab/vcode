@@ -4,11 +4,13 @@ import {
   type ProviderDriverKind,
 } from "@t3tools/contracts";
 import * as Clock from "effect/Clock";
+import * as Config from "effect/Config";
 import * as Context from "effect/Context";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
 import * as Layer from "effect/Layer";
+import * as Option from "effect/Option";
 import * as Path from "effect/Path";
 import * as Schema from "effect/Schema";
 import * as Semaphore from "effect/Semaphore";
@@ -22,12 +24,14 @@ import bundledManifestJson from "./model-manifest.json" with { type: "json" };
 import { ProviderCompatibilityPolicy } from "./providerCompatibility.ts";
 import * as ModelCatalog from "@t3tools/provider-core/server/ModelCatalog";
 
-const MODEL_MANIFEST_URL =
-  "https://raw.githubusercontent.com/pingdotgg/t3code/main/apps/server/src/provider/model-manifest.json";
+/** Unset, the server uses only the bundled manifest and never fetches one. */
+const modelManifestUrlConfig = Config.NonEmptyString("T3CODE_MODEL_MANIFEST_URL").pipe(
+  Config.option,
+);
 
 const MANIFEST_TTL_MS = 60 * 60 * 1000;
 
-/** GitHub's raw CDN caches about this long, so a shorter window buys nothing. */
+/** A raw CDN caches about this long, so a shorter window buys nothing. */
 const MANIFEST_ON_DEMAND_TTL_MS = 5 * 60 * 1000;
 
 /** Back off failed fetches so offline health checks do not each wait on the network. */
@@ -195,6 +199,8 @@ const BundledOnlyModelManifest: ModelManifest["Service"] = {
 const layerBundledOnly = Layer.succeed(ModelManifest, BundledOnlyModelManifest);
 
 export const make = Effect.gen(function* () {
+  const manifestUrl = yield* modelManifestUrlConfig;
+  if (Option.isNone(manifestUrl)) return BundledOnlyModelManifest;
   const fileSystem = yield* FileSystem.FileSystem;
   const path = yield* Path.Path;
   const config = yield* ServerConfig;
@@ -242,7 +248,7 @@ export const make = Effect.gen(function* () {
     if (settings !== null && !settings.enableProviderUpdateChecks) return manifest;
 
     lastAttemptMs = now;
-    const fetched = yield* httpClient.get(MODEL_MANIFEST_URL).pipe(
+    const fetched = yield* httpClient.get(manifestUrl.value).pipe(
       Effect.flatMap(HttpClientResponse.filterStatusOk),
       Effect.flatMap((response) => response.json),
       Effect.flatMap((json) => decodeManifest(json)),

@@ -2,6 +2,7 @@ import * as NodeServices from "@effect/platform-node/NodeServices";
 import { expect, it } from "@effect/vitest";
 import { ServerNpmReleaseError } from "@t3tools/contracts";
 import * as HostProcess from "@t3tools/shared/HostProcess";
+import * as ConfigProvider from "effect/ConfigProvider";
 import * as Deferred from "effect/Deferred";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
@@ -36,6 +37,7 @@ const makeService = Effect.fnUntraced(function* (
   run: ProcessRunner.ProcessRunner["Service"]["run"],
   publicRegistry: HttpClient.HttpClient = noPublicRegistry,
   npmInstalled = true,
+  releasePackage: string | null = "t3",
 ) {
   const fs = yield* FileSystem.FileSystem;
   const path = yield* Path.Path;
@@ -50,8 +52,27 @@ const makeService = Effect.fnUntraced(function* (
       PATH: npmInstalled ? npmBin : "",
       PATHEXT: ".CMD",
     }),
+    Effect.provide(
+      ConfigProvider.layer(
+        ConfigProvider.fromEnv({
+          env: releasePackage === null ? {} : { T3CODE_RELEASE_NPM_PACKAGE: releasePackage },
+        }),
+      ),
+    ),
   );
 }, Effect.provide(NodeServices.layer));
+
+it.effect("reports no release without a configured release package", () =>
+  Effect.gen(function* () {
+    const npmRelease = yield* makeService(
+      () => Effect.die("an unconfigured lookup must not run npm"),
+      HttpClient.make(() => Effect.die("an unconfigured lookup must not reach a registry")),
+      true,
+      null,
+    );
+    expect(yield* npmRelease.get({ spec: "latest" })).toBeNull();
+  }),
+);
 
 it.effect.each([
   {

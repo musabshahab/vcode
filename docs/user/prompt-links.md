@@ -8,7 +8,8 @@ change your permission mode, branch, or worktree. Your own defaults apply.
 
 ## Make a link
 
-Open the command palette and choose **Copy prompt link**. It copies the draft in the composer.
+Open the command palette and choose **Copy prompt link**. It copies the draft in the composer. Unless
+the build names a hosted web app, the link is a `t3code://new?…` link that opens the desktop app.
 When the project is on GitHub, **Copy prompt link with repo and model** also adds the repository
 and the model you picked. Sent messages have a **Copy prompt link** button too.
 
@@ -57,7 +58,8 @@ malicious.
 
 ## Share a thread
 
-**Copy thread** copies a link such as `https://app.t3.codes/threads/<environment>/<thread>`. Paste
+**Copy thread** copies a link such as `https://app.t3.codes/threads/<environment>/<thread>` when
+the build names a hosted web app, and a `t3-thread://` link otherwise. Paste
 it anywhere, such as Slack, a GitHub comment, or your notes. On a phone with T3 Code installed, it
 opens the thread in the app. Elsewhere, opening it asks where to open it, like a prompt link, then
 opens the thread. Only someone connected to the machine that runs the thread can see it. In T3 Code,

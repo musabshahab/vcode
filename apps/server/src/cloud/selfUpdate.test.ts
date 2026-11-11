@@ -9,6 +9,7 @@ import * as Fiber from "effect/Fiber";
 import * as Path from "effect/Path";
 import * as Stream from "effect/Stream";
 import * as TestClock from "effect/testing/TestClock";
+import * as ConfigProvider from "effect/ConfigProvider";
 import { HttpClient, HttpClientResponse } from "effect/http";
 import * as ChildProcessSpawner from "effect/process/ChildProcessSpawner";
 
@@ -146,6 +147,13 @@ const makeHarness = Effect.fn("test.make_self_update_harness")(function* (
     Effect.provideService(HostProcess.Platform, "linux"),
     Effect.provideService(HostProcess.Architecture, "x64"),
     Effect.provide(ServerConfig.layer({ ...config, mode: options.mode ?? "web" })),
+    Effect.provide(
+      ConfigProvider.layer(
+        ConfigProvider.fromEnv({
+          env: { T3CODE_RELEASE_BASE_URL: "https://releases.example/download" },
+        }),
+      ),
+    ),
   );
   return { selfUpdate, order, urls };
 });

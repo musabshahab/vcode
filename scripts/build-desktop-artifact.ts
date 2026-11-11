@@ -2355,15 +2355,11 @@ export function resolveDesktopRuntimeDependencies(
 export const resolveGitHubPublishConfig = Effect.fn("resolveGitHubPublishConfig")(function* (
   updateChannel: "latest" | "nightly",
 ) {
-  const env = yield* Config.all({
-    updateRepository: Config.String("T3CODE_DESKTOP_UPDATE_REPOSITORY").pipe(Config.option),
-    githubRepository: Config.String("GITHUB_REPOSITORY").pipe(Config.option),
-  });
-  const rawRepo = (
-    Option.getOrUndefined(env.updateRepository)?.trim() ||
-    Option.getOrUndefined(env.githubRepository)?.trim() ||
-    ""
-  ).trim();
+  // Unset, the build carries no update feed and the app never checks for updates.
+  const updateRepository = yield* Config.String("T3CODE_DESKTOP_UPDATE_REPOSITORY").pipe(
+    Config.option,
+  );
+  const rawRepo = (Option.getOrUndefined(updateRepository) ?? "").trim();
   if (!rawRepo) return undefined;
 
   const [owner, repo, ...rest] = rawRepo.split("/");

@@ -63,9 +63,11 @@ async function download(url, file) {
 
 async function install(dir, key) {
   const archive = `t3-${version}-${key}.${process.platform === "win32" ? "zip" : "tar.gz"}`;
-  const base = (
-    process.env.T3CODE_RELEASE_BASE_URL || "https://github.com/pingdotgg/t3code/releases/download"
-  ).replace(/\/+$/, "");
+  const configuredBase = process.env.T3CODE_RELEASE_BASE_URL?.trim();
+  if (!configuredBase) {
+    throw new Error("release downloads are off; set T3CODE_RELEASE_BASE_URL to install t3.");
+  }
+  const base = configuredBase.replace(/\/+$/, "");
   const sums = await (await get(`${base}/v${version}/SHA256SUMS`)).text();
   const expected = /^([0-9a-f]{64})\s+\*?(.+)$/im;
   const line = sums

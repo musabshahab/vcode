@@ -70,6 +70,7 @@ export function SidebarUpdateReleaseNotes({
   const releasedAt = state.releaseNotes.find(
     (releaseNote) => releaseNote.version === state.availableVersion,
   )?.releasedAt;
+  const releaseHistoryUrl = getDesktopUpdateReleaseHistoryUrl();
 
   return (
     <div className="flex max-h-[calc(var(--available-height)-0.5rem)] min-h-0 w-fit max-w-[min(24rem,calc(100vw-2rem))] flex-col text-left text-pretty">
@@ -150,9 +151,9 @@ export function SidebarUpdateReleaseNotes({
             </section>
           );
         })}
-        {state.omittedReleaseCount > 0 ? (
+        {state.omittedReleaseCount > 0 && releaseHistoryUrl !== null ? (
           <div className="mt-3">
-            <ReleaseLink releaseUrl={getDesktopUpdateReleaseHistoryUrl()} shell={shell}>
+            <ReleaseLink releaseUrl={releaseHistoryUrl} shell={shell}>
               {`${state.omittedReleaseCount} older ${state.omittedReleaseCount === 1 ? "release" : "releases"} on GitHub`}
             </ReleaseLink>
           </div>

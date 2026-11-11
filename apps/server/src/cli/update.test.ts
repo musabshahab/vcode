@@ -37,13 +37,30 @@ const unrelatedLsof = ProcessRunner.ProcessRunner.of({
 
 afterEach(() => vi.restoreAllMocks());
 
+it.effect("lists no releases without a configured release repository", () =>
+  Effect.gen(function* () {
+    let requests = 0;
+    const httpClient = HttpClient.make((request) => {
+      requests += 1;
+      return Effect.succeed(HttpClientResponse.fromWeb(request, Response.json([])));
+    });
+    const error = yield* resolveNewestVersion("stable").pipe(
+      Effect.provideService(HostProcess.Environment, {}),
+      Effect.provideService(HttpClient.HttpClient, httpClient),
+      Effect.flip,
+    );
+    assert.match(error.reason, /Release checks are off/);
+    assert.equal(requests, 0);
+  }),
+);
+
 it.effect("authenticates each release page until the requested channel is found", () =>
   Effect.gen(function* () {
     const pages: string[] = [];
     const httpClient = HttpClient.make((request) => {
       const url = new URL(request.url);
       assert.equal(url.origin, "https://api.github.com");
-      assert.equal(url.pathname, "/repos/pingdotgg/t3code/releases");
+      assert.equal(url.pathname, "/repos/example/t3/releases");
       assert.equal(request.headers.accept, "application/vnd.github+json");
       assert.equal(request.headers.authorization, "Bearer gh-token");
       const page = url.searchParams.get("page") ?? "";
@@ -52,7 +69,10 @@ it.effect("authenticates each release page until the requested channel is found"
       return Effect.succeed(HttpClientResponse.fromWeb(request, Response.json([{ tag_name }])));
     });
     const version = yield* resolveNewestVersion("stable").pipe(
-      Effect.provideService(HostProcess.Environment, { GH_TOKEN: "gh-token" }),
+      Effect.provideService(HostProcess.Environment, {
+        GH_TOKEN: "gh-token",
+        T3CODE_RELEASE_REPOSITORY: "example/t3",
+      }),
       Effect.provideService(HttpClient.HttpClient, httpClient),
     );
     assert.equal(version, "1.2.3");

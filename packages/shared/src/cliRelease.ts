@@ -3,9 +3,11 @@ import * as Schema from "effect/Schema";
 
 import { compareSemverVersions } from "./semver.ts";
 
-const CLI_RELEASE_REPOSITORY = "pingdotgg/t3code";
 export const CLI_RELEASE_CHECKSUMS_FILE = "SHA256SUMS";
+/** Where release archives download from, laid out as GitHub's release downloads. Unset, nothing downloads. */
 export const CLI_RELEASE_BASE_URL_ENV = "T3CODE_RELEASE_BASE_URL";
+/** The GitHub `owner/repo` whose releases `t3 update` lists. Unset, release checks are off. */
+export const CLI_RELEASE_REPOSITORY_ENV = "T3CODE_RELEASE_REPOSITORY";
 
 // Keep archive keys aligned with the Linux matrix, Windows ARM64 build, and cli_archive rows in release.yml.
 // Node single-executables do not support darwin-x64 and segfault at startup.
@@ -40,13 +42,12 @@ export function cliArchiveFileName(version: string, platformKey: CliArchivePlatf
   return `t3-${version}-${platformKey}.${platformKey.startsWith("win32") ? "zip" : "tar.gz"}`;
 }
 
-const CLI_RELEASE_DEFAULT_BASE_URL = `https://github.com/${CLI_RELEASE_REPOSITORY}/releases/download`;
-
 export function cliReleaseDownloadBaseUrl(
   version: string,
-  baseUrl: string | undefined = CLI_RELEASE_DEFAULT_BASE_URL,
-): string {
-  return `${(baseUrl?.trim() || CLI_RELEASE_DEFAULT_BASE_URL).replace(/\/+$/, "")}/v${version}`;
+  baseUrl: string | undefined,
+): string | null {
+  const base = baseUrl?.trim();
+  return base ? `${base.replace(/\/+$/, "")}/v${version}` : null;
 }
 
 /** `segments` added to `baseUrl`'s path, keeping its query, such as a signed mirror URL's token. */
@@ -60,9 +61,10 @@ function releaseAssetUrl(baseUrl: string, ...segments: ReadonlyArray<string>): s
 export function cliReleaseAssetUrl(
   version: string,
   fileName: string,
-  baseUrl: string | undefined = CLI_RELEASE_DEFAULT_BASE_URL,
-): string {
-  return releaseAssetUrl(baseUrl?.trim() || CLI_RELEASE_DEFAULT_BASE_URL, `v${version}`, fileName);
+  baseUrl: string | undefined,
+): string | null {
+  const base = baseUrl?.trim();
+  return base ? releaseAssetUrl(base, `v${version}`, fileName) : null;
 }
 
 export function parseChecksums(text: string): ReadonlyMap<string, string> {
@@ -115,8 +117,8 @@ export function acceptsTrackSwitchRelease(
 }
 
 /** Page until the channel matches; nightlies can push preview/stable releases past the first page. */
-export function cliReleaseIndexPageUrl(page: number): string {
-  return `https://api.github.com/repos/${CLI_RELEASE_REPOSITORY}/releases?per_page=100&page=${page}`;
+export function cliReleaseIndexPageUrl(repository: string, page: number): string {
+  return `https://api.github.com/repos/${repository}/releases?per_page=100&page=${page}`;
 }
 
 /** Draft assets are not downloadable. */

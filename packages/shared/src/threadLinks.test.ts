@@ -205,7 +205,7 @@ describe("thread links", () => {
 describe("hosted thread links", () => {
   it("escapes every id character a sentence or path could claim, and reads it back", () => {
     const thread = ref("env.1", "thread:delegated/mcp%3A1.");
-    const link = hostedThreadLink(thread);
+    const link = hostedThreadLink(thread, "https://app.t3.codes");
     expect(link).toBe("https://app.t3.codes/threads/env%2E1/thread%3Adelegated%2Fmcp%253A1%2E");
     expect(parseThreadLinkHref(link)).toEqual(thread);
     expect(hostedThreadLink(thread, "https://preview.t3.codes/")).toMatch(
@@ -225,10 +225,18 @@ describe("hosted thread links", () => {
   });
 
   it("writes a copied link a reader can follow, labeled when it has a title", () => {
-    expect(formatHostedThreadLink(ref("e", "t1"), "Fix [ci]")).toBe(
-      "[Fix ci](https://app.t3.codes/threads/e/t1)",
+    const origin = "https://app.example.test";
+    expect(formatHostedThreadLink(ref("e", "t1"), "Fix [ci]", origin)).toBe(
+      "[Fix ci](https://app.example.test/threads/e/t1)",
     );
-    expect(formatHostedThreadLink(ref("e", "t1"), " ")).toBe("https://app.t3.codes/threads/e/t1");
+    expect(formatHostedThreadLink(ref("e", "t1"), " ", origin)).toBe(
+      "https://app.example.test/threads/e/t1",
+    );
+  });
+
+  it("writes a t3-thread link when no hosted app is configured", () => {
+    expect(hostedThreadLink(ref("e", "t1"))).toBe("t3-thread://v2/e/t1");
+    expect(formatHostedThreadLink(ref("e", "t1"), "Fix ci")).toBe("[Fix ci](t3-thread://v2/e/t1)");
   });
 
   it("titles hosted links in every Markdown form and writes them as v2 links", () => {

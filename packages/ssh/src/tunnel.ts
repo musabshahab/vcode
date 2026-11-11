@@ -475,6 +475,9 @@ if ! t3_runtime_ready; then
   trap 'rm -rf "$T3_LOCK"' EXIT
 fi
 if ! t3_runtime_ready; then
+  if [ -z "$T3_RELEASE_BASE_URL" ]; then
+    printf 'Remote host has no t3 %s, and release downloads are off. Install t3 there, or set T3CODE_RELEASE_BASE_URL.\\n' "$T3_ARCHIVE_VERSION" >&2; exit 1
+  fi
   case "$(uname -s)" in
     Darwin) T3_PLATFORM="darwin" ;;
     Linux) T3_PLATFORM="linux" ;;
@@ -799,10 +802,9 @@ export function buildRemoteT3RunnerScript(input?: RemoteT3RunnerOptions): string
   if (archiveVersion !== "" && !EXACT_ARCHIVE_VERSION.test(archiveVersion)) {
     throw new SshInvalidArchiveVersionError({ archiveVersion });
   }
-  const releaseBaseUrl = cliReleaseDownloadBaseUrl("", input?.releaseBaseUrl ?? undefined).replace(
-    /\/v$/u,
-    "",
-  );
+  const releaseBaseUrl = (
+    cliReleaseDownloadBaseUrl("", input?.releaseBaseUrl ?? undefined) ?? ""
+  ).replace(/\/v$/u, "");
   return stripTrailingNewlines(
     applyScriptPlaceholders(REMOTE_RUNNER_SCRIPT, {
       T3_NODE_SCRIPT_PATH: shellSingleQuote(nodeScriptPath),

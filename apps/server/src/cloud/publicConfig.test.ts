@@ -13,11 +13,19 @@ import {
 const provideEnv = (env: Readonly<Record<string, string>>) =>
   Effect.provide(ConfigProvider.layer(ConfigProvider.fromEnv({ env })));
 
+it.effect("has no relay URL unless one is configured", () =>
+  makeRelayUrlConfig("").pipe(provideEnv({}), Effect.flip),
+);
+
 it.effect("rejects an insecure runtime relay URL override", () =>
   makeRelayUrlConfig("https://embedded.example.test").pipe(
     provideEnv({ T3CODE_RELAY_URL: "http://runtime.example.test" }),
     Effect.flip,
   ),
+);
+
+it.effect("has no hosted app URL unless one is configured", () =>
+  hostedAppUrlConfig.pipe(provideEnv({}), Effect.flip),
 );
 
 it.effect("rejects malformed or insecure hosted app URLs", () =>

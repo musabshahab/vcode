@@ -22,6 +22,14 @@ describe("hostedPairing", () => {
     expect(hasHostedPairingRequest(url)).toBe(true);
   });
 
+  it("builds no hosted pairing link unless a hosted app is configured", () => {
+    vi.stubEnv("VITE_HOSTED_APP_URL", "");
+
+    expect(
+      buildHostedPairingUrl({ host: "https://backend.example.com:3773", token: "pairing-token" }),
+    ).toBeNull();
+  });
+
   it("prefers hash tokens so generated hosted links do not put credentials in search params", () => {
     vi.stubEnv("VITE_HOSTED_APP_URL", "https://preview.t3.codes");
 
@@ -30,7 +38,7 @@ describe("hostedPairing", () => {
         host: "https://backend.example.com:3773",
         token: "pairing-token",
         label: "Workstation",
-      }),
+      })!,
     );
 
     expect(url.origin).toBe("https://preview.t3.codes");
