@@ -7,6 +7,7 @@ import type {
 import { scopedThreadKey } from "@codenine/client-runtime/environment";
 import { lazy, Suspense } from "react";
 import SideChatPane from "./SideChatPane";
+import { TaskPanel } from "./TaskPanel";
 import type { DraftId } from "../../composerDraftStore";
 import type { SideChatParentPanel } from "../../lib/sideChatPane";
 import { type RightPanelSurface, useRightPanelStore } from "../../rightPanelStore";
@@ -43,6 +44,8 @@ export function RightPanelSurfaceContent(props: {
   readonly terminal: RightPanelTerminalProps;
   readonly files: RightPanelFileProps;
   readonly sideChatParentPanel: SideChatParentPanel;
+  /** Opens the Changes tab from the Task tab; unset where the thread has no diff. */
+  readonly onViewChanges: (() => void) | undefined;
 }) {
   const { surface, threadRef, visible, onCloseSurface } = props;
   if (surface === null) return null;
@@ -67,6 +70,14 @@ export function RightPanelSurfaceContent(props: {
             visible={visible}
           />
         </Suspense>
+      );
+    case "task":
+      return (
+        <TaskPanel
+          key={scopedThreadKey(threadRef)}
+          threadRef={threadRef}
+          onViewChanges={props.onViewChanges}
+        />
       );
     case "side-chat":
       // Not lazy: revealing a suspended tiptap editor tears down its view and crashes the composer.

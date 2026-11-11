@@ -30,6 +30,7 @@ import {
   MessagesSquare,
   Plus,
   TerminalSquare,
+  UsersIcon,
 } from "lucide-react";
 import {
   type KeyboardEvent as ReactKeyboardEvent,
@@ -90,6 +91,8 @@ export interface RightPanelTabsProps {
   onAddFiles: () => void;
   /** Absent where side chats are not offered. */
   onAddSideChat?: (() => void) | undefined;
+  /** Absent on a thread that is neither a team's lead nor one of its agents. */
+  onAddTask?: (() => void) | undefined;
   terminalAvailable: boolean;
   diffAvailable: boolean;
   filesAvailable: boolean;
@@ -98,6 +101,9 @@ export interface RightPanelTabsProps {
   sideChatDisabledReason?: string | null;
   children: ReactNode;
 }
+
+// T, F, D and S are taken; K is the last letter of "task".
+const TASK_SURFACE_SHORTCUT = "K";
 
 const SURFACE_DISABLED_REASONS = {
   terminal: "Terminal surfaces are only available from a project thread.",
@@ -205,6 +211,7 @@ function RightPanelEmptyState(props: {
   onAddFiles: () => void;
   /** Absent where side chats are not offered. */
   onAddSideChat?: (() => void) | undefined;
+  onAddTask: (() => void) | undefined;
   terminalAvailable: boolean;
   diffAvailable: boolean;
   filesAvailable: boolean;
@@ -214,6 +221,18 @@ function RightPanelEmptyState(props: {
   const [highlight, setHighlight] = useState(-1);
 
   const actions = [
+    ...(props.onAddTask
+      ? [
+          {
+            label: "Task",
+            icon: UsersIcon,
+            shortcut: TASK_SURFACE_SHORTCUT,
+            available: true,
+            disabledReason: "",
+            onClick: props.onAddTask,
+          },
+        ]
+      : []),
     {
       label: "Terminal",
       icon: TerminalSquare,
@@ -398,6 +417,8 @@ function surfaceTitle(
       );
     case "side-chat":
       return "Side chat";
+    case "task":
+      return "Task";
   }
 }
 
@@ -428,6 +449,8 @@ function SurfaceIcon({
       return <TerminalSquare className="size-3 shrink-0" />;
     case "side-chat":
       return <SideChatTabIcon environmentId={environmentId} threadId={surface.threadId} />;
+    case "task":
+      return <UsersIcon className="size-3 shrink-0" />;
   }
 }
 
@@ -650,6 +673,18 @@ export function RightPanelTabs(props: RightPanelTabsProps) {
   };
 
   const addSurfaceActions = [
+    ...(props.onAddTask
+      ? [
+          {
+            label: "Task",
+            icon: UsersIcon,
+            shortcut: TASK_SURFACE_SHORTCUT,
+            available: true,
+            disabledReason: "",
+            onClick: props.onAddTask,
+          },
+        ]
+      : []),
     {
       label: "Terminal",
       icon: TerminalSquare,
@@ -969,6 +1004,7 @@ export function RightPanelTabs(props: RightPanelTabsProps) {
             onAddDiff={props.onAddDiff}
             onAddFiles={props.onAddFiles}
             onAddSideChat={props.onAddSideChat}
+            onAddTask={props.onAddTask}
             terminalAvailable={props.terminalAvailable}
             diffAvailable={props.diffAvailable}
             filesAvailable={props.filesAvailable}

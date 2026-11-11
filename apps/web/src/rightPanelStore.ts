@@ -1,5 +1,5 @@
 import { parseScopedThreadKey, scopedThreadKey } from "@codenine/client-runtime/environment";
-import { RunId, ThreadId, type ScopedThreadRef } from "@codenine/contracts";
+import { RunId, TeamPlanId, ThreadId, type ScopedThreadRef } from "@codenine/contracts";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
@@ -8,7 +8,7 @@ import { resolveStorage } from "./lib/storage";
 import type { ThreadPanelPresentation } from "./rightPanelLayout";
 import type { ChatFileAttachment } from "./types";
 
-const RIGHT_PANEL_KINDS = ["diff", "files", "file", "terminal", "side-chat"] as const;
+const RIGHT_PANEL_KINDS = ["diff", "files", "file", "terminal", "side-chat", "task"] as const;
 export type RightPanelKind = (typeof RIGHT_PANEL_KINDS)[number];
 
 export type RightPanelSurface =
@@ -37,10 +37,13 @@ export type RightPanelSurface =
       /** Deepest workspace path retained for navigating back down after moving up. */
       folderTrail?: string;
     }
-  | { id: `side-chat:${string}`; kind: "side-chat"; threadId: ThreadId };
+  | { id: `side-chat:${string}`; kind: "side-chat"; threadId: ThreadId }
+  | { id: "task"; kind: "task" };
+
+type SingletonRightPanelKind = Exclude<RightPanelKind, "file" | "terminal" | "side-chat">;
 
 const RIGHT_PANEL_STORAGE_KEY = "codenine:right-panel-state:v2";
-const RIGHT_PANEL_STORAGE_VERSION = 16;
+const RIGHT_PANEL_STORAGE_VERSION = 17;
 const THREAD_PANEL_CLOSED_BY_DEFAULT_VERSION = 16;
 
 const isPullRequestsPanelKey = (threadKey: string) => threadKey.endsWith(":pull-requests-panel");
@@ -51,6 +54,8 @@ export interface ThreadRightPanelState {
   surfaces: RightPanelSurface[];
   maximized?: true;
   proactiveDiffTurnId?: RunId;
+  /** The team plan whose Task tab was offered, so it is offered once per plan. */
+  proactiveTaskPlanId?: TeamPlanId;
 }
 
 export interface ThreadPanelVisibility {
@@ -74,10 +79,16 @@ interface RightPanelStoreState {
     request: { kind: "diff"; turnId: RunId },
     expectedUserActionRevision: number,
   ) => boolean;
-  open: (
+  /**
+   * Opens the Task tab once per plan: on a thread whose panel was never set, or for a plan
+   * awaiting approval. Refused, like openProactive, after a later choice of the user's.
+   */
+  openProactiveTask: (
     ref: ScopedThreadRef,
-    kind: Exclude<RightPanelKind, "file" | "terminal" | "side-chat">,
-  ) => void;
+    request: { planId: TeamPlanId; awaitingApproval: boolean },
+    expectedUserActionRevision: number,
+  ) => boolean;
+  open: (ref: ScopedThreadRef, kind: SingletonRightPanelKind) => void;
   openSideChat: (ref: ScopedThreadRef, threadId: ThreadId) => void;
   openFile: (ref: ScopedThreadRef, relativePath: string, line?: number) => void;
   /** Moves in place; "" opens the root explorer. folderTrail keeps the return path; keepSource opens beside the source. */
@@ -111,10 +122,7 @@ interface RightPanelStoreState {
   close: (ref: ScopedThreadRef) => void;
   setMaximized: (ref: ScopedThreadRef, maximized: boolean) => void;
   toggleVisibility: (ref: ScopedThreadRef) => void;
-  toggle: (
-    ref: ScopedThreadRef,
-    kind: Exclude<RightPanelKind, "file" | "terminal" | "side-chat">,
-  ) => void;
+  toggle: (ref: ScopedThreadRef, kind: SingletonRightPanelKind) => void;
   setThreadPanelOpen: (
     ref: ScopedThreadRef,
     presentation: ThreadPanelPresentation,
@@ -135,14 +143,14 @@ const DEFAULT_THREAD_PANEL_VISIBILITY: ThreadPanelVisibility = {
   popoverOpen: false,
 };
 
-const singletonSurface = (
-  kind: Exclude<RightPanelKind, "file" | "terminal" | "side-chat">,
-): RightPanelSurface => {
+const singletonSurface = (kind: SingletonRightPanelKind): RightPanelSurface => {
   switch (kind) {
     case "diff":
       return { id: "diff", kind };
     case "files":
       return { id: "files", kind };
+    case "task":
+      return { id: "task", kind };
   }
 };
 
@@ -199,7 +207,8 @@ const updateThreadStateMap = (
     !next.isOpen &&
     next.activeSurfaceId === null &&
     next.surfaces.length === 0 &&
-    next.proactiveDiffTurnId === undefined
+    next.proactiveDiffTurnId === undefined &&
+    next.proactiveTaskPlanId === undefined
   ) {
     if (!(threadKey in byThreadKey)) return byThreadKey;
     const { [threadKey]: _removed, ...rest } = byThreadKey;
@@ -444,6 +453,9 @@ export function migratePersistedRightPanelState(
                   ...(typeof validThreadState?.proactiveDiffTurnId === "string"
                     ? { proactiveDiffTurnId: RunId.make(validThreadState.proactiveDiffTurnId) }
                     : {}),
+                  ...(typeof validThreadState?.proactiveTaskPlanId === "string"
+                    ? { proactiveTaskPlanId: TeamPlanId.make(validThreadState.proactiveTaskPlanId) }
+                    : {}),
                   ...(validThreadState?.maximized === true ? { maximized: true as const } : {}),
                 },
               ];
@@ -510,6 +522,24 @@ export const useRightPanelStore = create<RightPanelStoreState>()(
           return automaticUpdate(state, threadKey, (thread) => ({
             ...(opened ? upsertSurface(thread, singletonSurface("diff")) : thread),
             proactiveDiffTurnId: request.turnId,
+          }));
+        });
+        return opened;
+      },
+      openProactiveTask: (ref, request, expectedUserActionRevision) => {
+        let opened = false;
+        set((state) => {
+          const threadKey = scopedThreadKey(ref);
+          const current = state.byThreadKey[threadKey];
+          if (current?.proactiveTaskPlanId === request.planId) return state;
+          opened =
+            (current === undefined || request.awaitingApproval) &&
+            (state.userActionRevisionByThreadKey[threadKey] ?? 0) === expectedUserActionRevision &&
+            selectActiveRightPanel(state.byThreadKey, ref) !== "task";
+          // Record the offer even when refused, so a tab the user closed stays closed.
+          return automaticUpdate(state, threadKey, (thread) => ({
+            ...(opened ? upsertSurface(thread, singletonSurface("task")) : thread),
+            proactiveTaskPlanId: request.planId,
           }));
         });
         return opened;

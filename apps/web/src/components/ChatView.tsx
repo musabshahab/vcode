@@ -49,7 +49,7 @@ import { useUsageLimitsPanel } from "./chat/useUsageLimitsPanel";
 import { useWorktreeSetup } from "./chat/useWorktreeSetup";
 import { useChatShortcuts } from "./chat/useChatShortcuts";
 import { ChatBannerLane } from "./chat/ChatBannerLane";
-import { TeamCard } from "./chat/TeamCard";
+import { taskStripBannerItem, useThreadTeam } from "./chat/TaskStrip";
 import * as Schema from "effect/Schema";
 import {
   AuthOrchestrationOperateScope,
@@ -282,6 +282,7 @@ import {
 import { QueuedRunsControl, type QueuedRunsControlHandle } from "./chat/QueuedRunsControl";
 import { useThreadLinkedPullRequest } from "./pullRequest/useThreadLinkedPullRequest";
 import { useProactivePanels } from "../hooks/useProactivePanels";
+import { useProactiveTaskPanel } from "../hooks/useProactiveTaskPanel";
 import { useIncrementalTimelineEntries } from "../hooks/useIncrementalTimelineEntries";
 import { useRightPanelSurfaceClose } from "../hooks/useRightPanelSurfaceClose";
 import { ComposerBannerStack, type ComposerBannerStackItem } from "./chat/ComposerBannerStack";
@@ -1854,6 +1855,14 @@ export default function ChatView(props: ChatViewProps) {
     isGitRepo: gitStatusQuery.data?.isRepo,
     onDiffPanelOpen,
   });
+  const threadTeamInfo = useThreadTeam(embedded ? null : serverThreadShell);
+  useProactiveTaskPanel({
+    threadRef: isServerThread && !embedded && !shouldUsePlanSidebarSheet ? activeThreadRef : null,
+    planId: threadTeamInfo?.planId ?? null,
+    awaitingApproval:
+      threadTeamInfo?.role === "lead" && threadTeamInfo.summary?.status === "proposed",
+    runningTurnId: activeRunningTurnId,
+  });
   // oxlint-disable-next-line codenine/no-unreasoned-state-sync -- consumes a pending maximize request from the right panel store once the panel can maximize
   useEffect(() => {
     if (!canMaximizeRightPanel) return;
@@ -2185,6 +2194,7 @@ export default function ChatView(props: ChatViewProps) {
     onOpenTurnDiffStable,
     openChangesFromThreadPanelStable,
     openFileSurfaceStable,
+    openTaskSurfaceStable,
     toggleRightPanelMaximizedStable,
     toggleRightPanelStable,
     toggleThreadPanelStable,
@@ -2374,6 +2384,13 @@ export default function ChatView(props: ChatViewProps) {
           },
         })
       : null;
+  // The strip is the way back to the Task tab, and the way in where the panel is a sheet.
+  const taskTabInView =
+    rightPanelOpen && !shouldUsePlanSidebarSheet && activeRightPanelSurface?.kind === "task";
+  const taskStripItems =
+    threadTeamInfo === null || taskTabInView
+      ? []
+      : [taskStripBannerItem(threadTeamInfo, openTaskSurfaceStable)];
   const composerBannerItems = (() => {
     const fallbackSelection = draftFallback?.selection;
     const defaultSelection =
@@ -2434,6 +2451,7 @@ export default function ChatView(props: ChatViewProps) {
         : [];
     if (!localCheckoutBranchMismatch || !showBranchMismatchBanner || !activeBranchMismatchKey) {
       return [
+        ...taskStripItems,
         ...feedbackBannerItems,
         ...fallbackItems,
         ...limitRecoveryItems,
@@ -2445,6 +2463,7 @@ export default function ChatView(props: ChatViewProps) {
       ];
     }
     return [
+      ...taskStripItems,
       ...feedbackBannerItems,
       ...fallbackItems,
       ...limitRecoveryItems,
@@ -2964,6 +2983,7 @@ export default function ChatView(props: ChatViewProps) {
       workspaceMutationId={workspaceMutationId}
       onCloseSurface={closeRightPanelSurface}
       sideChatParentPanel={sideChatParentPanel}
+      onViewChanges={isServerThread && isGitRepo ? addDiffSurfaceStable : undefined}
       terminal={{
         launchContext: activeTerminalLaunchContext ?? null,
         keybindings,
@@ -3288,7 +3308,6 @@ export default function ChatView(props: ChatViewProps) {
                         : undefined
                     }
                   >
-                    <TeamCard threadRef={routeThreadDetailRef} />
                     <ChildThreadApprovals threadRef={activeThreadRef} />
                     <div className="relative">
                       <ComposerSurface.Shell contextRow={showComposerContextStrip}>
@@ -3700,6 +3719,7 @@ export default function ChatView(props: ChatViewProps) {
           onAddDiff={addDiffSurfaceStable}
           onAddFiles={addFilesSurfaceStable}
           onAddSideChat={sideChatsOffered ? openSideChatStable : undefined}
+          onAddTask={threadTeamInfo === null ? undefined : openTaskSurfaceStable}
           terminalAvailable={activeProject !== null && canOperateTerminal}
           diffAvailable={isServerThread && isGitRepo}
           filesAvailable={activeProject !== null}

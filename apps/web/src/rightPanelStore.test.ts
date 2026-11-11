@@ -1,5 +1,5 @@
 import { scopeThreadRef, scopedThreadKey } from "@codenine/client-runtime/environment";
-import { type EnvironmentId, RunId, ThreadId } from "@codenine/contracts";
+import { type EnvironmentId, RunId, TeamPlanId, ThreadId } from "@codenine/contracts";
 import { beforeEach, describe, expect, it } from "vite-plus/test";
 
 import { useClosedViewStore } from "./closedViewStore";
@@ -244,6 +244,60 @@ describe("rightPanelStore", () => {
     store.closeSurface(refA, "diff");
     store.open(refA, "diff");
     expect(selectActiveRightPanel(useRightPanelStore.getState().byThreadKey, refA)).toBe("diff");
+  });
+
+  it("offers the Task tab once per plan, and only to a fresh panel unless approval waits", async () => {
+    const store = useRightPanelStore.getState();
+    const offer = (ref: typeof refA, planId: string, awaitingApproval = false) =>
+      store.openProactiveTask(
+        ref,
+        { planId: TeamPlanId.make(planId), awaitingApproval },
+        store.getUserActionRevision(ref),
+      );
+    const active = (ref: typeof refA) =>
+      selectActiveRightPanel(useRightPanelStore.getState().byThreadKey, ref);
+
+    expect(offer(refA, "plan-1")).toBe(true);
+    expect(active(refA)).toBe("task");
+    store.closeSurface(refA, "task");
+    await reloadRightPanelStore();
+    expect(offer(refA, "plan-1")).toBe(false);
+    expect(active(refA)).toBeNull();
+    expect(offer(refA, "plan-1", true)).toBe(false);
+    // A new proposal is worth a look again.
+    expect(offer(refA, "plan-2", true)).toBe(true);
+    expect(active(refA)).toBe("task");
+
+    store.open(refB, "diff");
+    expect(offer(refB, "plan-1")).toBe(false);
+    expect(active(refB)).toBe("diff");
+    const revision = store.getUserActionRevision(refB);
+    store.open(refB, "files");
+    expect(
+      store.openProactiveTask(
+        refB,
+        { planId: TeamPlanId.make("plan-2"), awaitingApproval: true },
+        revision,
+      ),
+    ).toBe(false);
+    expect(active(refB)).toBe("files");
+  });
+
+  it("keeps other surfaces and the Task tab through the version 17 migration", () => {
+    const saved = {
+      byThreadKey: {
+        "env-1:thread-A": {
+          isOpen: true,
+          activeSurfaceId: "task",
+          surfaces: [
+            { id: "diff", kind: "diff" },
+            { id: "task", kind: "task" },
+          ],
+          proactiveTaskPlanId: "plan-1",
+        },
+      },
+    };
+    expect(migratePersistedRightPanelState(saved, 16).byThreadKey).toEqual(saved.byThreadKey);
   });
 
   it("keeps manual choices scoped to their thread and environment", () => {

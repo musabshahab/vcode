@@ -20,7 +20,7 @@ import { Textarea } from "../ui/textarea";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { TeamModelPicker, type TeamModelCatalog } from "./TeamAgentModel";
 
-const TEAM_ROLE_LABELS: Record<TeamAgentRole, string> = {
+export const TEAM_ROLE_LABELS: Record<TeamAgentRole, string> = {
   plan: "Plan",
   research: "Research",
   implement: "Implement",
@@ -39,7 +39,7 @@ const ROLES = Object.keys(TEAM_ROLE_LABELS) as ReadonlyArray<TeamAgentRole>;
 const WORKSPACES = Object.keys(TEAM_WORKSPACE_LABELS) as ReadonlyArray<TeamWorkspace>;
 
 /** A task's dependencies by title, for the line under it. */
-export function teamDependencyTitles(
+function teamDependencyTitles(
   tasks: ReadonlyArray<Pick<TeamTaskDraft, "id" | "title">>,
   task: Pick<TeamTaskDraft, "dependsOn">,
 ): string {
@@ -48,7 +48,7 @@ export function teamDependencyTitles(
     .join(", ");
 }
 
-export function TeamSectionHeading(props: { children: string }) {
+function TeamSectionHeading(props: { children: string }) {
   return <h4 className="font-medium text-muted-foreground">{props.children}</h4>;
 }
 
