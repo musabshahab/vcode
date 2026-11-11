@@ -38,6 +38,9 @@ import { observeResize } from "~/lib/observeResize";
 import { cn } from "~/lib/utils";
 import { textDirection } from "~/textDirection";
 import { useClientSettings } from "../../hooks/useSettings";
+import type { ThreadPanelPresentation } from "../../rightPanelLayout";
+import type { PopoverCreateHandle } from "../ui/popover";
+import { ThreadSummaryLine } from "./ThreadSummaryLine";
 
 interface ChatHeaderProps {
   activeThreadEnvironmentId: EnvironmentId;
@@ -51,6 +54,13 @@ interface ChatHeaderProps {
   onNewThreadInProject: () => void;
   onOpenProjectSettings?: (() => void) | undefined;
   onFindInThread?: ((threadRef: ScopedThreadRef) => void) | undefined;
+  gitCwd: string | null;
+  threadBranch: string | null;
+  machineLabel: string | null;
+  threadPanelOpen: boolean;
+  threadPanelPresentation: ThreadPanelPresentation;
+  threadPanelPopoverHandle: ReturnType<typeof PopoverCreateHandle>;
+  onToggleThreadPanel: () => void;
 }
 
 function resolveRenameCommit(input: {
@@ -77,6 +87,13 @@ export const ChatHeader = memo(function ChatHeader({
   onNewThreadInProject,
   onOpenProjectSettings,
   onFindInThread,
+  gitCwd,
+  threadBranch,
+  machineLabel,
+  threadPanelOpen,
+  threadPanelPresentation,
+  threadPanelPopoverHandle,
+  onToggleThreadPanel,
 }: ChatHeaderProps) {
   const activeProjectName = activeProject?.isScratch ? "No project" : activeProject?.title;
   const activeProjectCwd = activeProject?.workspaceRoot ?? null;
@@ -275,14 +292,14 @@ export const ChatHeader = memo(function ChatHeader({
     <div
       ref={breadcrumbContainerRef}
       className={cn(
-        "flex min-w-0 flex-1 items-center gap-2 sm:gap-3",
+        "flex min-w-0 flex-1 flex-col justify-center",
         rightPanelOpen ? "pr-10" : "pr-24",
       )}
       onContextMenu={handleHeaderContextMenu}
     >
       <WorkspaceBreadcrumb
         ariaLabel="Thread breadcrumb"
-        className="flex-1 overflow-clip [overflow-clip-margin:2px]"
+        className="overflow-clip [overflow-clip-margin:2px]"
       >
         {activeProject ? (
           <>
@@ -412,6 +429,18 @@ export const ChatHeader = memo(function ChatHeader({
           )}
         </WorkspaceBreadcrumbItem>
       </WorkspaceBreadcrumb>
+      {isServerThread ? (
+        <ThreadSummaryLine
+          environmentId={activeThreadEnvironmentId}
+          gitCwd={gitCwd}
+          fallbackBranch={threadBranch}
+          machineLabel={machineLabel}
+          detailsOpen={threadPanelOpen}
+          detailsPresentation={threadPanelPresentation}
+          detailsPopoverHandle={threadPanelPopoverHandle}
+          onToggleDetails={onToggleThreadPanel}
+        />
+      ) : null}
     </div>
   );
 });

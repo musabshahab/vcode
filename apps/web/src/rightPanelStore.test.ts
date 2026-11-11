@@ -1,4 +1,4 @@
-import { scopeThreadRef } from "@codenine/client-runtime/environment";
+import { scopeThreadRef, scopedThreadKey } from "@codenine/client-runtime/environment";
 import { type EnvironmentId, RunId, ThreadId } from "@codenine/contracts";
 import { beforeEach, describe, expect, it } from "vite-plus/test";
 
@@ -397,19 +397,35 @@ describe("rightPanelStore", () => {
   });
 
   it("persists inline preference without restoring an open popover", () => {
-    expect(
-      migratePersistedRightPanelState({
-        threadPanelVisibilityByThreadKey: {
-          "env-1:thread-A": { inlineOpen: false, popoverOpen: true },
-          "env-1:thread-B": { inlineOpen: true, popoverOpen: true },
-        },
-      }),
-    ).toEqual({
+    const threadPanelVisibilityByThreadKey = {
+      "env-1:thread-A": { inlineOpen: false, popoverOpen: true },
+      "env-1:thread-B": { inlineOpen: true, popoverOpen: true },
+    };
+    expect(migratePersistedRightPanelState({ threadPanelVisibilityByThreadKey }, 16)).toEqual({
       byThreadKey: {},
       threadPanelVisibilityByThreadKey: {
-        "env-1:thread-A": { inlineOpen: false, popoverOpen: false },
+        "env-1:thread-B": { inlineOpen: true, popoverOpen: false },
       },
     });
+    // Version 15 saved only closed cards, which the closed default now covers.
+    expect(
+      migratePersistedRightPanelState({ threadPanelVisibilityByThreadKey }, 15)
+        .threadPanelVisibilityByThreadKey,
+    ).toEqual({});
+  });
+
+  it("keeps a card the user opened across a reload, and others closed", async () => {
+    const store = useRightPanelStore.getState();
+    store.setThreadPanelOpen(refA, "inline", true);
+    store.setThreadPanelOpen(refB, "inline", true);
+    store.setThreadPanelOpen(refB, "inline", false);
+    await reloadRightPanelStore();
+
+    const { threadPanelVisibilityByThreadKey } = useRightPanelStore.getState();
+    expect(selectThreadPanelVisibility(threadPanelVisibilityByThreadKey, refA).inlineOpen).toBe(
+      true,
+    );
+    expect(threadPanelVisibilityByThreadKey).not.toHaveProperty(scopedThreadKey(refB));
   });
 
   it("closes the popover atomically when the real right panel opens", () => {
@@ -421,7 +437,7 @@ describe("rightPanelStore", () => {
         useRightPanelStore.getState().threadPanelVisibilityByThreadKey,
         refA,
       ),
-    ).toEqual({ inlineOpen: true, popoverOpen: false });
+    ).toEqual({ inlineOpen: false, popoverOpen: false });
   });
 
   it("keeps an open popover visible by promoting it to inline when the real panel closes", () => {

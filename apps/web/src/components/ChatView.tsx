@@ -3081,6 +3081,13 @@ export default function ChatView(props: ChatViewProps) {
                 ? { onOpenProjectSettings: handleOpenDraftProjectSettingsStable }
                 : {})}
               {...(threadFindEnabled ? { onFindInThread: openThreadFindStable } : {})}
+              gitCwd={gitStatusCwd}
+              threadBranch={activeThread.branch}
+              machineLabel={activeEnvironment?.label ?? null}
+              threadPanelOpen={threadPanelOpen}
+              threadPanelPresentation={threadPanelPresentation}
+              threadPanelPopoverHandle={threadPanelPopoverHandle}
+              onToggleThreadPanel={toggleThreadPanelStable}
             />
           </header>
         )}

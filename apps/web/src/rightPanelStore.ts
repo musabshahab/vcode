@@ -40,7 +40,8 @@ export type RightPanelSurface =
   | { id: `side-chat:${string}`; kind: "side-chat"; threadId: ThreadId };
 
 const RIGHT_PANEL_STORAGE_KEY = "codenine:right-panel-state:v2";
-const RIGHT_PANEL_STORAGE_VERSION = 15;
+const RIGHT_PANEL_STORAGE_VERSION = 16;
+const THREAD_PANEL_CLOSED_BY_DEFAULT_VERSION = 16;
 
 const isPullRequestsPanelKey = (threadKey: string) => threadKey.endsWith(":pull-requests-panel");
 
@@ -130,7 +131,7 @@ const EMPTY_THREAD_STATE: ThreadRightPanelState = {
 };
 
 const DEFAULT_THREAD_PANEL_VISIBILITY: ThreadPanelVisibility = {
-  inlineOpen: true,
+  inlineOpen: false,
   popoverOpen: false,
 };
 
@@ -215,7 +216,7 @@ const updateThreadPanelVisibilityMap = (
 ): Record<string, ThreadPanelVisibility> => {
   const current = byThreadKey[threadKey] ?? DEFAULT_THREAD_PANEL_VISIBILITY;
   const next = updater(current);
-  if (next.inlineOpen && !next.popoverOpen) {
+  if (!next.inlineOpen && !next.popoverOpen) {
     if (!(threadKey in byThreadKey)) return byThreadKey;
     const { [threadKey]: _removed, ...rest } = byThreadKey;
     return rest;
@@ -332,7 +333,10 @@ function normalizeRevealLine(line: number | undefined): number | null {
   return Math.max(1, Math.trunc(line));
 }
 
-export function migratePersistedRightPanelState(persistedState: unknown): {
+export function migratePersistedRightPanelState(
+  persistedState: unknown,
+  version = RIGHT_PANEL_STORAGE_VERSION,
+): {
   byThreadKey: Record<string, ThreadRightPanelState>;
   threadPanelVisibilityByThreadKey: Record<string, ThreadPanelVisibility>;
 } {
@@ -446,7 +450,9 @@ export function migratePersistedRightPanelState(persistedState: unknown): {
             }),
         )
       : {};
+  // Older versions opened the card by default and saved only closed cards, which now match it.
   const threadPanelVisibilityByThreadKey =
+    version >= THREAD_PANEL_CLOSED_BY_DEFAULT_VERSION &&
     "threadPanelVisibilityByThreadKey" in persistedState &&
     persistedState.threadPanelVisibilityByThreadKey &&
     typeof persistedState.threadPanelVisibilityByThreadKey === "object"
@@ -455,8 +461,8 @@ export function migratePersistedRightPanelState(persistedState: unknown): {
             persistedState.threadPanelVisibilityByThreadKey as Record<string, unknown>,
           ).flatMap(([threadKey, value]) => {
             if (!value || typeof value !== "object" || !("inlineOpen" in value)) return [];
-            return value.inlineOpen === false
-              ? [[threadKey, { inlineOpen: false, popoverOpen: false }]]
+            return value.inlineOpen === true
+              ? [[threadKey, { inlineOpen: true, popoverOpen: false }]]
               : [];
           }),
         )
@@ -873,7 +879,7 @@ export const useRightPanelStore = create<RightPanelStoreState>()(
         threadPanelVisibilityByThreadKey: Object.fromEntries(
           Object.entries(state.threadPanelVisibilityByThreadKey).flatMap(
             ([threadKey, visibility]) =>
-              visibility.inlineOpen ? [] : [[threadKey, { inlineOpen: false, popoverOpen: false }]],
+              visibility.inlineOpen ? [[threadKey, { inlineOpen: true, popoverOpen: false }]] : [],
           ),
         ),
       }),

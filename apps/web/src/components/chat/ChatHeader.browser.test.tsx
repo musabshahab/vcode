@@ -21,6 +21,7 @@ vi.mock(import("~/hooks/useThreadActionMenu"), () => ({
 }));
 
 import { render } from "../../../test/render";
+import { PopoverCreateHandle } from "../ui/popover";
 import { ChatHeader } from "./ChatHeader";
 
 function header(title: string) {
@@ -36,6 +37,13 @@ function header(title: string) {
         onOpenThread={() => {}}
         rightPanelOpen={false}
         onNewThreadInProject={() => {}}
+        gitCwd={null}
+        threadBranch={null}
+        machineLabel={null}
+        threadPanelOpen={false}
+        threadPanelPresentation="inline"
+        threadPanelPopoverHandle={PopoverCreateHandle()}
+        onToggleThreadPanel={() => {}}
       />
       <div tabIndex={0}>Outside rename</div>
     </>

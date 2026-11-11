@@ -263,6 +263,11 @@ Expand a tool call in the conversation to see its full command and output.
 Summaries shorten shell wrappers and can still describe the latest call after it
 finishes; the call's own result shows its status.
 
+The thread details card, with the machine, editor, project commands, branch, Git actions and
+changes, stays closed until you open it. Click the line under the thread title, which shows the
+branch, its line changes and the machine, or press `mod+shift+b`. Each thread remembers whether
+you left its card open.
+
 To choose what the thread details card shows, right-click the card or open
 **Settings → Appearance → Thread details**. Hidden rows keep their keyboard
 shortcuts, such as Open in editor and project commands. **Reset to default** brings
