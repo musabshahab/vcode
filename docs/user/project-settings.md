@@ -118,9 +118,9 @@ Inherit follows each machine's rules; Off keeps that project's worktrees until y
 manually. Custom applies separate worktree rules to the selected project or checkout. Log retention
 remains machine-wide.
 
-Worktrees can be removed after a chosen number of inactive days, after a thread settles, after
-merging, or when they have no commits beyond the default branch. Set settled retention to 0 days
-to remove a worktree at the next cleanup after settlement. In repositories without remotes,
+Worktrees can be removed after a chosen number of inactive days, after a thread is marked done,
+after merging, or when they have no commits beyond the default branch. Set **Delete worktrees of
+done threads** to 0 days to remove a worktree at the next cleanup after its thread is marked done. In repositories without remotes,
 unchanged-worktree cleanup compares against the branch checked out in the project workspace;
 if that checkout has a detached HEAD, the worktree is kept. Only Codenine-managed worktrees are eligible.
 Active sessions and shared worktrees prevent removal. **Keep worktrees with local changes** defaults

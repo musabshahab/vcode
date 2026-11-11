@@ -5,9 +5,9 @@ need a separate branch and working directory.
 
 ## Start a thread
 
-**New thread** opens the project picker when you have more than one
+**New chat** opens the project picker when you have more than one
 open project in the default or project-grouped sidebar. Archived projects don't count. **Shift-click** to start in
-the current project, or use a project's own new-thread action. A new thread carries
+the current project, or use a project's own **New chat** button. A new thread carries
 your model and mode selections, unless the destination project has its own model default.
 Its branch and workspace mode come from your configured defaults. To continue in
 the worktree you used last, choose **Previous worktree** in the workspace menu.
@@ -19,7 +19,7 @@ if that project exists there. Otherwise it selects an environment that has it.
 
 A thread does not need a project. To start one without a project, click **or
 start without a project** under a new thread's heading, pick **No project** from
-the project menu in that heading or from **New thread in...** in the command
+the project menu in that heading or from **New chat in...** in the command
 palette, or press `mod+alt+n`. It starts on your current machine; before sending, pick another machine
 from the machine menu to move it there. To move a draft into a project, pick the
 project in the heading.
@@ -54,7 +54,7 @@ and worktree while you stay in the new thread composer. This requires a Git proj
 
 Pin a thread from its menu to keep it above your active work.
 
-Unpinning, settling, snoozing, and archiving a thread each show
+Unpinning, marking done, snoozing, and archiving a thread each show
 a notification with **Undo** for five seconds. Undo restores the thread's previous
 state, including its pinned position, and reopens an archived thread you were
 viewing. Discarding an unsent draft from the sidebar works the same way: Undo brings
@@ -69,23 +69,24 @@ files directly; see [Attach files](./composer.md#attach-files).
 Pinning or unpinning a thread keeps the sidebar at your current
 scroll position instead of following the thread to its new place in the list.
 
-Pinning does not prevent automatic settlement. Settling a thread removes its pin.
+Pinning does not stop a thread from being marked done automatically. Marking a thread done
+removes its pin.
 
 Drag a thread between sections to change its state. Drag a thread up into
 the pinned section to pin it at the spot you drop it; drag a pinned thread down into the active
-list to unpin it. Dragging a thread onto the **Settled** header settles it, and dragging a settled
-thread into the active list un-settles it. A snoozed thread can be dragged out of the snoozed
+list to unpin it. Dragging a thread onto the **Done** header marks it done, and dragging a done
+thread into the active list marks it not done. A snoozed thread can be dragged out of the snoozed
 shelf, which wakes it, but threads cannot be dragged into the shelf because snoozing needs a wake
 time. Dragging a pinned thread out of the pinned section does not ask for unpin confirmation.
 Pinned and active boundary labels appear only while dragging, without moving the rows. The
 other rows slide aside to show where the thread will land. When you cross into another section,
 the dragged thread shows the action the drop performs, with its icon: **Pin**, **Unpin**,
-**Settle**, **Un-settle**, or **Wake**. Its status and hover actions hide during the drag. A pinned
+**Done**, **Not done**, or **Wake**. Its status and hover actions hide during the drag. A pinned
 thread keeps its pin only while it stays in the pinned section; once it leaves, the badge takes
 over. Reordering within the same section shows no badge. When there are no pins, drag to the top
 edge to pin a thread. Section labels stay readable for the whole drag, and the section the
 thread is over takes the accent color. Section labels also
-identify empty sections and a collapsed settled shelf.
+identify empty sections and a collapsed **Done** shelf.
 
 Drag within the pinned or active section to change its order. Other rows slide aside to show the
 spot where the thread will land. Drops into either section keep the position you choose.
@@ -93,14 +94,14 @@ spot where the thread will land. Drops into either section keep the position you
 saves the order, so it survives a refresh and appears on your other connected devices.
 
 The list also animates section changes made with thread actions such as
-**Pin**, **Settle**, and **Snooze**. These transitions respect your system's reduced-motion
+**Pin**, **Mark done**, and **Snooze**. These transitions respect your system's reduced-motion
 preference. While dragging, rows follow the insertion gap without replaying a second transition
 after the drop.
 
-New threads appear above the active threads you have arranged. Settling clears a thread's active
-position, so using **Un-settle** returns it to the top. Pinning and snoozing preserve its active
-position until you move it again. Thread activity does not change the order. The settled shelf
-continues to use settlement time.
+New threads appear above the active threads you have arranged. Marking a thread done clears its
+active position, so **Mark not done** returns it to the top. Pinning and snoozing preserve its
+active position until you move it again. Thread activity does not change the order. The **Done**
+shelf is ordered by when each thread was marked done.
 
 If dragging is unavailable for one environment, update the Codenine server running in that
 environment. Pinned and active reordering require server support. Threads from older servers keep
@@ -143,69 +144,69 @@ threads has no folder unless it is pinned or you pick it in the project filter. 
 project's folder comes last and shows only while it has active threads. Click a folder to open or
 close it. A closed folder shows how many threads it holds, and a dot when one of them
 needs you. Use the pen button on a folder, or right-click it, to start a thread in that project.
-Pinned threads stay above the folders, and Snoozed and Settled stay below them. In this mode you
+Pinned threads stay above the folders, and Snoozed and Done stay below them. In this mode you
 can drag a thread onto the composer to mention it, but not within the sidebar, and the Working
 section is off. Each device keeps its own choice.
 
-## Settle finished work
+## Mark finished work done
 
-Choose **Settle thread** from its menu to move finished work out of the active list
-without deleting the conversation. **Un-settle thread** restores it to active work
-and prevents automatic settlement until new activity resumes the usual rules.
-Manually settling an idle thread dismisses unanswered async questions without
-sending an answer or restarting the agent. Settling also closes the thread's
+Choose **Mark done** from a thread's menu to move finished work out of the active list
+into the **Done** shelf without deleting the conversation. **Mark not done** restores it to
+active work and keeps it from being marked done automatically until new activity resumes the
+usual rules. Marking an idle thread done by hand dismisses unanswered async questions without
+sending an answer or restarting the agent. It also closes the thread's
 terminals that wait at an idle prompt, and keeps their output. A terminal that
 runs a command, such as a dev server, stays open unless its action has **Stop this action
-when the thread settles** enabled in Settings > Projects > Actions. You can also set
+when the thread is marked done** enabled in Settings > Projects > Actions. You can also set
 `"stopOnSettle": true` on a `codenine.json` action and import it there. Start the command through
 that action so Codenine can stop its terminal and child processes. Commands started through an
 agent's own shell tools are managed by the provider.
 
-To reclaim disk space from settled work, turn on **Run in the thread's worktree when the
-thread settles** for one of the project's actions, or set `"runOnSettle": true` on a
+To reclaim disk space from finished work, turn on **Run in the thread's worktree when the
+thread is marked done** for one of the project's actions, or set `"runOnSettle": true` on a
 `codenine.json` script, for example `cargo clean`. It runs each time a thread in its own
-worktree settles, manually or automatically, even if a terminal there still runs a
+worktree is marked done, by hand or automatically, even if a terminal there still runs a
 command such as a dev server. Threads in the project's main checkout skip it. Its terminal
 closes when the command succeeds and stays open when it fails.
 
-Press a thread's **Settle** button and drag up or down to
-settle every thread in that section between it and the one you release on.
-The **Un-settle** and **Wake** buttons work the same way in their sections.
+Press a thread's **Done** button and drag up or down to
+mark every thread in that section done, between it and the one you release on.
+The **Mark not done** and **Wake** buttons work the same way in their sections.
 Press `Escape` while dragging to cancel.
 
-By default, environments settle inactive threads after seven days and settle
-threads whose pull request merged. A closed pull request can also settle an idle
-thread. An empty thread's inactivity counts from when it was created.
+By default, environments mark inactive threads done after seven days, and mark
+threads done when their pull request merges. A closed pull request can also mark an idle
+thread done. An empty thread's inactivity counts from when it was created.
 Work in progress, pending questions or approvals, and background work the agent
-is waiting on prevent automatic settlement. An open pull request does not prevent inactivity
-settlement unless you turn on **Keep threads with a PR** in **Settings → Threads**,
-but an old closed or merged pull request does not settle work you
+is waiting on keep a thread from being marked done automatically. An open pull request does not
+stop inactivity from marking it done unless you turn on **Keep threads with a PR** in
+**Settings → Threads**, but an old closed or merged pull request does not mark work done that you
 resumed after it closed. Only your own messages count as resuming. A turn that
 finished background work or a pull request watch starts on its own does not.
 
-To keep one thread out of the settled shelf no matter how long it sits idle, open its menu,
-choose **Auto-settle behavior**, and pick **Never**. The current option is checked. Pick
+To keep one thread out of the **Done** shelf no matter how long it sits idle, open its menu,
+choose **Mark done automatically**, and pick **Never**. The current option is checked. Pick
 **Follow settings** to return to the rules in **Settings → Threads**. While those rules are off,
-a thread on **Follow settings** does not settle automatically either. Manual settle, snooze, and
-archive still work while it is set to **Never**.
+a thread on **Follow settings** is not marked done automatically either. **Mark done**, snooze,
+and archive still work while it is set to **Never**.
 
 Change these rules in **Settings → Threads**.
 They continue to run when your apps are closed. Choose an environment at the
 top to change only its rules, or **All environments** to update connected environments together.
 Mixed values show where the selected environments disagree. Offline environments
 and older servers keep their previous values. Changing a rule does not reopen
-already settled threads.
+threads already marked done.
 
 ## Link a pull request
 
-The server finds the PR for each unsettled thread's saved branch, even when your
-apps are closed. Settled threads keep their saved links. Update the server if
+The server finds the PR for each saved branch of a thread that is not done, even when your
+apps are closed. Done threads keep their saved links. Update the server if
 automatic branch links do not appear.
 
 Right-click a pull request link in a thread and choose
 **Link to thread** to select a different PR. Use **Unlink from thread** on the
 same link to return to the branch PR, if one exists.
-The linked pull request participates in automatic settlement.
+The linked pull request counts when Codenine marks the thread done automatically.
 
 ## Find and reference work
 
@@ -242,7 +243,7 @@ continuation. You can cancel it from the thread. Enable **Resume after
 usage limits** in **Settings → Threads** to schedule limit stops by default.
 The environment must be running when the reset arrives; it resumes overdue
 continuations after a restart. Stopping the thread, sending a new message,
-archiving, or settling it prevents a pending continuation from starting.
+archiving, or marking it done prevents a pending continuation from starting.
 
 Choose **Snooze until reset** to hide the thread until its allowance returns.
 Snooze and auto-resume are independent: snooze alone wakes the thread without
@@ -264,7 +265,7 @@ finishes; the call's own result shows its status.
 
 To choose what the thread details card shows, right-click the card or open
 **Settings → Appearance → Thread details**. Hidden rows keep their keyboard
-shortcuts, such as Open in editor and project scripts. **Reset to default** brings
+shortcuts, such as Open in editor and project commands. **Reset to default** brings
 back the standard rows.
 
 ## Run a team
@@ -285,8 +286,8 @@ tasks it follows are done, with at most two running at a time on each provider. 
 finishes or gets stuck on a failed task, the agent that proposed it reads the results and goes on.
 
 In the sidebar, the agents' threads appear under the thread that proposed the team, and the team
-count on that row shows or hides them. When the team finishes or is cancelled, they are settled for
-you.
+count on that row shows or hides them. When the team finishes or is cancelled, they are marked
+done for you.
 
 - **Cancel team** stops the tasks that are running. Tasks that have not started never start.
 - **Retry** runs a failed or cancelled task again in a new thread. To retry on a different model,

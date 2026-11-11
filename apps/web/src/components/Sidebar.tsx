@@ -1304,7 +1304,7 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
         const clicked = await settlePromise(() =>
           api.contextMenu.show(
             [
-              { id: "new-thread", label: "New thread" },
+              { id: "new-thread", label: "New chat" },
               { id: "copy-path", label: "Copy path" },
               ...(canPinProject(group)
                 ? [
@@ -1667,7 +1667,7 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
           toastManager.add(
             stackedThreadToast({
               type: "error",
-              title: "Failed to settle thread",
+              title: "Failed to mark thread done",
               description: error instanceof Error ? error.message : "An error occurred.",
             }),
           );
@@ -1705,7 +1705,7 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
         toastManager.add(
           stackedThreadToast({
             type: "error",
-            title: "Failed to un-settle thread",
+            title: "Failed to mark thread not done",
             description: error instanceof Error ? error.message : "An error occurred.",
           }),
         );
@@ -2212,7 +2212,7 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
         case "settle": {
           settlingThreadKeysRef.current.add(activeKey);
           const navigateAfterSettle = planForwardNavigation(activeKey);
-          const settled = await run(settleThread(threadRef), "Failed to settle thread").finally(
+          const settled = await run(settleThread(threadRef), "Failed to mark thread done").finally(
             () => settlingThreadKeysRef.current.delete(activeKey),
           );
           if (
@@ -2232,7 +2232,7 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
           if (plan.unpin && !(await run(unpinThread(threadRef), "Failed to unpin thread"))) return;
           if (
             plan.unsettle &&
-            !(await run(unsettleThread(threadRef), "Failed to un-settle thread"))
+            !(await run(unsettleThread(threadRef), "Failed to mark thread not done"))
           )
             return;
           if (plan.unsnooze && !(await run(unsnoozeThread(threadRef), "Failed to wake thread")))
@@ -2377,7 +2377,7 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
               : []),
             {
               id: "settle",
-              label: `Settle (${count})`,
+              label: `Mark done (${count})`,
               disabled: settlingThreads.length === 0 || !canOperateThreads(settlingThreads),
             },
             ...(canSnoozeSelection
@@ -2804,7 +2804,7 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
               toastManager.add(
                 stackedThreadToast({
                   type: "error",
-                  title: "Failed to update auto-settle",
+                  title: "Failed to update when this thread is marked done",
                   description: error instanceof Error ? error.message : "An error occurred.",
                 }),
               );
@@ -3619,7 +3619,7 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
                                 className={cn(
                                   workingThreads.length + snoozedThreads.length === 0 && "mt-auto",
                                 )}
-                                label="Settled"
+                                label="Done"
                                 count={settledCount}
                                 dragging={from !== null}
                                 isDropTarget={dragTargetSection === "settled"}
@@ -3635,7 +3635,7 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
                               <SidebarSectionPlaceholder
                                 key="settled-placeholder"
                                 marker="settled-placeholder"
-                                label="Settled"
+                                label="Done"
                                 showHint={
                                   from !== null &&
                                   (renderedSettledThreads.length === 0 ||

@@ -176,7 +176,7 @@ describe("searchSettings", () => {
   it("finds rows by the titles shown on their pages", () => {
     for (const [title, id] of [
       ["Automatic worktree cleanup", "storage-worktrees"],
-      ["Delete settled worktrees", "storage-worktrees"],
+      ["Delete worktrees of done threads", "storage-worktrees"],
       ["Delete old rotated logs", "storage-artifacts"],
       ["Native sessions", "providers"],
       ["CODEX_HOME path", "providers"],
@@ -252,8 +252,8 @@ describe("auto-settlement search availability", () => {
     expect(searchSettings("auto-settle", items).map((item) => item.id)).toEqual([
       "auto-settle-inactive-threads",
       "auto-settle-merged-threads",
-      "days-before-auto-settle",
       "keep-threads-with-pull-requests",
+      "days-before-auto-settle",
     ]);
   });
 

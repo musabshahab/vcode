@@ -462,14 +462,14 @@ export function useSettingsRestore(onRestored?: () => void) {
       ? ["Working section"]
       : []),
     ...(settings.sidebarAutoSettleAfterDays !== DEFAULT_UNIFIED_SETTINGS.sidebarAutoSettleAfterDays
-      ? ["Auto-settle inactive threads"]
+      ? ["Mark inactive threads done"]
       : []),
     ...(settings.sidebarAutoSettleKeepPullRequests !==
     DEFAULT_UNIFIED_SETTINGS.sidebarAutoSettleKeepPullRequests
       ? ["Keep threads with a PR"]
       : []),
     ...(settings.sidebarAutoSettleOnMerge !== DEFAULT_UNIFIED_SETTINGS.sidebarAutoSettleOnMerge
-      ? ["Auto-settle merged threads"]
+      ? ["Mark merged threads done"]
       : []),
     ...(settings.autoResumeLimitedThreads !== DEFAULT_UNIFIED_SETTINGS.autoResumeLimitedThreads
       ? ["Resume after usage limits"]
@@ -703,7 +703,7 @@ function AutoSettleDaysInput({
         }
       }}
       onBlur={() => setDraft(String(value))}
-      aria-label="Days of inactivity before auto-settle"
+      aria-label="Days of inactivity before marking done"
     />
   );
 }
@@ -1636,17 +1636,17 @@ export function ThreadsSettingsPanel() {
       </SettingsSection>
 
       {hasServerTargets ? (
-        <SettingsSection id="auto-settle" title="Auto-settle">
+        <SettingsSection id="auto-settle" title="Mark done automatically">
           <SettingsRow
             serverScoped
             settingKeys={["sidebarAutoSettleOnMerge"]}
             {...searchableSetting("auto-settle-merged-threads")}
-            description="Settle a thread when its pull request merges. Closed pull requests still settle automatically."
+            description="Mark a thread done when its pull request merges. A closed pull request still marks it done."
             resetAction={
               settings.sidebarAutoSettleOnMerge !==
               DEFAULT_UNIFIED_SETTINGS.sidebarAutoSettleOnMerge ? (
                 <SettingResetButton
-                  label="auto-settle on merge"
+                  label="marking merged threads done"
                   onClick={() =>
                     updateSettings({
                       sidebarAutoSettleOnMerge: DEFAULT_UNIFIED_SETTINGS.sidebarAutoSettleOnMerge,
@@ -1662,7 +1662,7 @@ export function ThreadsSettingsPanel() {
                 onCheckedChange={(checked) =>
                   updateSettings({ sidebarAutoSettleOnMerge: Boolean(checked) })
                 }
-                aria-label="Auto-settle merged threads"
+                aria-label="Mark merged threads done"
               />
             }
           />
@@ -1671,12 +1671,12 @@ export function ThreadsSettingsPanel() {
             serverScoped
             settingKeys={["sidebarAutoSettleAfterDays"]}
             {...searchableSetting("auto-settle-inactive-threads")}
-            description="Sidebar threads with no activity for this long settle automatically."
+            description="Sidebar threads with no activity for this long are marked done."
             resetAction={
               settings.sidebarAutoSettleAfterDays !==
               DEFAULT_UNIFIED_SETTINGS.sidebarAutoSettleAfterDays ? (
                 <SettingResetButton
-                  label="auto-settle"
+                  label="marking inactive threads done"
                   onClick={() =>
                     updateSettings({
                       sidebarAutoSettleAfterDays:
@@ -1695,7 +1695,7 @@ export function ThreadsSettingsPanel() {
                     sidebarAutoSettleAfterDays: checked ? AUTO_SETTLE_DEFAULT_DAYS : null,
                   })
                 }
-                aria-label="Auto-settle inactive threads"
+                aria-label="Mark inactive threads done"
               />
             }
           />
@@ -1704,7 +1704,7 @@ export function ThreadsSettingsPanel() {
               serverScoped
               settingKeys={["sidebarAutoSettleAfterDays"]}
               title={searchableSetting("days-before-auto-settle").title}
-              description="Any new activity un-settles a thread automatically."
+              description="Any new activity marks a thread not done again."
               control={
                 <AutoSettleDaysInput
                   value={settings.sidebarAutoSettleAfterDays}
@@ -1718,7 +1718,7 @@ export function ThreadsSettingsPanel() {
               serverScoped
               settingKeys={["sidebarAutoSettleKeepPullRequests"]}
               title="Keep threads with a PR"
-              description="Inactivity does not settle threads with a pull request. Merge and close still do."
+              description="Inactivity does not mark threads with a pull request done. Merge and close still do."
               control={
                 <ScopedSwitch
                   settingKeys={["sidebarAutoSettleKeepPullRequests"]}
@@ -2026,7 +2026,7 @@ export function AboutSettingsPanel() {
         {primaryEnvironmentId === null ? null : (
           <SettingsRow
             {...searchableSetting("welcome-page")}
-            description="See your agents and import projects."
+            description="Set up your agents."
             control={
               <Button size="sm" variant="outline" render={<Link to="/welcome" />}>
                 Open

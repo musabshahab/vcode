@@ -7,6 +7,7 @@ import { ComposerControl } from "./chat/ComposerControl";
 import { ComposerPermissionsSection } from "./chat/ComposerFooterControls";
 import { useComposerMenuProps } from "./chat/composerEventScope";
 import {
+  permissionsLabel,
   resolveCompatibleRuntimeMode,
   resolveRuntimeModeOptions,
   runtimeModeConfig,
@@ -30,7 +31,8 @@ export function ComposerContextPermissions(props: {
   );
   const options = resolveRuntimeModeOptions(modes);
   const composerMenuProps = useComposerMenuProps();
-  const { icon: Icon, label } = runtimeModeConfig[mode];
+  const Icon = runtimeModeConfig[mode].icon;
+  const label = permissionsLabel(mode);
   return (
     <Menu>
       <Tooltip>
@@ -41,7 +43,7 @@ export function ComposerContextPermissions(props: {
                 <ComposerControl
                   size="xs"
                   className="ms-auto min-w-0 shrink-0"
-                  aria-label={`Permissions: ${label}`}
+                  aria-label={label}
                   data-composer-context-control
                 />
               }

@@ -89,14 +89,14 @@ export const SidebarProjectFolderHeader = memo(function SidebarProjectFolderHead
                 data-sidebar-action-for={rowId}
                 size="icon-xs"
                 variant="ghost-muted"
-                aria-label={`New thread in ${group.displayName}`}
+                aria-label={`New chat in ${group.displayName}`}
                 onClick={() => props.onNewThread(group)}
               />
             }
           >
             <SquarePenIcon aria-hidden />
           </TooltipTrigger>
-          <TooltipPopup>New thread in {group.displayName}</TooltipPopup>
+          <TooltipPopup>New chat in {group.displayName}</TooltipPopup>
         </Tooltip>
       </span>
     </li>

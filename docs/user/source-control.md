@@ -106,9 +106,9 @@ closed). Thread badges show a stack's layer count or the current pull request nu
 of additional links; hover a badge to see every linked pull request.
 
 Open linked pull requests refresh on the server; closed ones refresh periodically so reopening one
-on the host is detected. A settled thread's pull requests stop refreshing until you unsettle it.
-With **Auto-settle merged threads** enabled, a thread can settle after every linked pull request is
-terminal. An open or unsynced link keeps it active.
+on the host is detected. A done thread's pull requests stop refreshing until you mark it not done.
+With **Mark merged threads done** enabled, a thread can be marked done after every linked pull
+request is terminal. An open or unsynced link keeps it active.
 
 Ask the agent to watch, monitor, or babysit a pull request and it calls `watch_pull_request`. While
 the thread is active, the server checks the pull request every two minutes and wakes the agent when a
@@ -118,14 +118,14 @@ first asks whether anything changed and reads the pull request only when it did,
 watching inside GitHub's rate limit. Comments from your own account do not wake it. Watching ends
 when the pull request merges or closes, after 10 wakes in a row that bring only comments, after 8
 failed reads in a row, or when you press Stop on the thread. A rate limit only pauses watching.
-Settling or archiving a thread also ends all its watches. Unsettle the thread before starting a new
-watch. Watching a pull request again does not repeat check or conflict news its last
+Marking a thread done or archiving it also ends all its watches. Mark the thread not done before
+starting a new watch. Watching a pull request again does not repeat check or conflict news its last
 watch already reported; unlinking the pull request clears that. Subagents cannot watch pull
 requests; the thread that delegated to them does. In the thread details card, a watched pull
 request shows an eye; click it to stop watching.
 
 A watched thread counts as working between wakes, so it stays in the **Working** section and does
-not auto-settle. Agents stop watching when they hand the work back to you, and the thread then
+is not marked done automatically. Agents stop watching when they hand the work back to you, and the thread then
 returns to your inbox.
 
 Cross-repository links use a project on the same host.

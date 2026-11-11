@@ -1056,7 +1056,7 @@ export function scoreThreadSearch(
     quality: match.quality,
     wholeWords: match.wholeWords,
     // A thread's whole title never lifts its group over a command or project
-    // of that name: every new thread is titled "New thread" for a while.
+    // of that name: every new chat is titled "New chat" for a while.
     groupQuality: Math.min(match.quality, WHOLE_NAME - 0.01),
     strong: match.strong,
     ranges: match.primaryRanges,

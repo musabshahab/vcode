@@ -30,6 +30,10 @@ export const runtimeModeConfig: Record<
 
 export const runtimeModeOptions = Object.keys(runtimeModeConfig) as RuntimeMode[];
 
+export function permissionsLabel(mode: RuntimeMode): string {
+  return `Permissions: ${runtimeModeConfig[mode].label}`;
+}
+
 /** The modes a provider supports (all when it reports none) and the mode a thread really runs in. */
 export function resolveCompatibleRuntimeMode(
   runtimeMode: RuntimeMode,

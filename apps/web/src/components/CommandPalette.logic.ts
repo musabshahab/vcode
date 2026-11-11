@@ -538,7 +538,7 @@ function scorePaletteItem(
 }
 
 /**
- * Equal match classes put commands before threads, so "new" runs "New thread".
+ * Equal match classes put commands before threads, so "new" runs "New chat".
  * Server message matches stay in a final group so late results cannot move earlier rows.
  */
 export function filterCommandPaletteGroups(input: {
@@ -660,7 +660,7 @@ export function filterCommandPaletteGroups(input: {
     : [...groups, { value: "threads-messages", label: "In messages", items: messageItems }];
 }
 
-/** Every option inside a submenu as one row, e.g. "New thread in codenine" or "Change theme: Dracula". */
+/** Every option inside a submenu as one row, e.g. "New chat in codenine" or "Change theme: Dracula". */
 export function buildNestedSearchItems(
   items: ReadonlyArray<CommandPaletteActionItem | CommandPaletteSubmenuItem>,
   query: string,
@@ -672,7 +672,7 @@ export function buildNestedSearchItems(
   return items.flatMap((parent) => {
     if (parent.kind !== "submenu" || typeof parent.title !== "string") return [];
     const stem = parent.title.replace(/(\.\.\.|…)$/u, "");
-    // A query that only names the submenu ("new thread in") wants the submenu row itself.
+    // A query that only names the submenu ("new chat in") wants the submenu row itself.
     if (foldSearchQuery(stem).startsWith(foldedQuery)) return [];
     const prefix = stem === parent.title ? `${stem}: ` : `${stem.trimEnd()} `;
     return parent.groups.flatMap((group) =>

@@ -17,7 +17,7 @@ On its first launch, the V2 desktop app copies stashed prompts, unsent drafts, l
 from V1. Anything you change in V2 afterwards stays in V2.
 
 The migrated thread keeps its title, project, provider and model selection, permission and
-interaction modes, branch or worktree, archive state, settlement state, snooze and pin state, and
+interaction modes, branch or worktree, archive state, done state, snooze and pin state, and
 linked pull request. Codenine also brings over user and assistant messages, their timestamps, and
 supported attachments. Large histories may appear in stages while the server imports transcripts.
 

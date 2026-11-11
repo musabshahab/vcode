@@ -34,7 +34,7 @@ command or monitor the agent said it was waiting on is woken and told that this 
 stopped. Other background shells and monitors, such as a dev server and its
 watchdog, do not wake it; the thread learns about them with your next message.
 A thread is not resumed while it waits for your approval, answer, or secret, or
-while it is archived, snoozed, or settled. After three automatic resumes in a row,
+while it is archived, snoozed, or done. After three automatic resumes in a row,
 the thread waits for your next message.
 
 Threads created by a much older version keep their transcripts but not every kind of runtime

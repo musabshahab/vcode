@@ -15,7 +15,7 @@ requires a modifier. `mod+Alt+Enter` sends, keeps that thread running in the
 background, and opens a fresh new-thread composer. In a new thread, `mod+Enter`
 does the same. Change these shortcuts in **Settings → Keybindings** under
 **Composer: Opposite Queue or Steer Action**, **Composer: Start in Background**,
-or **Composer: Send and Start New Thread**. These bindings take priority over the
+or **Composer: Send and Start New Chat**. These bindings take priority over the
 send shortcut. Click the send button to use the configured follow-up behavior.
 
 When a thread has queued messages, `mod+Shift+Enter` sends the first one as a steer
@@ -85,7 +85,7 @@ Invalid rules are ignored; if the file cannot be parsed, Codenine uses defaults.
 Each rule requires a `key` shortcut and a `command` ID. An optional `when`
 expression restricts when it runs.
 
-Project scripts use `script.{id}.run`, such as `script.test.run`.
+Project commands use `script.{id}.run`, such as `script.test.run`.
 
 ## Key syntax
 
@@ -136,7 +136,7 @@ a shortcut.
 shortcut; assign one in **Settings → Keybindings**.
 
 `thread.undo` (`mod+z` by default) reverses the actions shown in the notice at the
-bottom of the sidebar, such as unpin, settle, snooze, archive, or discarding a
+bottom of the sidebar, such as unpin, mark done, snooze, archive, or discarding a
 draft. Consecutive
 actions of the same kind undo together. The notice remains available for five
 seconds after the latest action. Right after an action, the shortcut works even

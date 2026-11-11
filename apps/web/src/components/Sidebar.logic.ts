@@ -727,7 +727,7 @@ export function isSidebarNestedLinkClick(target: EventTarget | null): boolean {
   return nodeClosest(parent, "a[href]") !== null;
 }
 
-/** The "New thread in" picker opens unless there is one open project or none; then the current context decides. */
+/** The "New chat in" picker opens unless there is one open project or none; then the current context decides. */
 export function shouldCreateNewThreadInCurrentProject(
   shiftKey: boolean,
   openProjectGroupCount: number,

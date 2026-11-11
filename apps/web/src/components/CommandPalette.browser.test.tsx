@@ -26,7 +26,7 @@ function setup(state: { projects?: ReadonlyArray<Project>; threads?: ReadonlyArr
 }
 
 describe("CommandPalette open intents", () => {
-  it("opens New thread in... with focus in the search input, not the Back button", async () => {
+  it("opens New chat in... with focus in the search input, not the Back button", async () => {
     setup();
     await using _screen = await render(<CommandPalette>{null}</CommandPalette>);
 
@@ -35,7 +35,7 @@ describe("CommandPalette open intents", () => {
     await expect.element(page.getByPlaceholder("Search...")).toHaveFocus();
   });
 
-  it("highlights the first project when New thread in... opens from the root list", async () => {
+  it("highlights the first project when New chat in... opens from the root list", async () => {
     const environmentId = EnvironmentId.make("local");
     const project = (id: string, title: string): Project => ({
       id: ProjectId.make(id),
@@ -59,7 +59,7 @@ describe("CommandPalette open intents", () => {
       .toHaveFocus();
     await userEvent.keyboard("{ArrowDown}");
     await expect
-      .element(page.getByRole("option", { name: /^New thread in\.\.\./ }))
+      .element(page.getByRole("option", { name: /^New chat in\.\.\./ }))
       .toHaveAttribute("data-highlighted");
     await userEvent.keyboard("{Enter}");
 

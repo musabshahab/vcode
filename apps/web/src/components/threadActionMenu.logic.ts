@@ -120,7 +120,7 @@ export function buildThreadActionMenuItems(
       ? [
           {
             id: "new-thread-on-branch" as const,
-            label: `New thread on ${state.branch}`,
+            label: `New chat on ${state.branch}`,
             icon: "message-square-plus",
           },
         ]
@@ -135,8 +135,8 @@ export function buildThreadActionMenuItems(
     ...(state.supports.settlement
       ? [
           state.isSettled
-            ? { id: "unsettle" as const, label: "Un-settle thread", icon: "circle-check" }
-            : { id: "settle" as const, label: "Settle thread", icon: "circle-check" },
+            ? { id: "unsettle" as const, label: "Mark not done", icon: "circle-check" }
+            : { id: "settle" as const, label: "Mark done", icon: "circle-check" },
         ]
       : []),
     ...(state.supports.snooze
@@ -199,7 +199,7 @@ export function buildThreadActionMenuItems(
       ? [
           {
             id: "auto-settle" as const,
-            label: "Auto-settle behavior",
+            label: "Mark done automatically",
             icon: "timer",
             children: [
               {

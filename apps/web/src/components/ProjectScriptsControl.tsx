@@ -228,7 +228,7 @@ export default function ProjectScriptsControl({
       {importMenuItems}
       <MenuItem density={presentation === "menu" ? "touch" : "default"} onClick={openAddDialog}>
         <PlusIcon className="size-4" />
-        <MenuItemLabel>{isPanel ? "Add project script" : "Add action"}</MenuItemLabel>
+        <MenuItemLabel>{isPanel ? "Add project command" : "Add action"}</MenuItemLabel>
       </MenuItem>
     </>
   );
@@ -276,7 +276,7 @@ export default function ProjectScriptsControl({
       ) : primaryScript ? (
         <ActionGroup
           role="group"
-          aria-label="Project scripts"
+          aria-label="Project commands"
           {...(isPanel
             ? { className: THREAD_DETAILS_PANEL_SPLIT_GROUP_CLASS, ref: panelAnchorRef }
             : {})}
@@ -427,7 +427,7 @@ export default function ProjectScriptsControl({
                 part="row"
                 panel={isPanel}
                 className={isPanel ? undefined : "w-7 sm:w-6 @3xl/header-actions:w-auto!"}
-                aria-label={isPanel ? "Add project script" : "Add action"}
+                aria-label={isPanel ? "Add project command" : "Add action"}
                 data-toolbar-control=""
                 onClick={openAddDialog}
               />
@@ -440,10 +440,10 @@ export default function ProjectScriptsControl({
                 isPanel && cn("not-sr-only ml-0.5", THREAD_DETAILS_PANEL_LABEL_CLASS),
               )}
             >
-              {isPanel ? "Add project script" : "Add action"}
+              {isPanel ? "Add project command" : "Add action"}
             </span>
           </TooltipTrigger>
-          <TooltipPopup side="top">{isPanel ? "Add project script" : "Add action"}</TooltipPopup>
+          <TooltipPopup side="top">{isPanel ? "Add project command" : "Add action"}</TooltipPopup>
         </Tooltip>
       )}
 

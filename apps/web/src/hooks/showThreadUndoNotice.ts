@@ -13,7 +13,7 @@ import { primaryServerKeybindingsAtom } from "../state/server";
 import * as ThreadUndo from "@codenine/client-runtime/state/thread-undo";
 
 type UndoOptions = {
-  action: "Settled" | "Snoozed" | "Unpinned" | "Archived" | "Discarded";
+  action: "Marked done" | "Snoozed" | "Unpinned" | "Archived" | "Discarded";
   undo: () => Promise<AtomCommandResult<unknown, unknown>>;
   failureTitle: string;
   claim: ReturnType<typeof ThreadUndo.begin>;
@@ -29,8 +29,8 @@ type UndoNotice = {
 export const useThreadUndoNotice = create<{ notice: UndoNotice | null }>(() => ({ notice: null }));
 
 function threadUndoNoticeSummary(notice: Pick<UndoNotice, "action" | "count">): string {
-  const noun = notice.action === "Discarded" ? "draft" : "thread";
-  return `${notice.action} ${notice.count} ${noun}${notice.count === 1 ? "" : "s"}`;
+  const noun = `${notice.count} ${notice.action === "Discarded" ? "draft" : "thread"}${notice.count === 1 ? "" : "s"}`;
+  return notice.action === "Marked done" ? `Marked ${noun} done` : `${notice.action} ${noun}`;
 }
 
 export function threadUndoLabel(keybindings: Parameters<typeof shortcutLabelForCommand>[0]) {
