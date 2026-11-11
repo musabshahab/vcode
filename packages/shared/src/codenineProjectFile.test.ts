@@ -24,7 +24,7 @@ describe("parseCodenineProjectFile", () => {
   it("reads project defaults from JSONC with a URL in a block comment", () => {
     expect(
       parseCodenineProjectFile(`{
-        /* See https://t3.codes/schema/codenine.json */
+        /* See https://codenine.example/schema/codenine.json */
         "defaultThreadEnvMode": "worktree"
       }`),
     ).toEqual({ defaultThreadEnvMode: "worktree" });

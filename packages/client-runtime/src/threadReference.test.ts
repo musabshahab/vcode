@@ -82,8 +82,10 @@ describe("resolveThreadReferenceCopyTarget", () => {
 
   it("links through the build's hosted app", () => {
     expect(
-      resolveThreadReferenceCopyTarget({ ...thread, hostedAppUrl: "https://preview.t3.codes" })
-        ?.value,
-    ).toBe("https://preview.t3.codes/threads/env-1/thread-1");
+      resolveThreadReferenceCopyTarget({
+        ...thread,
+        hostedAppUrl: "https://preview.codenine.example",
+      })?.value,
+    ).toBe("https://preview.codenine.example/threads/env-1/thread-1");
   });
 });

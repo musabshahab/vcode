@@ -2,20 +2,32 @@ import { EnvironmentId, ThreadId, type ScopedThreadRef } from "@codenine/contrac
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 
-import { DEFAULT_HOSTED_APP_URL } from "./connectAuth.ts";
-
 export const THREAD_LINK_PROTOCOL = "codenine-thread";
 const V1_PREFIX = `${THREAD_LINK_PROTOCOL}://v1/`;
 const V2_PREFIX = `${THREAD_LINK_PROTOCOL}://v2/`;
-const HOSTED_PREFIX = `${DEFAULT_HOSTED_APP_URL}/threads/`;
 const HOSTED_SEGMENT = "[A-Za-z0-9_%-]+";
-const HOSTED_LINK = `${HOSTED_PREFIX.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&")}${HOSTED_SEGMENT}/${HOSTED_SEGMENT}`;
+
+/** Where a configured hosted app serves threads. No build has one unless it sets a hosted app URL. */
+function hostedThreadPrefix(hostedAppUrl: string | undefined): string | null {
+  return hostedAppUrl !== undefined && URL.canParse(hostedAppUrl)
+    ? `${new URL(hostedAppUrl).origin}/threads/`
+    : null;
+}
+
 // Code comes first in the alternation so a link written inside a code span or fence is skipped.
 // A labeled link's destination may be angle-bracketed, as CommonMark allows: [label](<href>).
-const THREAD_LINK_OUTSIDE_CODE = new RegExp(
-  String.raw`(?<fence>(\`{3,}|~{3,})[\s\S]*?(?:\2|$))|(?<span>(\`+)[^\n]*?\4)|\[(?<label>[^\]\n]*)\]\((?:<(?<angleHref>codenine-thread:\/\/v[12]\/[^\s<>]+|${HOSTED_LINK})>|(?<href>codenine-thread:\/\/v[12]\/[^\s>)]+|${HOSTED_LINK}))\)|<(?<autolink>codenine-thread:\/\/v[12]\/[^\s<>]+|${HOSTED_LINK})>|(?<bare>${HOSTED_LINK})(?![\w%/?#-])`,
-  "g",
-);
+function threadLinkOutsideCode(hostedPrefix: string | null): RegExp {
+  const hosted =
+    hostedPrefix === null
+      ? null
+      : `${hostedPrefix.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&")}${HOSTED_SEGMENT}/${HOSTED_SEGMENT}`;
+  const orHosted = hosted === null ? "" : `|${hosted}`;
+  const bare = hosted === null ? "" : String.raw`|(?<bare>${hosted})(?![\w%/?#-])`;
+  return new RegExp(
+    String.raw`(?<fence>(\`{3,}|~{3,})[\s\S]*?(?:\2|$))|(?<span>(\`+)[^\n]*?\4)|\[(?<label>[^\]\n]*)\]\((?:<(?<angleHref>codenine-thread:\/\/v[12]\/[^\s<>]+${orHosted})>|(?<href>codenine-thread:\/\/v[12]\/[^\s>)]+${orHosted}))\)|<(?<autolink>codenine-thread:\/\/v[12]\/[^\s<>]+${orHosted})>${bare}`,
+    "g",
+  );
+}
 
 const decodeThreadId = Schema.decodeUnknownOption(ThreadId);
 const decodeEnvironmentId = Schema.decodeUnknownOption(EnvironmentId);
@@ -42,8 +54,8 @@ export function hostedThreadLink(ref: ScopedThreadRef, origin?: string): string 
 
 const HOSTED_PATH = new RegExp(`^(${HOSTED_SEGMENT})/(${HOSTED_SEGMENT})$`);
 
-function parseHostedThreadLink(href: string): ThreadLink | null {
-  const match = HOSTED_PATH.exec(href.slice(HOSTED_PREFIX.length));
+function parseHostedThreadPath(path: string): ThreadLink | null {
+  const match = HOSTED_PATH.exec(path);
   if (!match) return null;
   try {
     const environmentId = Option.getOrNull(decodeEnvironmentId(decodeURIComponent(match[1]!)));
@@ -56,15 +68,19 @@ function parseHostedThreadLink(href: string): ThreadLink | null {
 
 /**
  * The ids as written. Thread ids can hold percent escapes of their own, so they are not decoded,
- * except in a hosted link, which escapes them itself.
+ * except in a link to `hostedAppUrl`, which escapes them itself.
  */
-export function parseThreadLinkHref(href: string): ThreadLink | null {
-  if (href.startsWith(HOSTED_PREFIX)) return parseHostedThreadLink(href);
+export function parseThreadLinkHref(href: string, hostedAppUrl?: string): ThreadLink | null {
   if (href.startsWith(V1_PREFIX)) {
     const threadId = Option.getOrNull(decodeThreadId(href.slice(V1_PREFIX.length)));
     return threadId === null ? null : { environmentId: null, threadId };
   }
-  if (!href.startsWith(V2_PREFIX)) return null;
+  if (!href.startsWith(V2_PREFIX)) {
+    const hostedPrefix = hostedThreadPrefix(hostedAppUrl);
+    return hostedPrefix !== null && href.startsWith(hostedPrefix)
+      ? parseHostedThreadPath(href.slice(hostedPrefix.length))
+      : null;
+  }
   const path = href.slice(V2_PREFIX.length);
   const slash = path.indexOf("/");
   if (slash < 0) return null;
@@ -144,22 +160,26 @@ export function formatHostedThreadLink(
   return cleaned ? `[${cleaned}](${href})` : href;
 }
 
-function hasThreadLinks(markdown: string): boolean {
-  return markdown.includes(`${THREAD_LINK_PROTOCOL}://v`) || markdown.includes(HOSTED_PREFIX);
+function hasThreadLinks(markdown: string, hostedPrefix: string | null): boolean {
+  return (
+    markdown.includes(`${THREAD_LINK_PROTOCOL}://v`) ||
+    (hostedPrefix !== null && markdown.includes(hostedPrefix))
+  );
 }
 
 /** Every thread the markdown's links can name, so their titles are keyed reads. */
 export function threadLinkRefs(
   markdown: string,
   messageEnvironmentId: EnvironmentId,
+  hostedAppUrl?: string,
 ): ReadonlyArray<ScopedThreadRef> {
   const refs = new Map<string, ScopedThreadRef>();
   // Hermes' matchAll yields matches without `groups`; exec keeps them.
-  const pattern = new RegExp(THREAD_LINK_OUTSIDE_CODE);
+  const pattern = threadLinkOutsideCode(hostedThreadPrefix(hostedAppUrl));
   for (let match = pattern.exec(markdown); match !== null; match = pattern.exec(markdown)) {
     const href =
       match.groups?.angleHref ?? match.groups?.href ?? match.groups?.autolink ?? match.groups?.bare;
-    const link = href === undefined ? null : parseThreadLinkHref(href);
+    const link = href === undefined ? null : parseThreadLinkHref(href, hostedAppUrl);
     if (link === null) continue;
     for (const ref of threadLinkCandidates(link, messageEnvironmentId)) {
       refs.set(`${ref.environmentId}/${ref.threadId}`, ref);
@@ -181,14 +201,16 @@ export function unknownThreadLinkLabel(
 export function replaceThreadLinks(
   markdown: string,
   replace: (link: ThreadLink, label: string | undefined) => string | undefined,
+  hostedAppUrl?: string,
 ): string {
-  if (!hasThreadLinks(markdown)) return markdown;
-  return markdown.replace(THREAD_LINK_OUTSIDE_CODE, (source, ...args) => {
+  const hostedPrefix = hostedThreadPrefix(hostedAppUrl);
+  if (!hasThreadLinks(markdown, hostedPrefix)) return markdown;
+  return markdown.replace(threadLinkOutsideCode(hostedPrefix), (source, ...args) => {
     const groups = args.at(-1) as Partial<
       Record<"angleHref" | "href" | "autolink" | "bare" | "label", string>
     >;
     const href = groups.angleHref ?? groups.href ?? groups.autolink ?? groups.bare;
-    const link = href === undefined ? null : parseThreadLinkHref(href);
+    const link = href === undefined ? null : parseThreadLinkHref(href, hostedAppUrl);
     return (link && replace(link, groups.label)) ?? source;
   });
 }
@@ -202,24 +224,29 @@ export function relabelThreadLinks(
   markdown: string,
   messageEnvironmentId: EnvironmentId,
   title: (ref: ScopedThreadRef) => string | undefined,
+  hostedAppUrl?: string,
 ): string {
-  return replaceThreadLinks(markdown, (written, label) => {
-    const environmentId = written.environmentId ?? messageEnvironmentId;
-    const decoded = percentDecodedThreadLinkId(written.threadId);
-    const threadId =
-      title({ environmentId, threadId: written.threadId }) === undefined &&
-      decoded !== null &&
-      title({ environmentId, threadId: decoded }) !== undefined
-        ? decoded
-        : written.threadId;
-    const current = title({ environmentId, threadId });
-    if (current === undefined) {
-      if (label !== undefined && written.environmentId === null) return undefined;
-      return label?.trim() || unknownThreadLinkLabel(written, messageEnvironmentId);
-    }
-    return formatThreadLink(
-      { environmentId: written.environmentId, threadId },
-      current.trim() || label || threadId,
-    );
-  });
+  return replaceThreadLinks(
+    markdown,
+    (written, label) => {
+      const environmentId = written.environmentId ?? messageEnvironmentId;
+      const decoded = percentDecodedThreadLinkId(written.threadId);
+      const threadId =
+        title({ environmentId, threadId: written.threadId }) === undefined &&
+        decoded !== null &&
+        title({ environmentId, threadId: decoded }) !== undefined
+          ? decoded
+          : written.threadId;
+      const current = title({ environmentId, threadId });
+      if (current === undefined) {
+        if (label !== undefined && written.environmentId === null) return undefined;
+        return label?.trim() || unknownThreadLinkLabel(written, messageEnvironmentId);
+      }
+      return formatThreadLink(
+        { environmentId: written.environmentId, threadId },
+        current.trim() || label || threadId,
+      );
+    },
+    hostedAppUrl,
+  );
 }

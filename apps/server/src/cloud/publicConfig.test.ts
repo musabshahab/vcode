@@ -31,10 +31,10 @@ it.effect("has no hosted app URL unless one is configured", () =>
 it.effect("rejects malformed or insecure hosted app URLs", () =>
   Effect.gen(function* () {
     for (const value of [
-      "app.t3.codes",
-      "http://app.t3.codes",
-      "https://app.t3.codes/nested",
-      "https://app.t3.codes?alias=true",
+      "app.codenine.example",
+      "http://app.codenine.example",
+      "https://app.codenine.example/nested",
+      "https://app.codenine.example?alias=true",
     ]) {
       const result = yield* hostedAppUrlConfig.pipe(
         provideEnv({ CODENINE_HOSTED_APP_URL: value }),

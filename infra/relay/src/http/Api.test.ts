@@ -1468,7 +1468,7 @@ describe("relay routing fallback", () => {
 });
 
 describe("relay CORS", () => {
-  const origin = "https://app.t3.codes";
+  const origin = "https://app.codenine.example";
 
   class HandlerFailed extends Schema.TaggedError<HandlerFailed>()("HandlerFailed", {}) {}
 

@@ -1,5 +1,6 @@
 import * as Alchemy from "alchemy";
 import * as Axiom from "@alchemy.run/axiom";
+import { codenineDocsUrl } from "@codenine/contracts";
 import * as Output from "alchemy/Output";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
@@ -8,8 +9,7 @@ import { relayResourceNameForStage } from "../deploymentConfig.ts";
 import { notifierConfig } from "../monitoring.ts";
 import { isPreviewStage } from "../previewStages.ts";
 
-const RUNBOOK_URL =
-  "https://github.com/pingdotgg/t3code/blob/main/docs/operations/relay-observability.md#mobile-crashes-and-errors";
+const RUNBOOK_URL = codenineDocsUrl("operations/relay-observability.md#mobile-crashes-and-errors");
 
 // A new dataset has none of these fields until a report carries them, and an
 // unknown field fails the whole query, so every one has a default.

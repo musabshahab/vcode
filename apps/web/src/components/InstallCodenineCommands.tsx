@@ -1,3 +1,5 @@
+import { CODENINE_INSTALL_PS1_COMMAND, CODENINE_INSTALL_SH_COMMAND } from "@codenine/contracts";
+
 import { cn } from "~/lib/utils";
 
 import { CommandBlock } from "./CommandBlock";
@@ -16,9 +18,9 @@ export function InstallCodenineCommands({
   return (
     <div className={cn("space-y-2", className)}>
       <p className="text-xs text-muted-foreground">macOS, Linux</p>
-      <CommandBlock command="curl -fsSL https://t3.codes/install.sh | sh" />
+      <CommandBlock command={CODENINE_INSTALL_SH_COMMAND} />
       <p className="text-xs text-muted-foreground">Windows (PowerShell)</p>
-      <CommandBlock command="irm https://t3.codes/install.ps1 | iex" />
+      <CommandBlock command={CODENINE_INSTALL_PS1_COMMAND} />
       <p className="text-xs text-muted-foreground">Then</p>
       <CommandBlock command={command} />
       <p className="text-xs text-muted-foreground">

@@ -1,4 +1,3 @@
-import { useAuth } from "@clerk/react";
 import { useAtomValue } from "@effect/atom-react";
 import type {
   EnvironmentId,
@@ -12,27 +11,17 @@ import {
   isAtomCommandInterrupted,
   squashAtomCommandFailure,
 } from "@codenine/client-runtime/state/runtime";
-import {
-  AuthProvidersManageScope,
-  AuthRelayReadScope,
-  AuthRelayWriteScope,
-  AuthTerminalOperateScope,
-  ThreadId,
-} from "@codenine/contracts";
+import { AuthProvidersManageScope, AuthTerminalOperateScope, ThreadId } from "@codenine/contracts";
 import { Link, useBlocker } from "@tanstack/react-router";
 import * as Schema from "effect/Schema";
-import { CheckIcon, ChevronDownIcon, PlusIcon, SmartphoneIcon, TerminalIcon } from "lucide-react";
-import { useEffect, useEffectEvent, useRef, useState, type ReactNode } from "react";
+import { CheckIcon, ChevronDownIcon, PlusIcon, TerminalIcon } from "lucide-react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { TYPOGRAPHY_ADVANCED_STORAGE_KEY } from "../../appearanceFonts";
-import { MOBILE_APP_URL } from "../../branding";
 import { isElectron } from "../../env";
 import { useLocalStorage } from "../../hooks/useLocalStorage";
 import { usePersistEnvironmentProviderInstanceMutation } from "../../hooks/useSettings";
-import { useCloudLinkState } from "../../cloud/cloudLinkState";
-import { hasCloudPublicConfig } from "../../cloud/publicConfig";
 import { workspaceAreaProps } from "../../lib/workspaceFocus";
-import { useCodenineConnectAuthPrompt } from "../clerk/useCodenineConnectAuthPrompt";
 import { completeOnboarding } from "../../onboarding/firstRun";
 import {
   resolveOnboardingProviderInstallCommand,
@@ -46,7 +35,6 @@ import {
   isBrokenVersion,
   turnedOnInstance,
   welcomeAgentState,
-  welcomeOffersPhone,
 } from "../../onboarding/welcomePage.logic";
 import { randomUUID } from "../../lib/utils";
 import { useEnvironments, usePrimaryEnvironmentId } from "../../state/environments";
@@ -62,7 +50,6 @@ import { TerminalViewport } from "../ThreadTerminalDrawer";
 import { ProviderInstanceIcon } from "../chat/ProviderInstanceIcon";
 import { Button } from "../ui/button";
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from "../ui/collapsible";
-import { QRCodeSvg } from "../ui/qr-code";
 import { SidebarInset } from "../ui/sidebar";
 import { toastManager } from "../ui/toast";
 import { WorkspacePageHeader } from "../WorkspacePageHeader";
@@ -71,7 +58,7 @@ import { cn } from "../../lib/utils";
 const AGENT_ONBOARDING_THREAD_ID = ThreadId.make("onboarding-agent-setup");
 
 /**
- * First-run page for one computer: its agents and the phone app. Every part is optional except one ready agent to start chatting.
+ * First-run page for one computer and its agents. Every part is optional except one ready agent to start chatting.
  */
 export function WelcomePage({
   environmentId,
@@ -85,16 +72,8 @@ export function WelcomePage({
     environments.find((environment) => environment.environmentId === environmentId)?.label ??
     "this computer";
   const agentReady = useWelcomeAgents(environmentId).readyCount > 0;
-  // The phone and `codenine` on PATH belong to the primary computer, so only it offers them.
+  // `codenine` on PATH belongs to the primary computer, so only it offers that.
   const isPrimary = usePrimaryEnvironmentId() === environmentId;
-  // The same access Settings → Sharing & access checks.
-  const canReadRelay = useEnvironmentScope(environmentId, AuthRelayReadScope);
-  const canWriteRelay = useEnvironmentScope(environmentId, AuthRelayWriteScope);
-  const showPhone = welcomeOffersPhone({
-    isPrimary,
-    cloud: hasCloudPublicConfig(),
-    canShare: canReadRelay && canWriteRelay,
-  });
   // True from Start until the landing; leaving earlier would drop the landing.
   const holdPageRef = useRef(false);
   useBlocker({
@@ -177,7 +156,6 @@ export function WelcomePage({
             </p>
             <div className="mt-10 border-t border-border/60">
               <AgentsSection environmentId={environmentId} label={label} isPrimary={isPrimary} />
-              {showPhone ? <PhoneSection environmentId={environmentId} /> : null}
             </div>
             <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
               {agentReady ? (
@@ -549,136 +527,6 @@ function AgentLogoStack({ providers }: { readonly providers: ReadonlyArray<Serve
         />
       ))}
     </span>
-  );
-}
-
-function PhoneSection({ environmentId }: { readonly environmentId: EnvironmentId }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <WelcomeSection title="Phone">
-      <Collapsible open={open} onOpenChange={setOpen}>
-        <div className="flex min-h-10 items-center gap-3 py-1">
-          <RowIcon>
-            <SmartphoneIcon className="size-4" />
-          </RowIcon>
-          <span className="min-w-0 flex-1 text-sm font-medium text-foreground">
-            Use Codenine on your phone
-          </span>
-          <CollapsibleTrigger render={<Button variant="ghost-muted" size="xs" />}>
-            {open ? "Hide" : "Set up"}
-            <ChevronDownIcon className={cn("size-3.5", open && "rotate-180")} />
-          </CollapsibleTrigger>
-        </div>
-        <CollapsiblePanel>
-          <div className="flex items-center gap-8 pt-2 pb-3 pl-8">
-            <ol className="min-w-0 flex-1 space-y-5">
-              <PhoneStep step={1}>
-                <p className="text-sm text-foreground">Scan with your phone to get the app.</p>
-              </PhoneStep>
-              <PhoneStep step={2}>
-                <PhoneConnectLink environmentId={environmentId} />
-              </PhoneStep>
-            </ol>
-            {/* One code for both stores: the link opens the store that matches the phone. */}
-            <div className="shrink-0 rounded-lg bg-white p-1.5">
-              <QRCodeSvg
-                value={MOBILE_APP_URL}
-                size={124}
-                level="M"
-                marginSize={2}
-                title="Codenine app for iPhone and Android"
-              />
-            </div>
-          </div>
-        </CollapsiblePanel>
-      </Collapsible>
-    </WelcomeSection>
-  );
-}
-
-function PhoneStep({ step, children }: { readonly step: number; readonly children: ReactNode }) {
-  return (
-    <li className="flex gap-3">
-      <span className="w-3 shrink-0 text-sm text-muted-foreground tabular-nums">{step}</span>
-      <div className="flex min-w-0 flex-col items-start gap-2">{children}</div>
-    </li>
-  );
-}
-
-function PhoneConnectLink({ environmentId }: { readonly environmentId: EnvironmentId }) {
-  const { isLoaded, isSignedIn, userId } = useAuth({ treatPendingAsSignedOut: false });
-  const { openAuthPrompt } = useCodenineConnectAuthPrompt();
-  const linkState = useCloudLinkState(environmentId);
-  const refreshLinkState = useEffectEvent(linkState.refresh);
-  // The server rechecks the tunnel every 30 s; read its latest result while this panel is open.
-  // oxlint-disable-next-line codenine/no-unreasoned-state-sync -- 30 s interval that refreshes the cloud link reachability while mounted
-  useEffect(() => {
-    const interval = window.setInterval(() => refreshLinkState(), 30_000);
-    return () => window.clearInterval(interval);
-  }, []);
-  const link = linkState.data;
-  // The phone reaches this computer through its tunnel; older servers leave that flag out.
-  const shared =
-    link !== null &&
-    link.linked &&
-    link.linkRevoked !== true &&
-    link.cloudUserId === userId &&
-    link.managedTunnelActive !== false;
-  // The server checks the tunnel on its own; until it has, the result is unknown.
-  const reachability = shared ? link.reachability?.status : undefined;
-  const settingsLink = (label: string) => (
-    <Button variant="outline" size="xs" render={<Link to="/settings/access" />}>
-      {label}
-    </Button>
-  );
-  if (isSignedIn && link === null && linkState.isPending) {
-    return <p className="text-sm text-muted-foreground">Checking Codenine Connect…</p>;
-  }
-  if (isSignedIn && linkState.error !== null) {
-    return (
-      <>
-        <p className="text-sm text-foreground">Could not check Codenine Connect.</p>
-        {settingsLink("Check Codenine Connect")}
-      </>
-    );
-  }
-  if (isSignedIn && reachability === "reachable") {
-    return (
-      <p className="flex gap-1.5 text-sm text-foreground">
-        <CheckIcon className="mt-0.5 size-4 shrink-0 text-success-foreground" />
-        Your phone can reach this computer. Sign in to the app with the same account.
-      </p>
-    );
-  }
-  if (isSignedIn && shared && reachability === undefined) {
-    return (
-      <p className="text-sm text-foreground">
-        Codenine Connect is on for this computer. Sign in to the app with the same account.
-      </p>
-    );
-  }
-  if (isSignedIn) {
-    // Signing in alone does not share this computer, for example after "Not now".
-    return (
-      <>
-        <p className="text-sm text-foreground">
-          {shared
-            ? "Codenine Connect is on, but the app cannot reach this computer."
-            : "Signed in. Share this computer so the app can reach it."}
-        </p>
-        {settingsLink(shared ? "Check Codenine Connect" : "Set up Codenine Connect")}
-      </>
-    );
-  }
-  return (
-    <>
-      <p className="text-sm text-foreground">
-        Sign in to Codenine Connect here, then in the app with the same account.
-      </p>
-      <Button variant="outline" size="xs" disabled={!isLoaded} onClick={openAuthPrompt}>
-        Sign in to Codenine Connect
-      </Button>
-    </>
   );
 }
 

@@ -1,3 +1,5 @@
+import { CODENINE_INSTALL_SH_URL } from "@codenine/contracts";
+
 import packageJson from "../../package.json" with { type: "json" };
 import { BUILD_MIGRATION_HEAD, recordedMigrations } from "../persistence/databaseMigrationHead.ts";
 import { SERVICE_LAUNCHER_PROTOCOL } from "./serviceProtocol.ts";
@@ -28,7 +30,7 @@ export function runServicePreflight(input: {
       // reinstall itself and report success, so name the exact install and the path check.
       reason: [
         `The installed service launcher speaks protocol ${input.launcherProtocol}, but codenine@${version} requires protocol ${SERVICE_LAUNCHER_PROTOCOL}.`,
-        `On the server machine, install this exact CLI: \`curl -fsSL https://t3.codes/install.sh | CODENINE_VERSION=${version} sh\`.`,
+        `On the server machine, install this exact CLI: \`curl -fsSL ${CODENINE_INSTALL_SH_URL} | CODENINE_VERSION=${version} sh\`.`,
         `Check that \`codenine --version\` prints ${version} and that \`which -a codenine\` lists no older codenine (such as an npm or nvm install) first, then run \`~/.local/bin/codenine service install\` (the installer's default path).`,
         "Updating the desktop app does not update this CLI, and `codenine service update` only repairs the service with whichever CLI runs it.",
       ].join(" "),

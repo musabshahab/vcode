@@ -1,6 +1,5 @@
 import { useAtomValue } from "@effect/atom-react";
 import { NotificationSettings } from "./NotificationSettings";
-import { PRIVACY_POLICY_URL } from "../../legalLinks";
 import { CheckIcon } from "lucide-react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useRef, useState } from "react";
@@ -30,7 +29,6 @@ import * as Schema from "effect/Schema";
 import { APP_VERSION, HOSTED_APP_CHANNEL, HOSTED_APP_CHANNEL_LABEL } from "../../branding";
 import { AboutVersionTitle } from "./AboutVersionTitle";
 import { CliCommandSettingsRow } from "./CliCommandSettingsRow";
-import { MobileAppSettingsRow } from "./MobileAppSettingsRow";
 import {
   canCheckForUpdate,
   getDesktopUpdateButtonTooltip,
@@ -2025,11 +2023,10 @@ export function AboutSettingsPanel() {
             />
           </>
         )}
-        <MobileAppSettingsRow />
         {primaryEnvironmentId === null ? null : (
           <SettingsRow
             {...searchableSetting("welcome-page")}
-            description="See your agents, import projects, and set up your phone."
+            description="See your agents and import projects."
             control={
               <Button size="sm" variant="outline" render={<Link to="/welcome" />}>
                 Open
@@ -2040,19 +2037,6 @@ export function AboutSettingsPanel() {
       </SettingsSection>
 
       <SettingsSection id="legal" title="Legal">
-        <SettingsRow
-          {...searchableSetting("privacy-policy")}
-          description="How we handle your data."
-          control={
-            <Button
-              render={<a href={PRIVACY_POLICY_URL} target="_blank" rel="noreferrer noopener" />}
-              size="sm"
-              variant="outline"
-            >
-              View policy
-            </Button>
-          }
-        />
         <SettingsRow
           {...searchableSetting("open-source-licenses")}
           description="Notices for dependencies, assets, and optional tools used by Codenine."

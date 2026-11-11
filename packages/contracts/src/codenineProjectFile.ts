@@ -7,8 +7,6 @@ import type { ProjectScopedServerSettingKey, ServerSettings } from "./settings.t
 
 export const CODENINE_PROJECT_FILE_NAME = "codenine.json";
 
-const CODENINE_PROJECT_FILE_SCHEMA_URL = "https://t3.codes/schema/codenine.json";
-
 const CODENINE_PROJECT_FILE_PATH_MAX_LENGTH = 512;
 const CODENINE_PROJECT_FILE_MAX_SCRIPTS = 50;
 
@@ -66,7 +64,7 @@ export type CodenineProjectFileScript = typeof CodenineProjectFileScript.Type;
 export const CodenineProjectFile = Schema.Struct({
   $schema: Schema.optionalKey(
     Schema.String.annotate({
-      description: `URL of the JSON Schema for this file, typically "${CODENINE_PROJECT_FILE_SCHEMA_URL}".`,
+      description: "URL of a JSON Schema for this file. Codenine does not read it.",
     }),
   ),
   iconPath: Schema.optionalKey(
@@ -100,7 +98,7 @@ export const CodenineProjectFile = Schema.Struct({
 }).annotate({
   title: "Codenine project file",
   description:
-    "Checked-in project configuration for Codenine (codenine.json at the repository root). See https://t3.codes for documentation.",
+    "Checked-in project configuration for Codenine (codenine.json at the repository root).",
 });
 export type CodenineProjectFile = typeof CodenineProjectFile.Type;
 

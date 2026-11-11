@@ -1,4 +1,5 @@
 import {
+  CODENINE_REPOSITORY_URL,
   CommandId,
   type GitManagerServiceError,
   ProjectId,
@@ -177,7 +178,7 @@ function namedProjectReadme(name: string): string {
     "",
     `# ${name}`,
     "",
-    "Created in [Codenine](https://t3.codes).",
+    `Created in [Codenine](${CODENINE_REPOSITORY_URL}).`,
     "",
   ].join("\n");
 }

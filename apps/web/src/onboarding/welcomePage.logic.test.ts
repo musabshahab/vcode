@@ -14,7 +14,6 @@ import {
   codexNeedsSetup,
   groupWelcomeAgents,
   turnedOnInstance,
-  welcomeOffersPhone,
 } from "./welcomePage.logic";
 
 function provider(name: string, overrides: Partial<ServerProvider> = {}): ServerProvider {
@@ -213,23 +212,5 @@ describe("codexCardProvider", () => {
         settings: undefined,
       }),
     ).toBeNull();
-  });
-});
-
-describe("welcomeOffersPhone", () => {
-  it("offers the phone only through Codenine Connect on the primary computer", () => {
-    const offers = (input: Partial<Parameters<typeof welcomeOffersPhone>[0]>) =>
-      welcomeOffersPhone({
-        isPrimary: true,
-        cloud: true,
-        canShare: true,
-        ...input,
-      });
-
-    expect(offers({})).toBe(true);
-    // There is no pairing-code fallback; without Codenine Connect the page leaves the phone out.
-    expect(offers({ cloud: false })).toBe(false);
-    expect(offers({ canShare: false })).toBe(false);
-    expect(offers({ isPrimary: false })).toBe(false);
   });
 });

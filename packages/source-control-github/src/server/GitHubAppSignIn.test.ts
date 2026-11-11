@@ -144,7 +144,7 @@ const installedOn = (sent: Sent): Reply =>
     ? {
         body: {
           installations: [
-            { id: 1, repository_selection: "all", account: { login: "acme" } },
+            { id: 1, repository_selection: "all", account: { login: "globex" } },
             { id: 2, repository_selection: "selected", account: { login: "acme" } },
           ],
         },
@@ -512,7 +512,7 @@ describe("GitHubAppAccess", () => {
     });
     return Effect.gen(function* () {
       const access = yield* GitHubAppAccess.GitHubAppAccess;
-      expect(yield* access.reach("github.com", "acme/codenine")).toBe("covered");
+      expect(yield* access.reach("github.com", "globex/codenine")).toBe("covered");
       expect(yield* access.reach("github.com", "acme/one")).toBe("covered");
       expect(yield* access.reach("github.com", "acme/two")).toBe("not-covered");
       expect(yield* access.reach("github.com", "https://github.com/Acme/One.git")).toBe("covered");
@@ -555,7 +555,7 @@ describe("GitHubAppAccess", () => {
         access
           .credentialFor("github.com", repository)
           .pipe(Effect.map((held) => Redacted.value(held.token)));
-      expect(yield* tokenFor("acme/codenine")).toBe("ghu_current");
+      expect(yield* tokenFor("globex/codenine")).toBe("ghu_current");
       expect(yield* tokenFor("someone/else")).toBe("gh-token");
     }).pipe(Effect.provide(layer));
   });

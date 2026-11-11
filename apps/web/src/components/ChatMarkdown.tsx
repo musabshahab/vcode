@@ -143,6 +143,7 @@ import {
 } from "../markdownFileHostPath";
 import { isMarkdownFileLinkLabel } from "@codenine/shared/markdownLinks";
 import { isElectron } from "../env";
+import { configuredHostedAppUrl } from "../hostedPairing";
 import { readLocalApi } from "../localApi";
 import { cn } from "../lib/utils";
 import { resolveRemoteOpenState, useRemoteOpenResolution } from "../remoteOpen";
@@ -378,7 +379,7 @@ const CHAT_MARKDOWN_LITERAL_HTML_REHYPE_PLUGINS = [
 function markdownUrlTransform(href: string) {
   if (parseAssistantCitationHref(href)) return href;
   if (parseComposerContextHref(href)) return href;
-  if (parseThreadLinkHref(href)) return href;
+  if (parseThreadLinkHref(href, configuredHostedAppUrl())) return href;
   if (isWindowsDrivePathHref(href)) return href;
   if (isLocalEditorFileHref(href)) return href;
   return rewriteMarkdownFileUriHref(href) ?? defaultUrlTransform(href);
@@ -980,11 +981,12 @@ const CHAT_MARKDOWN_COMPONENTS = {
     const text = use(ChatMarkdownTextContext);
     const citation = href ? parseAssistantCitationHref(href) : null;
     if (citation) return <AssistantCitationChip citation={citation} />;
-    const threadLink = href ? parseThreadLinkHref(href) : null;
+    const hostedAppUrl = configuredHostedAppUrl();
+    const threadLink = href ? parseThreadLinkHref(href, hostedAppUrl) : null;
     if (threadLink) {
       const written = hastPlainTextDeep(node);
       // An autolink's text is its own URL, which is no label.
-      const label = written && parseThreadLinkHref(written) === null ? written : null;
+      const label = written && parseThreadLinkHref(written, hostedAppUrl) === null ? written : null;
       return environmentId ? (
         <MarkdownThreadLink environmentId={environmentId} link={threadLink} label={label} />
       ) : (

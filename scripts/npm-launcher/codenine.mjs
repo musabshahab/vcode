@@ -169,7 +169,7 @@ async function main() {
   if (!SUPPORTED.includes(key)) {
     throw new Error(
       `no Codenine CLI build is available for ${key} (supported: ${SUPPORTED.join(", ")}).\n` +
-        "The desktop app is at https://github.com/pingdotgg/t3code/releases",
+        "The desktop app is at https://github.com/musabshahab/vcode/releases",
     );
   }
   const dir = path.join(codenineHome(), "runtime", "versions", version);

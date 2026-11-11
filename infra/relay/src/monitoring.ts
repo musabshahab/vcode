@@ -1,5 +1,6 @@
 import * as Alchemy from "alchemy";
 import * as Axiom from "@alchemy.run/axiom";
+import { codenineDocsUrl } from "@codenine/contracts";
 import * as Output from "alchemy/Output";
 import * as Config from "effect/Config";
 import * as Effect from "effect/Effect";
@@ -7,8 +8,7 @@ import * as Option from "effect/Option";
 
 import { relayResourceNameForStage } from "./deploymentConfig.ts";
 
-const RUNBOOK_URL =
-  "https://github.com/pingdotgg/t3code/blob/main/docs/operations/relay-observability.md#alerts";
+const RUNBOOK_URL = codenineDocsUrl("operations/relay-observability.md#alerts");
 
 const LINK_ROUTE = `"/v1/client/environment-links"`;
 const TUNNEL_ROUTES = `"/v1/environments/:environmentId/tunnel", "/v1/environments/:environmentId/tunnel/recovery"`;
@@ -322,7 +322,7 @@ const relayDashboardCharts = (dataset: string): ReadonlyArray<QueryChart> => {
           `    name == "ConnectionDriver.checkRoute", "0. Direct route check, before any relay fallback",`,
           `    name == "relay.connection.cloudSessionToken.resolve", "1. Clerk session token",`,
           `    name == "clientRuntime.managedRelay.exchangeAccessToken", "2. Relay token exchange",`,
-          `    kind == "client" and url startswith "https://relay.t3.codes/v1/environments/" and url endswith "/connect", "3. Relay connect, minting a host credential",`,
+          `    kind == "client" and url contains "/v1/environments/" and url endswith "/connect", "3. Relay connect, minting a host credential",`,
           `    name == "environment.authorization.descriptor", "4. Host descriptor",`,
           `    name == "environment.authorization.accessToken.exchange", "5. Host token exchange",`,
           `    name == "clientRuntime.connection.remote.createDpopSocketUrl", "6. Socket ticket",`,

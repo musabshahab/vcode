@@ -1,7 +1,7 @@
 import type { DesktopBridge, DesktopUpdateState } from "@codenine/contracts";
 
-const DOWNLOAD_URL = "https://t3.codes/download";
-const ISSUE_URL = "https://github.com/pingdotgg/t3code/issues/new";
+// The boot shell runs before any package loads, so it repeats codenineRepository.ts's slug.
+const REPOSITORY_URL = "https://github.com/musabshahab/vcode";
 const LAST_FAILURE_KEY = "codenine:boot-failed-at";
 const REPEAT_FAILURE_MS = 5 * 60_000;
 const MAX_CAUSES = 3;
@@ -281,7 +281,7 @@ export function showBootError(error: unknown) {
     ),
   );
 
-  const issue = new URL(ISSUE_URL);
+  const issue = new URL(`${REPOSITORY_URL}/issues/new`);
   issue.searchParams.set("template", "bug_report.yml");
   issue.searchParams.set("title", "Codenine failed to start");
   issue.searchParams.set("area", "apps/web");
@@ -296,7 +296,7 @@ export function showBootError(error: unknown) {
     ...(bridge
       ? [
           link(
-            nightly ? `${DOWNLOAD_URL}?channel=nightly` : DOWNLOAD_URL,
+            `${REPOSITORY_URL}/releases`,
             nightly
               ? "Download and reinstall the latest nightly build"
               : "Download and reinstall Codenine",

@@ -92,7 +92,7 @@ describe("thread links", () => {
   });
 });
 
-const HOSTED = "https://app.t3.codes";
+const HOSTED = "https://app.codenine.example";
 
 describe("link round trips", () => {
   it("builds a link that parses back to the same prompt", () => {
@@ -115,7 +115,7 @@ describe("link round trips", () => {
     const link = buildNewThreadLink({ prompt: "hi" });
     expect(link).toBe("codenine://new?prompt=hi");
     expect(promptLinkAppPath(link)).toBe("/new?prompt=hi");
-    expect(promptLinkAppPath("https://app.t3.codes/new?prompt=hi")).toBeNull();
+    expect(promptLinkAppPath("https://app.codenine.example/new?prompt=hi")).toBeNull();
   });
 
   it("opens a copied thread link in the app at that thread", () => {
@@ -136,19 +136,19 @@ describe("link round trips", () => {
   it("maps app scheme and hosted links to in-app paths, and nothing else", () => {
     expect(promptLinkAppPath("codenine://new?prompt=hi")).toBe("/new?prompt=hi");
     expect(promptLinkAppPath("codenine-dev://threads/env-1/thread-1")).toBe("/env-1/thread-1");
-    expect(promptLinkAppPath("https://app.t3.codes/env-1/thread-1?prompt=go", HOSTED)).toBe(
+    expect(promptLinkAppPath("https://app.codenine.example/env-1/thread-1?prompt=go", HOSTED)).toBe(
       "/env-1/thread-1?prompt=go",
     );
-    expect(promptLinkAppPath("https://app.t3.codes/threads/env-1/thread-1", HOSTED)).toBe(
+    expect(promptLinkAppPath("https://app.codenine.example/threads/env-1/thread-1", HOSTED)).toBe(
       "/env-1/thread-1",
     );
-    expect(promptLinkAppPath("https://app.t3.codes/threads/env-1/thread-1?prompt=go", HOSTED)).toBe(
-      "/env-1/thread-1?prompt=go",
-    );
+    expect(
+      promptLinkAppPath("https://app.codenine.example/threads/env-1/thread-1?prompt=go", HOSTED),
+    ).toBe("/env-1/thread-1?prompt=go");
     // The web app's own thread route, reloaded, is no link.
-    expect(promptLinkAppPath("https://app.t3.codes/env-1/thread-1", HOSTED)).toBeNull();
-    expect(promptLinkAppPath("https://app.t3.codes/threads/env-1", HOSTED)).toBeNull();
-    expect(promptLinkAppPath("https://app.t3.codes/settings/general", HOSTED)).toBeNull();
+    expect(promptLinkAppPath("https://app.codenine.example/env-1/thread-1", HOSTED)).toBeNull();
+    expect(promptLinkAppPath("https://app.codenine.example/threads/env-1", HOSTED)).toBeNull();
+    expect(promptLinkAppPath("https://app.codenine.example/settings/general", HOSTED)).toBeNull();
     expect(promptLinkAppPath("https://evil.test/new?prompt=hi", HOSTED)).toBeNull();
     expect(promptLinkAppPath("codenine://app/index.html")).toBeNull();
   });

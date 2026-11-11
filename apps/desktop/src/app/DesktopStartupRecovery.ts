@@ -1,4 +1,4 @@
-import type { DesktopUpdateState } from "@codenine/contracts";
+import { CODENINE_RELEASES_URL, type DesktopUpdateState } from "@codenine/contracts";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
 import * as Option from "effect/Option";
@@ -18,7 +18,6 @@ import * as DesktopEnvironment from "./DesktopEnvironment.ts";
 import * as DesktopObservability from "./DesktopObservability.ts";
 import * as DesktopState from "./DesktopState.ts";
 
-const RELEASES_URL = "https://github.com/pingdotgg/t3code/releases";
 const LAST_STARTED_VERSION_FILE = "desktop-last-started-version";
 // Buttons are plain links to this host; will-navigate cancels them and runs the action.
 const ACTION_ORIGIN = "https://startup-recovery.invalid";
@@ -208,11 +207,11 @@ export const listen: Effect.Effect<
       }
       case "reinstall":
         if (current._tag === "Reinstall") {
-          yield* electronShell.openExternal(`${RELEASES_URL}/tag/v${current.version}`);
+          yield* electronShell.openExternal(`${CODENINE_RELEASES_URL}/tag/v${current.version}`);
         }
         return;
       case "releases":
-        yield* electronShell.openExternal(RELEASES_URL);
+        yield* electronShell.openExternal(CODENINE_RELEASES_URL);
         return;
       case "copy": {
         const failure = yield* Ref.get(failureRef);

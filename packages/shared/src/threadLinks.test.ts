@@ -70,7 +70,7 @@ describe("thread links", () => {
   });
 
   it("rejects other links and an empty id", () => {
-    expect(parseThreadLinkHref("https://t3.codes")).toBeNull();
+    expect(parseThreadLinkHref("https://codenine.example")).toBeNull();
     expect(parseThreadLinkHref("codenine-thread://v1/")).toBeNull();
     expect(parseThreadLinkHref("codenine-thread://v1/ ")).toBeNull();
     expect(parseThreadLinkHref("codenine-thread://v2/env-1")).toBeNull();
@@ -207,25 +207,30 @@ describe("thread links", () => {
 });
 
 describe("hosted thread links", () => {
+  const hosted = "https://app.codenine.example";
+
   it("escapes every id character a sentence or path could claim, and reads it back", () => {
     const thread = ref("env.1", "thread:delegated/mcp%3A1.");
-    const link = hostedThreadLink(thread, "https://app.t3.codes");
-    expect(link).toBe("https://app.t3.codes/threads/env%2E1/thread%3Adelegated%2Fmcp%253A1%2E");
-    expect(parseThreadLinkHref(link)).toEqual(thread);
-    expect(hostedThreadLink(thread, "https://preview.t3.codes/")).toMatch(
-      /^https:\/\/preview\.t3\.codes\/threads\//,
+    const link = hostedThreadLink(thread, hosted);
+    expect(link).toBe(
+      "https://app.codenine.example/threads/env%2E1/thread%3Adelegated%2Fmcp%253A1%2E",
+    );
+    expect(parseThreadLinkHref(link, hosted)).toEqual(thread);
+    expect(hostedThreadLink(thread, "https://preview.codenine.example/")).toMatch(
+      /^https:\/\/preview\.codenine\.example\/threads\//,
     );
   });
 
-  it("reads only a bare thread path on the hosted app", () => {
-    expect(parseThreadLinkHref("https://app.t3.codes/threads/env-1/thread-1")).toEqual(
-      ref("env-1", "thread-1"),
-    );
-    expect(parseThreadLinkHref("https://app.t3.codes/threads/env-1/thread-1?prompt=go")).toBeNull();
-    expect(parseThreadLinkHref("https://app.t3.codes/threads/env-1/thread-1/extra")).toBeNull();
-    expect(parseThreadLinkHref("https://app.t3.codes/threads/env-1")).toBeNull();
-    expect(parseThreadLinkHref("https://app.t3.codes/env-1/thread-1")).toBeNull();
-    expect(parseThreadLinkHref("https://evil.test/threads/env-1/thread-1")).toBeNull();
+  it("reads only a bare thread path on the configured hosted app", () => {
+    const parse = (href: string) => parseThreadLinkHref(href, `${hosted}/`);
+    expect(parse(`${hosted}/threads/env-1/thread-1`)).toEqual(ref("env-1", "thread-1"));
+    expect(parse(`${hosted}/threads/env-1/thread-1?prompt=go`)).toBeNull();
+    expect(parse(`${hosted}/threads/env-1/thread-1/extra`)).toBeNull();
+    expect(parse(`${hosted}/threads/env-1`)).toBeNull();
+    expect(parse(`${hosted}/env-1/thread-1`)).toBeNull();
+    expect(parse("https://evil.test/threads/env-1/thread-1")).toBeNull();
+    expect(parseThreadLinkHref(`${hosted}/threads/env-1/thread-1`)).toBeNull();
+    expect(parseThreadLinkHref(`${hosted}/threads/env-1/thread-1`, "not a url")).toBeNull();
   });
 
   it("writes a copied link a reader can follow, labeled when it has a title", () => {
@@ -250,29 +255,35 @@ describe("hosted thread links", () => {
     expect(
       relabelThreadLinks(
         [
-          "See https://app.t3.codes/threads/there/t1.",
-          "[old](https://app.t3.codes/threads/there/t1)",
-          "<https://app.t3.codes/threads/there/t1>",
-          "`https://app.t3.codes/threads/there/t1`",
-          "https://app.t3.codes/threads/there/t1?prompt=go",
+          "See https://app.codenine.example/threads/there/t1.",
+          "[old](https://app.codenine.example/threads/there/t1)",
+          "<https://app.codenine.example/threads/there/t1>",
+          "`https://app.codenine.example/threads/there/t1`",
+          "https://app.codenine.example/threads/there/t1?prompt=go",
         ].join("\n"),
         local,
         title,
+        hosted,
       ),
     ).toBe(
       [
         "See [There](codenine-thread://v2/there/t1).",
         "[There](codenine-thread://v2/there/t1)",
         "[There](codenine-thread://v2/there/t1)",
-        "`https://app.t3.codes/threads/there/t1`",
-        "https://app.t3.codes/threads/there/t1?prompt=go",
+        "`https://app.codenine.example/threads/there/t1`",
+        "https://app.codenine.example/threads/there/t1?prompt=go",
       ].join("\n"),
     );
     expect(
-      relabelThreadLinks("https://app.t3.codes/threads/there/t1", local, () => undefined),
+      relabelThreadLinks(
+        "https://app.codenine.example/threads/there/t1",
+        local,
+        () => undefined,
+        hosted,
+      ),
     ).toBe("Thread on another machine");
-    expect(threadLinkRefs("Open https://app.t3.codes/threads/there/t%3A1", local)).toEqual([
-      ref("there", "t:1"),
-    ]);
+    expect(
+      threadLinkRefs("Open https://app.codenine.example/threads/there/t%3A1", local, hosted),
+    ).toEqual([ref("there", "t:1")]);
   });
 });

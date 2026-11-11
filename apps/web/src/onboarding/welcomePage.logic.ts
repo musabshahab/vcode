@@ -130,19 +130,6 @@ export function codexNeedsSetup(
 }
 
 /**
- * The phone joins by signing in to Codenine Connect, which shares the primary computer. Another
- * computer or a build without Codenine Connect gets no Phone section.
- */
-export function welcomeOffersPhone(input: {
-  readonly isPrimary: boolean;
-  readonly cloud: boolean;
-  // Relay read and write access, which sharing this computer through Codenine Connect needs.
-  readonly canShare: boolean;
-}) {
-  return input.isPrimary && input.cloud && input.canShare;
-}
-
-/**
  * The Codex instance the setup card shows, or null when the card is closed. A rebuild briefly
  * drops an instance from the list, so the card keeps its last status meanwhile instead of
  * unmounting and losing a sign-in in progress.

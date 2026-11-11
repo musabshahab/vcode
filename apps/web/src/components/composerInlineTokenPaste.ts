@@ -16,6 +16,7 @@ import {
   threadLinkContextReferences,
 } from "@codenine/shared/composerContextReferences";
 
+import { configuredHostedAppUrl } from "~/hostedPairing";
 import { readThreadShell } from "~/state/entities";
 
 const threadTitle = (ref: ScopedThreadRef) => readThreadShell(ref)?.title;
@@ -32,6 +33,7 @@ export function readPastedComposerContext(
     pastedText,
     decodedFragment?.records ?? [],
     threadTitle,
+    { hostedAppUrl: configuredHostedAppUrl() },
   );
   const source =
     decodedFragment?.source ??
@@ -73,7 +75,8 @@ export function importPastedComposerText(
       : occurrence.source;
   });
   // A thread the import refused, on a machine this agent cannot read, stays the link it was.
-  return threadLinkContextReferences(text, fragment?.records ?? [], threadTitle, (record) =>
-    nextId(record.contextId),
-  ).text;
+  return threadLinkContextReferences(text, fragment?.records ?? [], threadTitle, {
+    accept: (record) => nextId(record.contextId),
+    hostedAppUrl: configuredHostedAppUrl(),
+  }).text;
 }

@@ -42,6 +42,7 @@ export * from "./threadSearch.ts";
 export * from "./threadTags.ts";
 export * from "./threadTitle.ts";
 export * from "./codenineProjectFile.ts";
+export * from "./codenineRepository.ts";
 export * from "./editor.ts";
 export * from "./project.ts";
 export * from "./filesystem.ts";

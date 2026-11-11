@@ -1,3 +1,4 @@
+import { CODENINE_INSTALL_PS1_COMMAND, CODENINE_INSTALL_SH_COMMAND } from "@codenine/contracts";
 import * as HostProcess from "@codenine/shared/HostProcess";
 import { pathSetupCommand } from "@codenine/shared/shell";
 import * as Console from "effect/Console";
@@ -51,9 +52,7 @@ export const installCli = Effect.fn("cli.install.install")(function* () {
   const runtime = yield* standaloneRuntime;
   const windows = platform === "win32";
   if (Option.isNone(runtime)) {
-    const script = windows
-      ? "irm https://t3.codes/install.ps1 | iex"
-      : "curl -fsSL https://t3.codes/install.sh | sh";
+    const script = windows ? CODENINE_INSTALL_PS1_COMMAND : CODENINE_INSTALL_SH_COMMAND;
     return yield* new CliInstallError({
       reason: `Only the standalone codenine can install itself. Use \`${script}\`, or Settings in the desktop app.`,
     });

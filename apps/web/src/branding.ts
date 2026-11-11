@@ -1,4 +1,4 @@
-import type { DesktopAppBranding } from "@codenine/contracts";
+import { CODENINE_RELEASES_URL, type DesktopAppBranding } from "@codenine/contracts";
 import { formatAppDisplayName } from "./branding.logic";
 
 function readInjectedDesktopAppBranding(): DesktopAppBranding | null {
@@ -25,6 +25,4 @@ export const APP_DISPLAY_NAME =
   injectedDesktopAppBranding?.displayName ??
   formatAppDisplayName({ baseName: APP_BASE_NAME, stageLabel: APP_STAGE_LABEL });
 export const APP_VERSION = import.meta.env.APP_VERSION || "0.0.0";
-export const DESKTOP_DOWNLOAD_URL = "https://t3.codes/download";
-// Redirects to the App Store or Google Play to match the phone that opens it.
-export const MOBILE_APP_URL = "https://t3.codes/mobile";
+export const DESKTOP_DOWNLOAD_URL = CODENINE_RELEASES_URL;

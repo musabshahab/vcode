@@ -41,6 +41,7 @@ import {
   ORCHESTRATION_PROTOCOL_HEADER,
   ORCHESTRATION_PROTOCOL_VERSION_TEXT,
 } from "./environment.ts";
+import { codenineDocsUrl } from "./codenineRepository.ts";
 import {
   DpopFailureReason,
   AuthSessionId,
@@ -467,7 +468,7 @@ export type CodenineConnectTroubleshootingSection =
 export function codenineConnectTroubleshootingUrl(
   section: CodenineConnectTroubleshootingSection,
 ): string {
-  return `https://github.com/pingdotgg/t3code/blob/main/docs/user/codenine-connect-troubleshooting.md#${section}`;
+  return codenineDocsUrl(`user/codenine-connect-troubleshooting.md#${section}`);
 }
 
 const REACHABILITY_SECTION = {
