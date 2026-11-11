@@ -7,11 +7,11 @@ import {
   AuthTokenExchangeGrantType,
   EnvironmentHttpApi,
   EnvironmentId,
-} from "@t3tools/contracts";
+} from "@codenine/contracts";
 import {
   RelayEnvironmentLinkProofPayload,
   type RelayLinkProofRequest,
-} from "@t3tools/contracts/relay";
+} from "@codenine/contracts/relay";
 import * as Effect from "effect/Effect";
 import * as TestClock from "effect/testing/TestClock";
 import * as Layer from "effect/Layer";
@@ -23,7 +23,7 @@ import * as HttpRouter from "effect/http/HttpRouter";
 import * as HttpApi from "effect/http-api/HttpApi";
 import * as HttpApiBuilder from "effect/http-api/HttpApiBuilder";
 import * as NetAddress from "effect/net/NetAddress";
-import { decodeRelayJwt, RELAY_LINK_PROOF_TYP, verifyRelayJwt } from "@t3tools/shared/relayJwt";
+import { decodeRelayJwt, RELAY_LINK_PROOF_TYP, verifyRelayJwt } from "@codenine/shared/relayJwt";
 
 import * as EnvironmentKeys from "./environmentKeys.ts";
 import * as EnvironmentAuth from "../auth/EnvironmentAuth.ts";
@@ -71,7 +71,9 @@ const layerConfig = Layer.effect(
       desktopBootstrapToken: DESKTOP_BOOTSTRAP_TOKEN,
     };
   }),
-).pipe(Layer.provide(ServerConfig.layerTest(process.cwd(), { prefix: "t3-link-proof-test-" })));
+).pipe(
+  Layer.provide(ServerConfig.layerTest(process.cwd(), { prefix: "codenine-link-proof-test-" })),
+);
 
 // Real credential issuance, verification, origin checks and signing; no relay or tunnel is started.
 const layerLinkProofRoutes = HttpApiBuilder.layer(LinkProofTestApi).pipe(
@@ -189,7 +191,7 @@ describe("link proof over a non-loopback desktop transport", () => {
           publicKey: unverified.environmentPublicKey,
           token: proof,
           typ: RELAY_LINK_PROOF_TYP,
-          issuer: "t3-env:wsl-environment",
+          issuer: "codenine-env:wsl-environment",
           audience: proofRequest.relayIssuer,
         });
         expect(verified).toMatchObject({

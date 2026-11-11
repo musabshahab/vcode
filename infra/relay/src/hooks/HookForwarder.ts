@@ -12,13 +12,13 @@ import * as HttpClient from "effect/http/HttpClient";
 import type * as HttpServerRequest from "effect/http/HttpServerRequest";
 import * as HttpServerResponse from "effect/http/HttpServerResponse";
 import * as HttpApiBuilder from "effect/http-api/HttpApiBuilder";
-import { EnvironmentId } from "@t3tools/contracts";
-import { RelayApi, type RelayHookDeliveryProofPayload } from "@t3tools/contracts/relay";
+import { EnvironmentId } from "@codenine/contracts";
+import { RelayApi, type RelayHookDeliveryProofPayload } from "@codenine/contracts/relay";
 import {
   normalizeRelayIssuer,
   RELAY_HOOK_DELIVERY_HEADER,
   RELAY_HOOK_DELIVERY_TYP,
-} from "@t3tools/shared/relayJwt";
+} from "@codenine/shared/relayJwt";
 
 import * as RelayConfiguration from "../Config.ts";
 import * as CloudMintSigner from "../auth/CloudMintSigner.ts";
@@ -51,8 +51,8 @@ const DROPPED_REQUEST_HEADERS = new Set([
   "cookie",
   "x-real-ip",
   // Only the relay may set this; a sender could otherwise collide delivery ids.
-  "x-t3-relay-delivery-id",
-  "x-t3-relay-received-at",
+  "x-codenine-relay-delivery-id",
+  "x-codenine-relay-received-at",
   RELAY_HOOK_DELIVERY_HEADER,
   // The environment trusts trace context only from the relay, which sets its own.
   "traceparent",
@@ -100,7 +100,7 @@ export class HookRateLimiter extends Context.Service<
     readonly allowHook: (key: string) => Effect.Effect<boolean>;
     readonly allowEndpoint: (endpointKey: string) => Effect.Effect<boolean>;
   }
->()("t3code-relay/hooks/HookForwarder/HookRateLimiter") {}
+>()("codenine-relay/hooks/HookForwarder/HookRateLimiter") {}
 
 export class HookForwarder extends Context.Service<
   HookForwarder,
@@ -109,7 +109,7 @@ export class HookForwarder extends Context.Service<
       request: HttpServerRequest.HttpServerRequest,
     ) => Effect.Effect<HttpServerResponse.HttpServerResponse>;
   }
->()("t3code-relay/hooks/HookForwarder") {}
+>()("codenine-relay/hooks/HookForwarder") {}
 
 class HookBodyTooLarge extends Schema.TaggedError<HookBodyTooLarge>()("HookBodyTooLarge", {}) {}
 
@@ -234,7 +234,7 @@ const make = Effect.gen(function* () {
         typ: RELAY_HOOK_DELIVERY_TYP,
         payload: {
           iss: normalizeRelayIssuer(settings.relayIssuer),
-          aud: `t3-env:${input.environmentId}`,
+          aud: `codenine-env:${input.environmentId}`,
           sub: input.environmentId,
           jti: input.jti,
           iat: now,

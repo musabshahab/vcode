@@ -1,4 +1,4 @@
-import { GitCommandError } from "@t3tools/contracts";
+import { GitCommandError } from "@codenine/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
 import { appendHandoff, checkoutFailureDescription } from "./pullRequestDetail.logic";

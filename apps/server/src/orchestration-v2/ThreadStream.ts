@@ -1,10 +1,10 @@
 import type {
   OrchestrationV2ThreadProjection,
   OrchestrationV2ThreadStreamItem,
-} from "@t3tools/contracts";
+} from "@codenine/contracts";
 
-import { omitLocalVisibleTurnItems } from "@t3tools/shared/orchestrationV2BoundedSnapshot";
-import { dedupeSnapshotBodies } from "@t3tools/shared/orchestrationV2DedupedBodies";
+import { omitLocalVisibleTurnItems } from "@codenine/shared/orchestrationV2BoundedSnapshot";
+import { dedupeSnapshotBodies } from "@codenine/shared/orchestrationV2DedupedBodies";
 
 import {
   buildBoundedThreadProjection,

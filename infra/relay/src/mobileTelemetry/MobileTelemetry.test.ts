@@ -1,7 +1,7 @@
 import * as NodeHttpPlatform from "@effect/platform-node/NodeHttpPlatform";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { describe, expect, it } from "@effect/vitest";
-import { RelayApi } from "@t3tools/contracts/relay";
+import { RelayApi } from "@codenine/contracts/relay";
 import * as Deferred from "effect/Deferred";
 import * as Effect from "effect/Effect";
 import * as Fiber from "effect/Fiber";
@@ -274,7 +274,7 @@ describe("MobileTelemetry", () => {
       const harness = makeHarness({ objects: { [`ios/build/${BUILD_ID}.map`]: "{}" } });
       const iosStack =
         "Error: x\n    at render (address at /private/var/containers/Bundle/Application/" +
-        "0C1D/T3Code.app/main.jsbundle:1:12)";
+        "0C1D/Codenine.app/main.jsbundle:1:12)";
       const record = (stack: string) => ({
         scopeLogs: [{ logRecords: [{ attributes: [str("exception.stacktrace", stack)] }] }],
       });

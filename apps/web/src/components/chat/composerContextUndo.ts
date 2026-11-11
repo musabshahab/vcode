@@ -1,4 +1,4 @@
-import type { EnvironmentContextRecord, ThreadContextRecord } from "@t3tools/contracts";
+import type { EnvironmentContextRecord, ThreadContextRecord } from "@codenine/contracts";
 import { useEffect, useState } from "react";
 
 import type { ComposerFileAttachment } from "../../composerDraftStore";
@@ -37,7 +37,7 @@ export function useRetainedContextPayloads(draftTargetKey: string): RetainedCont
     setDraft({ targetKey: draftTargetKey, payloads: createRetainedContextPayloads() });
   }
   const retained = draft.payloads;
-  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- clears the retained payload maps when the draft target changes or the composer unmounts
+  // oxlint-disable-next-line codenine/no-unreasoned-state-sync -- clears the retained payload maps when the draft target changes or the composer unmounts
   useEffect(
     () => () => {
       for (const payloads of Object.values(retained)) payloads.clear();

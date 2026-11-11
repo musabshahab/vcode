@@ -5,9 +5,9 @@ import { compareSemverVersions } from "./semver.ts";
 
 export const CLI_RELEASE_CHECKSUMS_FILE = "SHA256SUMS";
 /** Where release archives download from, laid out as GitHub's release downloads. Unset, nothing downloads. */
-export const CLI_RELEASE_BASE_URL_ENV = "T3CODE_RELEASE_BASE_URL";
-/** The GitHub `owner/repo` whose releases `t3 update` lists. Unset, release checks are off. */
-export const CLI_RELEASE_REPOSITORY_ENV = "T3CODE_RELEASE_REPOSITORY";
+export const CLI_RELEASE_BASE_URL_ENV = "CODENINE_RELEASE_BASE_URL";
+/** The GitHub `owner/repo` whose releases `codenine update` lists. Unset, release checks are off. */
+export const CLI_RELEASE_REPOSITORY_ENV = "CODENINE_RELEASE_REPOSITORY";
 
 // Keep archive keys aligned with the Linux matrix, Windows ARM64 build, and cli_archive rows in release.yml.
 // Node single-executables do not support darwin-x64 and segfault at startup.
@@ -39,7 +39,7 @@ export function cliArchiveTarCommand(
 }
 
 export function cliArchiveFileName(version: string, platformKey: CliArchivePlatformKey): string {
-  return `t3-${version}-${platformKey}.${platformKey.startsWith("win32") ? "zip" : "tar.gz"}`;
+  return `codenine-${version}-${platformKey}.${platformKey.startsWith("win32") ? "zip" : "tar.gz"}`;
 }
 
 export function cliReleaseDownloadBaseUrl(
@@ -139,12 +139,12 @@ export function newestCliReleaseVersion(
 }
 
 const NpmReleaseMigrationManifest = Schema.Struct({
-  t3code: Schema.Struct({ databaseMigration: Schema.Int }),
+  codenine: Schema.Struct({ databaseMigration: Schema.Int }),
 });
 const decodeNpmReleaseMigrationManifest = Schema.decodeUnknownOption(NpmReleaseMigrationManifest);
 
-/** Highest database migration a release's server knows, from its npm `t3` manifest. */
+/** Highest database migration a release's server knows, from its npm `codenine` manifest. */
 export function npmReleaseDatabaseMigration(manifest: unknown): number | undefined {
-  return Option.getOrUndefined(decodeNpmReleaseMigrationManifest(manifest))?.t3code
+  return Option.getOrUndefined(decodeNpmReleaseMigrationManifest(manifest))?.codenine
     .databaseMigration;
 }

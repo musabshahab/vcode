@@ -1,4 +1,4 @@
-import { OrchestratorMcpFailure } from "@t3tools/contracts";
+import { OrchestratorMcpFailure } from "@codenine/contracts";
 import * as Option from "effect/Option";
 import * as Project from "../../../project/ProjectService.ts";
 import { readThread, unavailable } from "../../threadAccess.ts";
@@ -10,7 +10,7 @@ import * as WorktreeMcpService from "../../WorktreeMcpService.ts";
 import { WorktreeToolkit } from "./tools.ts";
 
 const handlers = {
-  t3_worktree_list: McpToolAccess.reads((input) =>
+  codenine_worktree_list: McpToolAccess.reads((input) =>
     Effect.gen(function* () {
       const context = yield* McpInvocationContext.McpInvocationContext;
       if (!context.capabilities.has("worktree"))
@@ -39,14 +39,14 @@ const handlers = {
         .pipe(Effect.mapError(unavailable));
     }),
   ),
-  t3_worktree_handoff: McpToolAccess.actsAsCaller((input) =>
+  codenine_worktree_handoff: McpToolAccess.actsAsCaller((input) =>
     Effect.gen(function* () {
       const scope = yield* McpInvocationContext.McpInvocationContext;
       const service = yield* WorktreeMcpService.WorktreeMcpService;
       return yield* service.handoff(scope, input);
     }),
   ),
-  t3_worktree_status: McpToolAccess.readsAsCaller(() =>
+  codenine_worktree_status: McpToolAccess.readsAsCaller(() =>
     Effect.gen(function* () {
       const scope = yield* McpInvocationContext.McpInvocationContext;
       const service = yield* WorktreeMcpService.WorktreeMcpService;

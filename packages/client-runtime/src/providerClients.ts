@@ -1,6 +1,6 @@
-import { ClaudeSettings, CodexSettings, ProviderDriverKind } from "@t3tools/contracts";
-import { makeProviderClientRegistry } from "@t3tools/provider-core/client";
-import { modelShortName } from "@t3tools/provider-core/modelShortName";
+import { ClaudeSettings, CodexSettings, ProviderDriverKind } from "@codenine/contracts";
+import { makeProviderClientRegistry } from "@codenine/provider-core/client";
+import { modelShortName } from "@codenine/provider-core/modelShortName";
 
 export const providerClients = makeProviderClientRegistry([
   {

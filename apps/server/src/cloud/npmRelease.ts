@@ -2,9 +2,9 @@ import {
   ServerNpmReleaseError,
   ServerNpmReleaseInput,
   type ServerNpmRelease,
-} from "@t3tools/contracts";
-import { npmReleaseDatabaseMigration } from "@t3tools/shared/cliRelease";
-import { resolveCommandPath } from "@t3tools/shared/shell";
+} from "@codenine/contracts";
+import { npmReleaseDatabaseMigration } from "@codenine/shared/cliRelease";
+import { resolveCommandPath } from "@codenine/shared/shell";
 import * as Cache from "effect/Cache";
 import * as Config from "effect/Config";
 import * as Context from "effect/Context";
@@ -19,8 +19,8 @@ import { FetchHttpClient, HttpClient } from "effect/http";
 import * as ProcessRunner from "../processRunner.ts";
 
 const Version = Schema.String.check(Schema.isPattern(/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/));
-const Manifest = Schema.Struct({ version: Version, t3code: Schema.optionalKey(Schema.Unknown) });
-// npm prints a bare version string when the release has no `t3code` field.
+const Manifest = Schema.Struct({ version: Version, codenine: Schema.optionalKey(Schema.Unknown) });
+// npm prints a bare version string when the release has no `codenine` field.
 const decodeManifest = Schema.decodeUnknownOption(
   Schema.fromJsonString(Schema.Union([Manifest, Schema.Tuple([Manifest]), Version])),
 );
@@ -36,7 +36,7 @@ export class NpmRelease extends Context.Service<
       input: ServerNpmReleaseInput,
     ) => Effect.Effect<ServerNpmRelease | null, ServerNpmReleaseError>;
   }
->()("t3/cloud/npmRelease") {}
+>()("codenine/cloud/npmRelease") {}
 
 function toRelease(spec: string, json: string) {
   const decoded = Option.getOrUndefined(decodeManifest(json));
@@ -57,7 +57,7 @@ function toRelease(spec: string, json: string) {
 }
 
 /** The npm package whose releases update checks read. Unset, release checks are off. */
-const releasePackageConfig = Config.String("T3CODE_RELEASE_NPM_PACKAGE").pipe(
+const releasePackageConfig = Config.String("CODENINE_RELEASE_NPM_PACKAGE").pipe(
   Config.map((name) => name.trim()),
   Config.option,
 );
@@ -101,7 +101,7 @@ export const make = Effect.fn("NpmRelease.make")(function* () {
           runner.run({
             command: npmPath,
             // Named fields keep the output small; the full package document grows with every release.
-            args: ["view", "--global", "--json", `${packageName}@${spec}`, "version", "t3code"],
+            args: ["view", "--global", "--json", `${packageName}@${spec}`, "version", "codenine"],
             timeout: Duration.seconds(15),
             maxOutputBytes: 256 * 1024,
           }),

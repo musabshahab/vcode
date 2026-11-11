@@ -10,14 +10,14 @@ import {
   resolveTextGenerationSelectionEnabled,
   type ResolvedServerSettings,
   type ServerSettings,
-  type T3ProjectFile,
+  type CodenineProjectFile,
   type ThreadEnvMode,
   type WorktreeCleanupRules,
-} from "@t3tools/contracts";
+} from "@codenine/contracts";
 import { normalizeProjectPathForComparison } from "./path.ts";
 import { fallbackTextGenerationModelSelection } from "./serverSettings.ts";
 
-export type ProjectSettingSource = "environment" | "project" | "t3.json";
+export type ProjectSettingSource = "environment" | "project" | "codenine.json";
 
 export type ProjectSettingSources = Readonly<
   Record<ProjectScopedServerSettingKey, ProjectSettingSource>
@@ -60,13 +60,13 @@ export function resolveProjectSettings(
   settings: ServerSettings,
   projectId: ProjectId | null,
   project: LegacyProjectSettingsFields | null | undefined,
-  projectFile: T3ProjectFile | null,
+  projectFile: CodenineProjectFile | null,
 ): ResolvedProjectSettings<ResolvedServerSettings>;
 export function resolveProjectSettings(
   settings: ServerSettings,
   projectId: ProjectId | null,
   project?: LegacyProjectSettingsFields | null,
-  projectFile?: T3ProjectFile | null,
+  projectFile?: CodenineProjectFile | null,
 ): ResolvedProjectSettings {
   const resolved = resolveProjectOverrides(settings, projectId, project);
   return projectFile === undefined ? resolved : applyProjectFile(resolved, projectFile);
@@ -74,7 +74,7 @@ export function resolveProjectSettings(
 
 function applyProjectFile(
   resolved: ResolvedProjectSettings,
-  projectFile: T3ProjectFile | null,
+  projectFile: CodenineProjectFile | null,
 ): ResolvedProjectSettings {
   let effective: Record<string, unknown> | null = null;
   let sources: Record<ProjectScopedServerSettingKey, ProjectSettingSource> | null = null;
@@ -94,7 +94,7 @@ function applyProjectFile(
 export function resolveProjectFileBackedSetting<K extends ProjectFileBackedSettingKey>(
   key: K,
   setting: ServerSettings[K],
-  projectFile: T3ProjectFile | null,
+  projectFile: CodenineProjectFile | null,
 ): { value: ResolvedServerSettings[K]; source: ProjectSettingSource } {
   if (setting !== null) {
     return { value: setting as ResolvedServerSettings[K], source: "environment" };
@@ -103,7 +103,7 @@ export function resolveProjectFileBackedSetting<K extends ProjectFileBackedSetti
   const fromFile = projectFile?.[field] as ResolvedServerSettings[K] | undefined;
   return fromFile === undefined
     ? { value: builtIn as ResolvedServerSettings[K], source: "environment" }
-    : { value: fromFile, source: "t3.json" };
+    : { value: fromFile, source: "codenine.json" };
 }
 
 function resolveProjectOverrides(

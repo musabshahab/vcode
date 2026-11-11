@@ -1,7 +1,7 @@
 import { useAtomValue } from "@effect/atom-react";
-import { scopeThreadRef } from "@t3tools/client-runtime/environment";
-import { squashAtomCommandFailure } from "@t3tools/client-runtime/state/runtime";
-import { ProviderInstanceId, type ThreadId } from "@t3tools/contracts";
+import { scopeThreadRef } from "@codenine/client-runtime/environment";
+import { squashAtomCommandFailure } from "@codenine/client-runtime/state/runtime";
+import { ProviderInstanceId, type ThreadId } from "@codenine/contracts";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { useEffect, useEffectEvent, useState } from "react";
 
@@ -21,7 +21,7 @@ const DEV_REPLAY_INSTANCE_ID = ProviderInstanceId.make("devReplay");
 
 /**
  * Starts free replay threads on the primary environment in dev builds. Ctrl+Alt+Shift+R
- * opens a picker, and `window.t3dev.replay(scenario)` does the same from the console.
+ * opens a picker, and `window.codeninedev.replay(scenario)` does the same from the console.
  */
 export function DevReplayHost() {
   const [open, setOpen] = useState(false);
@@ -88,9 +88,9 @@ export function DevReplayHost() {
   const replayFromConsole = useEffectEvent(replay);
   const listScenarios = useEffectEvent(() => scenarios.map((scenario) => scenario.slug));
 
-  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- exposes the console API on window and listens for the hidden window hotkey
+  // oxlint-disable-next-line codenine/no-unreasoned-state-sync -- exposes the console API on window and listens for the hidden window hotkey
   useEffect(() => {
-    window.t3dev = {
+    window.codeninedev = {
       replayScenarios: () => listScenarios(),
       replay: (scenario) => replayFromConsole(scenario),
     };
@@ -103,7 +103,7 @@ export function DevReplayHost() {
     };
     window.addEventListener("keydown", onKeyDown);
     return () => {
-      delete window.t3dev;
+      delete window.codeninedev;
       window.removeEventListener("keydown", onKeyDown);
     };
   }, []);

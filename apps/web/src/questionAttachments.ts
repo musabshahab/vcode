@@ -1,8 +1,8 @@
 import {
   onThreadRequestsResolved,
   resolvedQuestionDraftKeys,
-} from "@t3tools/client-runtime/state/thread-requests";
-import type { EnvironmentId, ThreadId } from "@t3tools/contracts";
+} from "@codenine/client-runtime/state/thread-requests";
+import type { EnvironmentId, ThreadId } from "@codenine/contracts";
 import { create } from "zustand";
 import { DraftId, useComposerDraftStore } from "./composerDraftStore";
 import { releaseDraftAttachments } from "./lib/attachmentUploadQueue";

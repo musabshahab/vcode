@@ -3,9 +3,9 @@
 // chat and settings routes, the sidebar and the right panel, through the same stores and
 // atoms the app reads. See renderScenarios.renders.tsx for the counting rules.
 import { createMemoryHistory } from "@tanstack/react-router";
-import { scopeThreadRef } from "@t3tools/client-runtime/environment";
-import type { ThreadId } from "@t3tools/contracts";
-import { DEFAULT_CLIENT_SETTINGS } from "@t3tools/contracts/settings";
+import { scopeThreadRef } from "@codenine/client-runtime/environment";
+import type { ThreadId } from "@codenine/contracts";
+import { DEFAULT_CLIENT_SETTINGS } from "@codenine/contracts/settings";
 import type * as Context from "effect/Context";
 import { AsyncResult } from "effect/reactivity";
 import { expect, it, vi } from "vite-plus/test";
@@ -150,7 +150,7 @@ async function report(
 }
 
 // A first mount loads lazy route chunks, fonts and the connection at varying times. The diff
-// panel and settings load more chunks on first open (the T3 Connect sidebar, the terminal
+// panel and settings load more chunks on first open (the Codenine Connect sidebar, the terminal
 // preview's renderer), which can land after a window has gone quiet, so the warm-up opens
 // each once and lets it settle.
 it("warm up", async () => {

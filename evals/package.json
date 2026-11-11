@@ -1,5 +1,5 @@
 {
-  "name": "@t3tools/evals",
+  "name": "@codenine/evals",
   "private": true,
   "type": "module",
   "scripts": {
@@ -10,9 +10,9 @@
     "test": "vp test run --config ../vite.config.ts --dir ."
   },
   "dependencies": {
+    "@codenine/contracts": "workspace:*",
+    "@codenine/shared": "workspace:*",
     "@effect/platform-node": "catalog:",
-    "@t3tools/contracts": "workspace:*",
-    "@t3tools/shared": "workspace:*",
     "effect": "catalog:"
   },
   "devDependencies": {

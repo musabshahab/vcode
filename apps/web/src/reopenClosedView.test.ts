@@ -1,4 +1,4 @@
-import { DEFAULT_CLIENT_SETTINGS, type ScopedThreadRef } from "@t3tools/contracts";
+import { DEFAULT_CLIENT_SETTINGS, type ScopedThreadRef } from "@codenine/contracts";
 import { beforeEach, describe, expect, it } from "vite-plus/test";
 
 import { type ClosedViewEntry, useClosedViewStore } from "./closedViewStore";

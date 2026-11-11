@@ -23,7 +23,7 @@ export class ElectronPowerMonitor extends Context.Service<
       listener: (state: ElectronThermalState) => void,
     ) => Effect.Effect<void, never, Scope.Scope>;
   }
->()("@t3tools/desktop/electron/ElectronPowerMonitor") {}
+>()("@codenine/desktop/electron/ElectronPowerMonitor") {}
 
 const onSimpleEvent: ElectronPowerMonitor["Service"]["onSimpleEvent"] = (eventName, listener) =>
   Effect.acquireRelease(

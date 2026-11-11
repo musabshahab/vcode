@@ -1,5 +1,5 @@
 {
-  "name": "@t3tools/client-runtime",
+  "name": "@codenine/client-runtime",
   "private": true,
   "type": "module",
   "exports": {
@@ -119,9 +119,9 @@
       "types": "./src/providerUpdateRequiredModels.ts",
       "default": "./src/providerUpdateRequiredModels.ts"
     },
-    "./t3ToolSummary": {
-      "types": "./src/t3ToolSummary.ts",
-      "default": "./src/t3ToolSummary.ts"
+    "./codenineToolSummary": {
+      "types": "./src/codenineToolSummary.ts",
+      "default": "./src/codenineToolSummary.ts"
     },
     "./relay": {
       "types": "./src/relay/index.ts",
@@ -433,13 +433,13 @@
     "test": "vp test run"
   },
   "dependencies": {
+    "@codenine/contracts": "workspace:*",
+    "@codenine/provider-core": "workspace:*",
+    "@codenine/secret-provider-definitions": "workspace:*",
+    "@codenine/shared": "workspace:*",
+    "@codenine/source-control-core": "workspace:*",
+    "@codenine/source-control-definitions": "workspace:*",
     "@pierre/diffs": "catalog:",
-    "@t3tools/contracts": "workspace:*",
-    "@t3tools/provider-core": "workspace:*",
-    "@t3tools/secret-provider-definitions": "workspace:*",
-    "@t3tools/shared": "workspace:*",
-    "@t3tools/source-control-core": "workspace:*",
-    "@t3tools/source-control-definitions": "workspace:*",
     "effect": "catalog:",
     "jszip": "3.10.1"
   },

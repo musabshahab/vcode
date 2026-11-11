@@ -1,5 +1,5 @@
-import type { ContextMenuItem } from "@t3tools/contracts";
-import type { SnoozePreset } from "@t3tools/client-runtime/state/thread-settled";
+import type { ContextMenuItem } from "@codenine/contracts";
+import type { SnoozePreset } from "@codenine/client-runtime/state/thread-settled";
 
 export type ThreadActionMenuId =
   | "find"

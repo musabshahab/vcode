@@ -3,8 +3,8 @@ import type {
   ChatFileAttachment,
   EnvironmentId,
   ScopedThreadRef,
-} from "@t3tools/contracts";
-import { formatAttachmentSize } from "@t3tools/client-runtime/state/attachments";
+} from "@codenine/contracts";
+import { formatAttachmentSize } from "@codenine/client-runtime/state/attachments";
 import { CircleAlertIcon, PaperclipIcon, PlayIcon, XIcon } from "lucide-react";
 import { useRef } from "react";
 

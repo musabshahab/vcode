@@ -1,0 +1,4 @@
+interface:
+  display_name: "Codenine App Testing"
+  short_description: "Test web and desktop in Codenine's Browser panel"
+  default_prompt: "Use $test-codenine-app to verify the affected web or desktop flow through Codenine's Browser panel."

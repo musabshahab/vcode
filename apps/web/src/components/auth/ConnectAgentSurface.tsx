@@ -5,9 +5,9 @@ import {
   AuthMcpClientAccess,
   AuthMcpAuthorizationRequest,
   parseMcpApprovalCode,
-} from "@t3tools/contracts";
+} from "@codenine/contracts";
 import { Radio as RadioPrimitive } from "@base-ui/react/radio";
-import { isLoopbackHost } from "@t3tools/shared/loopbackHost";
+import { isLoopbackHost } from "@codenine/shared/loopbackHost";
 import { EyeIcon, type LucideIcon } from "lucide-react";
 import type * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
@@ -93,7 +93,7 @@ export function ConnectAgentSurface() {
   const [errorMessage, setErrorMessage] = useState("");
   const [pending, setPending] = useState<"approve" | "deny" | null>(null);
 
-  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- fetches the MCP OAuth approval and redirects the window or stores details, ignoring stale answers
+  // oxlint-disable-next-line codenine/no-unreasoned-state-sync -- fetches the MCP OAuth approval and redirects the window or stores details, ignoring stale answers
   useEffect(() => {
     let cancelled = false;
     void runApproval((client) => client.mcpOAuth.approval({ payload: authorization })).then(
@@ -161,7 +161,7 @@ export function ConnectAgentSurface() {
   const { details } = loaded;
   const canApprove =
     pending === null && resolveApprovalDecision({ code: pairingCode, access, details }) !== null;
-  // A code from "Use T3 Code in another app" names its level, so the page does not ask again.
+  // A code from "Use Codenine in another app" names its level, so the page does not ask again.
   const codeAccess = parseMcpApprovalCode(pairingCode)?.access;
 
   return (
@@ -217,8 +217,8 @@ export function ConnectAgentSurface() {
             value={pairingCode}
           />
           <p className="text-xs text-muted-foreground">
-            Get one from Use T3 Code in another app (MCP), Settings → Sharing & access, or{" "}
-            <code>t3 auth pairing create</code> on this machine.
+            Get one from Use Codenine in another app (MCP), Settings → Sharing & access, or{" "}
+            <code>codenine auth pairing create</code> on this machine.
           </p>
         </div>
 

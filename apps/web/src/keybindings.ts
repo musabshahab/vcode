@@ -8,7 +8,7 @@ import {
   THREAD_JUMP_KEYBINDING_COMMANDS,
   type ModelPickerJumpKeybindingCommand,
   type ThreadJumpKeybindingCommand,
-} from "@t3tools/contracts";
+} from "@codenine/contracts";
 import {
   isMacPlatform,
   matchesKeybindingShortcut,
@@ -17,13 +17,13 @@ import {
   resolveEventKeys,
   type ShortcutEventLike as SharedShortcutEventLike,
   type ShortcutModifierStateLike,
-} from "@t3tools/shared/keybindings";
+} from "@codenine/shared/keybindings";
 import { isElectron } from "./env";
 import { isEditableFocused } from "./lib/editableFocus";
 import { projectScriptIdFromCommand } from "./projectScripts";
 
-export type { ShortcutModifierStateLike } from "@t3tools/shared/keybindings";
-export { shortcutKeyFromEvent } from "@t3tools/shared/keybindings";
+export type { ShortcutModifierStateLike } from "@codenine/shared/keybindings";
+export { shortcutKeyFromEvent } from "@codenine/shared/keybindings";
 
 export interface ShortcutEventLike extends SharedShortcutEventLike {
   target?: EventTarget | null;

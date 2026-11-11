@@ -7,7 +7,7 @@ import {
   type OrchestrationProjectShell,
   type ThreadPullRequestLink,
   SourceControlProviderKind,
-} from "@t3tools/contracts";
+} from "@codenine/contracts";
 import { describe, expect, it } from "@effect/vitest";
 import * as SecureRandom from "effect/crypto/SecureRandom";
 import * as Effect from "effect/Effect";
@@ -52,16 +52,16 @@ const invocation = (
 
 function makeProject(
   repositoryIdentity: OrchestrationProjectShell["repositoryIdentity"] = {
-    canonicalKey: "github.com/t3tools/t3code",
+    canonicalKey: "github.com/codenine/codenine",
     locator: {
       source: "git-remote",
       remoteName: "origin",
-      remoteUrl: "git@github.com:T3Tools/T3Code.git",
+      remoteUrl: "git@github.com:Codenine/Codenine.git",
     },
     provider: SourceControlProviderKind.make("github"),
-    displayName: "T3Tools/T3Code",
-    owner: "T3Tools",
-    name: "T3Code",
+    displayName: "Codenine/Codenine",
+    owner: "Codenine",
+    name: "Codenine",
   },
 ): OrchestrationProjectShell {
   return {
@@ -106,9 +106,9 @@ function makeLink(
   const { headBranch, baseBranch, ...rest } = overrides;
   return {
     host: "github.com",
-    repository: "t3tools/t3code",
+    repository: "codenine/codenine",
     number,
-    url: `https://github.com/t3tools/t3code/pull/${number}`,
+    url: `https://github.com/codenine/codenine/pull/${number}`,
     source: "manual",
     linkedAt: "2026-08-10T00:00:00.000Z",
     snapshot:
@@ -225,13 +225,13 @@ describe("pull request toolkit handlers", () => {
     Effect.gen(function* () {
       const harness = yield* makeHarness();
       const result = yield* harness.call("link_pull_request", {
-        url: "https://github.com/T3Tools/T3Code/pull/123/files",
+        url: "https://github.com/Codenine/Codenine/pull/123/files",
       });
       expect(result).toEqual({
         host: "github.com",
-        repository: "t3tools/t3code",
+        repository: "codenine/codenine",
         number: 123,
-        url: "https://github.com/T3Tools/T3Code/pull/123/files",
+        url: "https://github.com/Codenine/Codenine/pull/123/files",
         alreadyLinked: false,
       });
       expect(yield* Ref.get(harness.commands)).toMatchObject([
@@ -239,7 +239,7 @@ describe("pull request toolkit handlers", () => {
           type: "thread.pull-request.link",
           threadId: THREAD_ID,
           host: "github.com",
-          repository: "t3tools/t3code",
+          repository: "codenine/codenine",
           number: 123,
           source: "agent",
         },
@@ -251,7 +251,7 @@ describe("pull request toolkit handlers", () => {
     Effect.gen(function* () {
       const harness = yield* makeHarness();
       const result = yield* harness.call("watch_pull_request", {
-        url: "https://github.com/t3tools/t3code/pull/9",
+        url: "https://github.com/codenine/codenine/pull/9",
       });
       expect(result).toMatchObject({ number: 9, watching: false, wasWatching: false });
       expect(yield* Ref.get(harness.commands)).toMatchObject([
@@ -259,7 +259,7 @@ describe("pull request toolkit handlers", () => {
           type: "thread.pull-request.watch",
           number: 9,
           watching: true,
-          link: { url: "https://github.com/t3tools/t3code/pull/9", source: "agent" },
+          link: { url: "https://github.com/codenine/codenine/pull/9", source: "agent" },
         },
       ]);
     }),
@@ -287,11 +287,11 @@ describe("pull request toolkit handlers", () => {
         ]),
       });
       const error = yield* harness
-        .call("watch_pull_request", { repository: "t3tools/t3code", number: 1 })
+        .call("watch_pull_request", { repository: "codenine/codenine", number: 1 })
         .pipe(Effect.flip);
       expect(error).toMatchObject({ _tag: "PullRequestNotOpenError", state: "merged" });
       expect(
-        yield* harness.call("unwatch_pull_request", { repository: "t3tools/t3code", number: 3 }),
+        yield* harness.call("unwatch_pull_request", { repository: "codenine/codenine", number: 3 }),
       ).toMatchObject({ wasWatching: true });
       expect(yield* Ref.get(harness.commands)).toMatchObject([
         { type: "thread.pull-request.watch", number: 3, watching: false },
@@ -307,7 +307,7 @@ describe("pull request toolkit handlers", () => {
           { ...closed, snapshot: closed.snapshot && { ...closed.snapshot, state: "closed" } },
         ]),
       });
-      yield* harness.call("watch_pull_request", { repository: "t3tools/t3code", number: 1 });
+      yield* harness.call("watch_pull_request", { repository: "codenine/codenine", number: 1 });
       expect(yield* Ref.get(harness.commands)).toMatchObject([
         { type: "thread.pull-request.watch", number: 1, watching: true },
       ]);
@@ -327,7 +327,7 @@ describe("pull request toolkit handlers", () => {
         },
       });
       const error = yield* harness
-        .call("watch_pull_request", { repository: "t3tools/t3code", number: 1 })
+        .call("watch_pull_request", { repository: "codenine/codenine", number: 1 })
         .pipe(Effect.flip);
       expect(error).toMatchObject({ _tag: "PullRequestWatchFromSubagentError" });
       expect(yield* Ref.get(harness.commands)).toEqual([]);
@@ -347,7 +347,7 @@ describe("pull request toolkit handlers", () => {
         },
       });
       const result = yield* harness.call("link_pull_request", {
-        url: "https://github.com/t3tools/t3code/pull/124",
+        url: "https://github.com/codenine/codenine/pull/124",
       });
       expect(result).toMatchObject({ number: 124, next: CHILD_PULL_REQUEST_REPORT_NEXT });
     }),
@@ -361,7 +361,7 @@ describe("pull request toolkit handlers", () => {
           command.type === "thread.pull-request.link" ? "already linked" : null,
       });
       const result = yield* harness.call("link_pull_request", {
-        url: "https://github.com/t3tools/t3code/pull/123",
+        url: "https://github.com/codenine/codenine/pull/123",
       });
       expect(result.alreadyLinked).toBe(true);
     }),
@@ -377,17 +377,17 @@ describe("pull request toolkit handlers", () => {
             : null,
       });
       const linked = yield* harness.call("unlink_pull_request", {
-        repository: "t3tools/t3code",
+        repository: "codenine/codenine",
         number: 5,
       });
       expect(linked).toEqual({
         host: "github.com",
-        repository: "t3tools/t3code",
+        repository: "codenine/codenine",
         number: 5,
         wasLinked: true,
       });
       const missing = yield* harness.call("unlink_pull_request", {
-        url: "https://github.com/t3tools/t3code/pull/9",
+        url: "https://github.com/codenine/codenine/pull/9",
       });
       expect(missing.wasLinked).toBe(false);
       expect(yield* Ref.get(harness.commands)).toMatchObject([
@@ -402,7 +402,7 @@ describe("pull request toolkit handlers", () => {
         thread: makeThread([makeLink(9, { source: "stack-dismissed" })]),
       });
       const result = yield* harness.call("unlink_pull_request", {
-        repository: "t3tools/t3code",
+        repository: "codenine/codenine",
         number: 9,
       });
       expect(result.wasLinked).toBe(false);
@@ -415,13 +415,13 @@ describe("pull request toolkit handlers", () => {
       const harness = yield* makeHarness({
         thread: makeThread([makeLink(1), { ...makeLink(2), source: "stack-dismissed" }]),
       });
-      const url = (number: number) => `https://github.com/t3tools/t3code/pull/${number}`;
+      const url = (number: number) => `https://github.com/codenine/codenine/pull/${number}`;
       const result = yield* harness.call("link_pull_requests", {
         urls: [url(1), url(2), url(3), url(3), "https://example.com/not-a-pr"],
       });
       expect(result).toEqual({
-        linked: [{ host: "github.com", repository: "t3tools/t3code", numbers: [2, 3] }],
-        alreadyLinked: [{ host: "github.com", repository: "t3tools/t3code", numbers: [1] }],
+        linked: [{ host: "github.com", repository: "codenine/codenine", numbers: [2, 3] }],
+        alreadyLinked: [{ host: "github.com", repository: "codenine/codenine", numbers: [1] }],
         linkedCount: 3,
         invalidUrls: ["https://example.com/not-a-pr"],
       });
@@ -452,8 +452,8 @@ describe("pull request toolkit handlers", () => {
       });
       expect(result).toEqual({
         unlinked: [
-          { host: "github.com", repository: "t3tools/t3code", state: "merged", numbers: [1] },
-          { host: "github.com", repository: "t3tools/t3code", state: "closed", numbers: [3] },
+          { host: "github.com", repository: "codenine/codenine", state: "merged", numbers: [1] },
+          { host: "github.com", repository: "codenine/codenine", state: "closed", numbers: [3] },
         ],
         unlinkedCount: 2,
         remaining: 2,
@@ -480,9 +480,9 @@ describe("pull request toolkit handlers", () => {
       expect(result.pullRequests.map((entry) => entry.number)).toEqual([3, 1, 2, 10]);
       expect(result.pullRequests[0]).toEqual({
         host: "github.com",
-        repository: "t3tools/t3code",
+        repository: "codenine/codenine",
         number: 3,
-        url: "https://github.com/t3tools/t3code/pull/3",
+        url: "https://github.com/codenine/codenine/pull/3",
         source: "agent",
         watching: false,
         state: "open",
@@ -513,7 +513,7 @@ describe("listThreadPullRequests", () => {
       kind: "native" as const,
       id: "stack-1",
       number: 1,
-      url: "https://github.com/t3tools/t3code/stack/1",
+      url: "https://github.com/codenine/codenine/stack/1",
       base: "main",
       layers: [
         { number: 1, headBranch: "a", state: "open" as const },

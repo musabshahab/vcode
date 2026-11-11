@@ -3,7 +3,7 @@ import type {
   RelayEnvironmentLinkProofPayload,
   RelayEnvironmentLinkRequest,
   RelayManagedEndpoint,
-} from "@t3tools/contracts/relay";
+} from "@codenine/contracts/relay";
 import * as Context from "effect/Context";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
@@ -150,7 +150,7 @@ export class EnvironmentLinks extends Context.Service<
       readonly environmentId: string;
     }) => Effect.Effect<boolean, EnvironmentLinkRevokePersistenceError>;
   }
->()("t3code-relay/environments/EnvironmentLinks") {}
+>()("codenine-relay/environments/EnvironmentLinks") {}
 
 function agentAwarenessDeliveryUserKeyCondition(input: {
   readonly environmentId: string;

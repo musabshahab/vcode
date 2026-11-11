@@ -1,5 +1,5 @@
 {
-  "name": "@t3tools/secret-provider-definitions",
+  "name": "@codenine/secret-provider-definitions",
   "private": true,
   "type": "module",
   "exports": {
@@ -12,6 +12,6 @@
     "typecheck": "effect-tsgo tsrs --noEmit"
   },
   "dependencies": {
-    "@t3tools/secret-provider-core": "workspace:*"
+    "@codenine/secret-provider-core": "workspace:*"
   }
 }

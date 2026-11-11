@@ -1,10 +1,13 @@
 import {
   BearerConnectionTarget,
   PrimaryConnectionTarget,
-} from "@t3tools/client-runtime/connection";
-import type { EnvironmentCatalogState } from "@t3tools/client-runtime/state/connections";
-import { EMPTY_SHELL_STATE, type EnvironmentShellState } from "@t3tools/client-runtime/state/shell";
-import { EnvironmentId } from "@t3tools/contracts";
+} from "@codenine/client-runtime/connection";
+import type { EnvironmentCatalogState } from "@codenine/client-runtime/state/connections";
+import {
+  EMPTY_SHELL_STATE,
+  type EnvironmentShellState,
+} from "@codenine/client-runtime/state/shell";
+import { EnvironmentId } from "@codenine/contracts";
 import * as Option from "effect/Option";
 import { Atom, AtomRegistry } from "effect/reactivity";
 import { describe, expect, it, vi } from "vite-plus/test";

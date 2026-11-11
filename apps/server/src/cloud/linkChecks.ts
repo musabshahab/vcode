@@ -3,7 +3,7 @@ import type {
   RelayLinkProofRequest,
   RelayManagedEndpointOrigin,
   RelayManagedEndpointRuntimeConfig,
-} from "@t3tools/contracts/relay";
+} from "@codenine/contracts/relay";
 import type { HttpServerRequest } from "effect/http";
 
 const CLOUD_PROOF_MAX_LIFETIME_SECONDS = 5 * 60;
@@ -80,7 +80,7 @@ export function parseManagedEndpointLocalOrigin(localOrigin: string) {
 }
 
 /**
- * Whether clients should offer to turn on T3 Connect over this session: only the desktop app's
+ * Whether clients should offer to turn on Codenine Connect over this session: only the desktop app's
  * own bootstrap session, from any address (WSL answers on a distro IP), never through a proxy.
  * A loopback address alone does not count, since SSH port forwards look like loopback too.
  */

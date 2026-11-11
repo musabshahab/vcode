@@ -1,8 +1,8 @@
 import {
   ConnectionBlockedError,
   ConnectionTransientError,
-} from "@t3tools/client-runtime/connection";
-import { EnvironmentRpcUnavailableError } from "@t3tools/client-runtime/rpc";
+} from "@codenine/client-runtime/connection";
+import { EnvironmentRpcUnavailableError } from "@codenine/client-runtime/rpc";
 import * as Cause from "effect/Cause";
 import * as Schema from "effect/Schema";
 import type { RefObject } from "react";
@@ -12,7 +12,7 @@ import {
   type ComposerContextRecord,
   type EnvironmentId,
   PROVIDER_SEND_TURN_MAX_ATTACHMENTS,
-} from "@t3tools/contracts";
+} from "@codenine/contracts";
 import {
   type ComposerFileAttachment,
   type DraftId,
@@ -41,7 +41,7 @@ import { pendingDraftWork } from "./pendingDraftWork";
 import { randomUUID } from "~/lib/utils";
 import { readPreparedConnection } from "~/state/session";
 import { resolveAssetUrl } from "~/assets/assetUrls";
-import { toKindScopedComposerContextId } from "@t3tools/shared/composerContextReferences";
+import { toKindScopedComposerContextId } from "@codenine/shared/composerContextReferences";
 import { toastManager } from "../ui/toast";
 import {
   type ComposerDraftContextRecords,

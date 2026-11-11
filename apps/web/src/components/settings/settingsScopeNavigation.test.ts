@@ -1,4 +1,4 @@
-import { EnvironmentId, ProviderInstanceId } from "@t3tools/contracts";
+import { EnvironmentId, ProviderInstanceId } from "@codenine/contracts";
 import {
   createMemoryHistory,
   createRootRoute,
@@ -12,9 +12,9 @@ import { resolveSettingsScope } from "./settingsScope";
 import { retainSettingsScope, validateSettingsRouteSearch } from "./settingsScopeNavigation";
 
 const checkoutSearch = {
-  project: "repository:t3code",
+  project: "repository:codenine",
   machine: "remote-server",
-  checkout: "remote-server:/home/user/T3 Code",
+  checkout: "remote-server:/home/user/Codenine",
 };
 
 function createSettingsRouter(initialEntry = "/settings/general") {
@@ -98,7 +98,7 @@ describe("settings scope navigation", () => {
       const router = createSettingsRouter();
       await router.navigate({ to, search: checkoutSearch });
 
-      const regroupedCheckout = { ...checkoutSearch, project: "separate:t3code" };
+      const regroupedCheckout = { ...checkoutSearch, project: "separate:codenine" };
       await router.navigate({
         from: "/settings",
         to: router.state.location.pathname,

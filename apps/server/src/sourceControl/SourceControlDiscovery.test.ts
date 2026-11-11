@@ -1,18 +1,18 @@
-import { SourceControlProviderKind, VcsProcessSpawnError } from "@t3tools/contracts";
+import { SourceControlProviderKind, VcsProcessSpawnError } from "@codenine/contracts";
 import { assert, it } from "@effect/vitest";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
-import { providerAuth } from "@t3tools/source-control-core/server/discovery";
-import type * as SourceControlHost from "@t3tools/source-control-core/server/SourceControlHost";
+import { providerAuth } from "@codenine/source-control-core/server/discovery";
+import type * as SourceControlHost from "@codenine/source-control-core/server/SourceControlHost";
 import {
   fakeDiscovery,
   fakeSourceControlProvider,
-} from "@t3tools/source-control-testing/fakeSourceControlDriver";
-import * as HostProcess from "@t3tools/shared/HostProcess";
-import { SpawnExecutableResolution } from "@t3tools/shared/shell";
-import * as TestSourceControlHost from "@t3tools/source-control-testing/TestSourceControlHost";
+} from "@codenine/source-control-testing/fakeSourceControlDriver";
+import * as HostProcess from "@codenine/shared/HostProcess";
+import { SpawnExecutableResolution } from "@codenine/shared/shell";
+import * as TestSourceControlHost from "@codenine/source-control-testing/TestSourceControlHost";
 
 import * as ServerConfig from "../config.ts";
 import * as ServerSettings from "../serverSettings.ts";
@@ -81,7 +81,7 @@ const layerDiscovery = (runProcess = run) =>
     Layer.provideMerge(Layer.mock(VcsDriverRegistry.VcsDriverRegistry)({})),
     Layer.provideMerge(Layer.mock(VcsProcess.VcsProcess)({ run: runProcess })),
     Layer.provideMerge(
-      ServerConfig.layerTest(process.cwd(), { prefix: "t3-source-control-discovery-" }),
+      ServerConfig.layerTest(process.cwd(), { prefix: "codenine-source-control-discovery-" }),
     ),
     Layer.provideMerge(NodeServices.layer),
   );

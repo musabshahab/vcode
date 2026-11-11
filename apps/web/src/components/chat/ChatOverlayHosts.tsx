@@ -1,4 +1,4 @@
-import type { EnvironmentId, MessageId, ThreadId } from "@t3tools/contracts";
+import type { EnvironmentId, MessageId, ThreadId } from "@codenine/contracts";
 import { useAtomValue } from "@effect/atom-react";
 import { Atom } from "effect/reactivity";
 

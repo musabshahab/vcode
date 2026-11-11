@@ -1,9 +1,9 @@
 import ChatMarkdown from "./ChatMarkdown";
-import { isSvgAttachment } from "@t3tools/shared/image";
+import { isSvgAttachment } from "@codenine/shared/image";
 import { ReadOnlySourcePreview } from "./files/AttachmentFilePreview";
-import type { EnvironmentContextRecord, ThreadContextRecord } from "@t3tools/contracts";
-import { formatAttachmentSize } from "@t3tools/client-runtime/state/attachments";
-import { videoMimeType } from "@t3tools/shared/video";
+import type { EnvironmentContextRecord, ThreadContextRecord } from "@codenine/contracts";
+import { formatAttachmentSize } from "@codenine/client-runtime/state/attachments";
+import { videoMimeType } from "@codenine/shared/video";
 import { MessageCircleIcon } from "lucide-react";
 import { createContext, type ReactElement, type ReactNode, use } from "react";
 import { ComposerContextActionsContext } from "./composerContextActions";

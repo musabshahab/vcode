@@ -1,5 +1,5 @@
-import { settlePromise } from "@t3tools/client-runtime/state/runtime";
-import type { DesktopSshPasswordPromptRequest } from "@t3tools/contracts";
+import { settlePromise } from "@codenine/client-runtime/state/runtime";
+import type { DesktopSshPasswordPromptRequest } from "@codenine/contracts";
 import * as AsyncResult from "effect/reactivity/AsyncResult";
 import * as Cause from "effect/Cause";
 import { useId, useRef, useState, useSyncExternalStore } from "react";
@@ -158,9 +158,9 @@ function ActiveSshPasswordPrompt({
         <DialogHeader>
           <DialogTitle>SSH verification required</DialogTitle>
           <DialogDescription>
-            Enter the password or verification code required by <code>{target}</code>. T3 Code
+            Enter the password or verification code required by <code>{target}</code>. Codenine
             passes your response to the local SSH process and keeps it in memory to reuse for this
-            host. T3 Code does not write it to disk.
+            host. Codenine does not write it to disk.
           </DialogDescription>
         </DialogHeader>
         <DialogPanel scrollFade={false}>

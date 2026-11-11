@@ -5,7 +5,7 @@ import {
   type SourceControlSignInInput,
   type SourceControlSignInPrompt,
   type SourceControlSignInResult,
-} from "@t3tools/contracts";
+} from "@codenine/contracts";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
@@ -27,7 +27,7 @@ export class SourceControlSignIn extends Context.Service<
     ) => Effect.Effect<void, SourceControlSignInError>;
     readonly access: (input: SourceControlAppAccessInput) => Effect.Effect<SourceControlAppAccess>;
   }
->()("t3/sourceControl/SourceControlSignIn") {}
+>()("codenine/sourceControl/SourceControlSignIn") {}
 
 const make = Effect.gen(function* () {
   const drivers = yield* SourceControlBuiltInDrivers.SourceControlDrivers;

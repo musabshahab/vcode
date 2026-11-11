@@ -1,9 +1,9 @@
 import {
   isAtomCommandInterrupted,
   squashAtomCommandFailure,
-} from "@t3tools/client-runtime/state/runtime";
-import { promptLinkAppPath } from "@t3tools/shared/promptLinks";
-import { readPairingAppLink, resolveRemotePairingTarget } from "@t3tools/shared/remote";
+} from "@codenine/client-runtime/state/runtime";
+import { promptLinkAppPath } from "@codenine/shared/promptLinks";
+import { readPairingAppLink, resolveRemotePairingTarget } from "@codenine/shared/remote";
 import { useRouter } from "@tanstack/react-router";
 import { useEffect, useEffectEvent, useRef, useState } from "react";
 
@@ -91,7 +91,7 @@ export function DesktopWebLinkCoordinator() {
     queueRef.current = queueRef.current.then(() => openLink(url)).catch(() => undefined);
   });
 
-  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- subscribes to desktop web link opens over the bridge and marks the renderer ready
+  // oxlint-disable-next-line codenine/no-unreasoned-state-sync -- subscribes to desktop web link opens over the bridge and marks the renderer ready
   useEffect(() => {
     if (!ready || webLinks === undefined) return;
     let subscribed = true;

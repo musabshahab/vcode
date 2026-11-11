@@ -1,11 +1,11 @@
-import type { VcsStatusResult } from "@t3tools/contracts";
+import type { VcsStatusResult } from "@codenine/contracts";
 import { AsyncResult, Atom, AtomRegistry } from "effect/reactivity";
 import { describe, expect, it, vi } from "vite-plus/test";
 
 import { chatGitStatusAtom } from "./vcs";
 
 vi.mock("../connection/runtime", () => ({ connectionAtomRuntime: {} }));
-vi.mock("@t3tools/client-runtime/state/vcs", () => ({
+vi.mock("@codenine/client-runtime/state/vcs", () => ({
   createVcsActionManager: () => ({}),
   createVcsEnvironmentAtoms: () => ({}),
   createVcsStatusRevalidationAtomFamily: () => () => null,
@@ -51,7 +51,7 @@ describe("chatGitStatusAtom", () => {
     const pr = () => ({
       number: 42,
       title: "Feature PR",
-      url: "https://github.com/pingdotgg/t3code/pull/42",
+      url: "https://github.com/acme/codenine/pull/42",
       baseRef: "main",
       headRef: "feature",
       state: "open" as const,

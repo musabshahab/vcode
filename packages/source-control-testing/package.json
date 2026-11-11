@@ -1,5 +1,5 @@
 {
-  "name": "@t3tools/source-control-testing",
+  "name": "@codenine/source-control-testing",
   "private": true,
   "type": "module",
   "exports": {
@@ -16,10 +16,10 @@
     "typecheck": "effect-tsgo tsrs --noEmit"
   },
   "dependencies": {
+    "@codenine/contracts": "workspace:*",
+    "@codenine/shared": "workspace:*",
+    "@codenine/source-control-core": "workspace:*",
     "@effect/platform-node": "catalog:",
-    "@t3tools/contracts": "workspace:*",
-    "@t3tools/shared": "workspace:*",
-    "@t3tools/source-control-core": "workspace:*",
     "effect": "catalog:"
   },
   "devDependencies": {

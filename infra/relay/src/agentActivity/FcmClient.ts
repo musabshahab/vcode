@@ -59,7 +59,7 @@ export class FcmClient extends Context.Service<
       readonly alert: boolean;
     }) => Effect.Effect<{ readonly unregistered: boolean }, FcmClientError>;
   }
->()("t3code-relay/agentActivity/FcmClient") {}
+>()("codenine-relay/agentActivity/FcmClient") {}
 
 const make = Effect.gen(function* () {
   const config = yield* RelayConfiguration.RelayConfiguration;
@@ -132,7 +132,7 @@ const make = Effect.gen(function* () {
             android: {
               priority: "HIGH",
               ttl: "300s",
-              ...(!input.alert ? { collapse_key: "t3-agent-activity" } : {}),
+              ...(!input.alert ? { collapse_key: "codenine-agent-activity" } : {}),
               ...(input.packageName ? { restricted_package_name: input.packageName } : {}),
             },
           },

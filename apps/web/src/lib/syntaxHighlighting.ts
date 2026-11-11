@@ -1,4 +1,4 @@
-import "@t3tools/client-runtime/assembly-highlighting";
+import "@codenine/client-runtime/assembly-highlighting";
 import {
   getSharedHighlighter,
   setCustomExtension,

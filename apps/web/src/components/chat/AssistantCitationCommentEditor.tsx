@@ -1,4 +1,4 @@
-import { ASSISTANT_CITATION_MAX_COMMENT_LENGTH, type AssistantCitation } from "@t3tools/contracts";
+import { ASSISTANT_CITATION_MAX_COMMENT_LENGTH, type AssistantCitation } from "@codenine/contracts";
 import { useRef, useState, type RefObject } from "react";
 
 import { textDirection } from "~/textDirection";

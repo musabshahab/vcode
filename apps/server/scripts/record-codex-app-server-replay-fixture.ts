@@ -5,8 +5,8 @@ import { revertCodexThread } from "../src/provider/CodexThreadRevert.ts";
 import { buildCodexInitializeParams } from "../src/provider/CodexProvider.ts";
 import * as NodeRuntime from "@effect/platform-node/NodeRuntime";
 import * as NodeServices from "@effect/platform-node/NodeServices";
-import * as HostProcess from "@t3tools/shared/HostProcess";
-import { resolveSpawnCommand } from "@t3tools/shared/shell";
+import * as HostProcess from "@codenine/shared/HostProcess";
+import { resolveSpawnCommand } from "@codenine/shared/shell";
 import * as Console from "effect/Console";
 import * as Deferred from "effect/Deferred";
 import * as FileSystem from "effect/FileSystem";
@@ -58,7 +58,7 @@ import { codexReplayRecordingOutputRecords } from "./codexReplayRecordingRecords
 import { makeReplayRecorderDeferredRegistry } from "./replayRecorderDeferredRegistry.ts";
 
 const CODEX_REPLAY_PLAN_MODE_DEVELOPER_INSTRUCTIONS =
-  process.env.T3_CODEX_REPLAY_PLAN_DEVELOPER_INSTRUCTIONS ??
+  process.env.CODENINE_CODEX_REPLAY_PLAN_DEVELOPER_INSTRUCTIONS ??
   "You are in Plan mode. Prefer request_user_input for clarifying questions. When presenting a complete plan, wrap it in <proposed_plan> and </proposed_plan>.";
 // Match V2 adapter frames so recordings replay unchanged.
 const CODEX_CLIENT_CAPABILITIES = {
@@ -66,7 +66,8 @@ const CODEX_CLIENT_CAPABILITIES = {
   optOutNotificationMethods: ["turn/diff/updated"],
 } as const;
 const CODEX_REPLAY_DEFAULT_MODEL = "gpt-6-luna";
-const CODEX_REPLAY_MODEL_OVERRIDE = readArgValue("--model") ?? process.env.T3_CODEX_REPLAY_MODEL;
+const CODEX_REPLAY_MODEL_OVERRIDE =
+  readArgValue("--model") ?? process.env.CODENINE_CODEX_REPLAY_MODEL;
 
 const SCENARIO_NAMES = [
   "simple",
@@ -197,7 +198,9 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function parseScenarios(): ReadonlyArray<ScenarioName> {
   const rawValues = [
     ...readArgValues("--scenario"),
-    ...(process.env.T3_CODEX_REPLAY_SCENARIOS ? [process.env.T3_CODEX_REPLAY_SCENARIOS] : []),
+    ...(process.env.CODENINE_CODEX_REPLAY_SCENARIOS
+      ? [process.env.CODENINE_CODEX_REPLAY_SCENARIOS]
+      : []),
   ];
   const requested = rawValues.length > 0 ? rawValues : ["simple"];
   const names = requested.flatMap((value) =>
@@ -1085,7 +1088,7 @@ function layerCodex({ recorder }: { readonly recorder: Recorder }) {
       const { VP_TOOL_RECURSION: _vpToolRecursion, ...environment } =
         yield* HostProcess.Environment;
       const spawner = yield* ChildProcessSpawner.ChildProcessSpawner;
-      const commandName = environment.T3_CODEX_BIN ?? environment.CODEX_BIN ?? "codex";
+      const commandName = environment.CODENINE_CODEX_BIN ?? environment.CODEX_BIN ?? "codex";
       const spawnCommand = yield* resolveSpawnCommand(commandName, ["app-server"], {
         env: environment,
       });
@@ -1488,11 +1491,11 @@ const runScenario = Effect.fn("record-codex-app-server-replay-fixture.runScenari
 });
 
 const RecorderEnv = Config.all({
-  T3_CODEX_REPLAY_OUT_DIR: Config.String("T3_CODEX_REPLAY_OUT_DIR").pipe(
+  CODENINE_CODEX_REPLAY_OUT_DIR: Config.String("CODENINE_CODEX_REPLAY_OUT_DIR").pipe(
     Config.option,
     Config.map(Option.getOrUndefined),
   ),
-  T3_CODEX_REPLAY_OUT: Config.String("T3_CODEX_REPLAY_OUT").pipe(
+  CODENINE_CODEX_REPLAY_OUT: Config.String("CODENINE_CODEX_REPLAY_OUT").pipe(
     Config.option,
     Config.map(Option.getOrUndefined),
   ),
@@ -1503,15 +1506,17 @@ const program = Effect.gen(function* () {
   const path = yield* Path.Path;
   const requestedScenarios = parseScenarios();
   const allScenarios = scenarios();
-  const outDir = readArgValue("--out-dir") ?? recorderEnv.T3_CODEX_REPLAY_OUT_DIR;
-  const singleOutPath = readArgValue("--out") ?? recorderEnv.T3_CODEX_REPLAY_OUT;
+  const outDir = readArgValue("--out-dir") ?? recorderEnv.CODENINE_CODEX_REPLAY_OUT_DIR;
+  const singleOutPath = readArgValue("--out") ?? recorderEnv.CODENINE_CODEX_REPLAY_OUT;
   const selected = allScenarios.filter((scenario) => requestedScenarios.includes(scenario.name));
 
   if (selected.length === 0) {
     throw new Error("No replay scenarios selected.");
   }
   if (singleOutPath && selected.length !== 1) {
-    throw new Error("--out / T3_CODEX_REPLAY_OUT can only be used with exactly one --scenario.");
+    throw new Error(
+      "--out / CODENINE_CODEX_REPLAY_OUT can only be used with exactly one --scenario.",
+    );
   }
 
   yield* Effect.forEach(

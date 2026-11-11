@@ -1,4 +1,4 @@
-import type { ExecutionEnvironmentPlatformOs, FileManagerRevealKind } from "@t3tools/contracts";
+import type { ExecutionEnvironmentPlatformOs, FileManagerRevealKind } from "@codenine/contracts";
 
 export function revealInFileExplorerLabelForOs(os: ExecutionEnvironmentPlatformOs): string {
   if (os === "darwin") return "Reveal in Finder";

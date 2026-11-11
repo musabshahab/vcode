@@ -4,7 +4,7 @@ import {
   RelayJwtError,
   signRelayJwt,
   verifyRelayJwt,
-} from "@t3tools/shared/relayJwt";
+} from "@codenine/shared/relayJwt";
 import * as Context from "effect/Context";
 import * as Signature from "effect/crypto/Signature";
 import type * as Duration from "effect/Duration";
@@ -34,7 +34,7 @@ export class CloudMintSigner extends Context.Service<
       },
     ) => Effect.Effect<A, RelayJwtError>;
   }
->()("t3code-relay/auth/CloudMintSigner") {}
+>()("codenine-relay/auth/CloudMintSigner") {}
 
 // Parsed on first use and kept; a failed parse is retried so a bad key fails requests, not boot.
 const cacheSuccess = <A, E>(load: Effect.Effect<A, E>) => {

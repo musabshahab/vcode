@@ -1,18 +1,18 @@
-import { scopeThreadRef } from "@t3tools/client-runtime/environment";
-import { deriveThreadQueueWorkflowState } from "@t3tools/client-runtime/state/thread-workflows";
-import { assistantCitationsToPlainText } from "@t3tools/shared/assistantCitations";
+import { scopeThreadRef } from "@codenine/client-runtime/environment";
+import { deriveThreadQueueWorkflowState } from "@codenine/client-runtime/state/thread-workflows";
+import { assistantCitationsToPlainText } from "@codenine/shared/assistantCitations";
 import {
   isAttachmentOnlyBootstrapPrompt,
   replaceComposerContextReferences,
-} from "@t3tools/shared/composerContextReferences";
+} from "@codenine/shared/composerContextReferences";
 import type {
   ChatAttachment as ContractChatAttachment,
   EnvironmentId,
   MessageId,
   RunId,
   ThreadId,
-} from "@t3tools/contracts";
-import { resolveUserMessagePresentation } from "@t3tools/client-runtime/user-message";
+} from "@codenine/contracts";
+import { resolveUserMessagePresentation } from "@codenine/client-runtime/user-message";
 import {
   ArrowUpIcon,
   ChevronDownIcon,
@@ -32,7 +32,7 @@ import { isImageAttachment, type ChatMessage } from "../../types";
 import { cn } from "~/lib/utils";
 import { Button, InlineButton } from "../ui/button";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
-import type { TimestampFormat } from "@t3tools/contracts/settings";
+import type { TimestampFormat } from "@codenine/contracts/settings";
 import { TimelineRowTimestamp } from "./TimelineRowParts";
 import { FoldedMessageHeader } from "./TimelineUserMessageRow";
 
@@ -427,8 +427,8 @@ function QueuedMessage(props: {
 
   return (
     <>
-      {attribution === "t3code" ? (
-        <p className="me-1 text-2xs text-muted-foreground/70">Sent by T3 Code</p>
+      {attribution === "codenine" ? (
+        <p className="me-1 text-2xs text-muted-foreground/70">Sent by Codenine</p>
       ) : null}
       {/* Dashed and unfilled: a turn that has not been sent yet. */}
       <div

@@ -1,7 +1,7 @@
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { expect, it } from "@effect/vitest";
-import { ServerNpmReleaseError } from "@t3tools/contracts";
-import * as HostProcess from "@t3tools/shared/HostProcess";
+import { ServerNpmReleaseError } from "@codenine/contracts";
+import * as HostProcess from "@codenine/shared/HostProcess";
 import * as ConfigProvider from "effect/ConfigProvider";
 import * as Deferred from "effect/Deferred";
 import * as Effect from "effect/Effect";
@@ -37,11 +37,11 @@ const makeService = Effect.fnUntraced(function* (
   run: ProcessRunner.ProcessRunner["Service"]["run"],
   publicRegistry: HttpClient.HttpClient = noPublicRegistry,
   npmInstalled = true,
-  releasePackage: string | null = "t3",
+  releasePackage: string | null = "codenine",
 ) {
   const fs = yield* FileSystem.FileSystem;
   const path = yield* Path.Path;
-  const npmBin = yield* fs.makeTempDirectoryScoped({ prefix: "t3-npm-release-" });
+  const npmBin = yield* fs.makeTempDirectoryScoped({ prefix: "codenine-npm-release-" });
   for (const name of ["npm", "npm.cmd"]) {
     yield* fs.writeFileString(path.join(npmBin, name), "", { mode: 0o755 });
   }
@@ -55,7 +55,7 @@ const makeService = Effect.fnUntraced(function* (
     Effect.provide(
       ConfigProvider.layer(
         ConfigProvider.fromEnv({
-          env: releasePackage === null ? {} : { T3CODE_RELEASE_NPM_PACKAGE: releasePackage },
+          env: releasePackage === null ? {} : { CODENINE_RELEASE_NPM_PACKAGE: releasePackage },
         }),
       ),
     ),
@@ -77,12 +77,12 @@ it.effect("reports no release without a configured release package", () =>
 it.effect.each([
   {
     spec: version,
-    stdout: JSON.stringify({ version, t3code: { databaseMigration: 42 } }),
+    stdout: JSON.stringify({ version, codenine: { databaseMigration: 42 } }),
     migration: 42,
   },
   {
     spec: "nightly",
-    stdout: JSON.stringify([{ version, t3code: { databaseMigration: 42 } }]),
+    stdout: JSON.stringify([{ version, codenine: { databaseMigration: 42 } }]),
     migration: 42,
   },
   { spec: "latest", stdout: JSON.stringify(version), migration: undefined },
@@ -102,7 +102,7 @@ it.effect.each([
     expect(calls).toHaveLength(1);
     expect(calls[0]).toMatchObject({
       command: expect.stringMatching(/[/\\]npm(?:\.cmd)?$/i),
-      args: ["view", "--global", "--json", `t3@${fixture.spec}`, "version", "t3code"],
+      args: ["view", "--global", "--json", `codenine@${fixture.spec}`, "version", "codenine"],
       maxOutputBytes: 256 * 1024,
     });
     yield* TestClock.adjust("1 minute");
@@ -160,7 +160,7 @@ it.effect("falls back to public npm only when npm is not installed", () =>
       HttpClient.make((request) => {
         urls.push(request.url);
         const response = request.url.endsWith("/nightly")
-          ? new Response(JSON.stringify({ version, t3code: { databaseMigration: 42 } }))
+          ? new Response(JSON.stringify({ version, codenine: { databaseMigration: 42 } }))
           : request.url.endsWith("/latest")
             ? new Response(new ReadableStream())
             : new Response("{}", { status: 404 });
@@ -174,9 +174,9 @@ it.effect("falls back to public npm only when npm is not installed", () =>
     yield* TestClock.adjust("15 seconds");
     expect(Result.isFailure(yield* Fiber.join(stalled))).toBe(true);
     expect(urls).toEqual([
-      "https://registry.npmjs.org/t3/nightly",
-      "https://registry.npmjs.org/t3/9.9.9",
-      "https://registry.npmjs.org/t3/latest",
+      "https://registry.npmjs.org/codenine/nightly",
+      "https://registry.npmjs.org/codenine/9.9.9",
+      "https://registry.npmjs.org/codenine/latest",
     ]);
   }),
 );

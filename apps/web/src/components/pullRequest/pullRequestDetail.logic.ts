@@ -2,13 +2,13 @@ import { stripInlineContextReferences } from "~/lib/composerContextReferences";
 import {
   sourceControlClients,
   type ChangeRequestTerminology,
-} from "@t3tools/client-runtime/source-control-clients";
+} from "@codenine/client-runtime/source-control-clients";
 import * as Schema from "effect/Schema";
 import {
   GitCommandError,
   type PullRequestContextMetadata,
   type PullRequestState,
-} from "@t3tools/contracts";
+} from "@codenine/contracts";
 
 import type { ReviewCommentContext } from "~/reviewCommentContext";
 

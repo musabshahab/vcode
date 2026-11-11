@@ -1,22 +1,22 @@
-import { filePreviewDelimiter } from "@t3tools/shared/delimitedPreview";
-import type { AssetResource, EnvironmentId } from "@t3tools/contracts";
-import { formatAttachmentSize } from "@t3tools/client-runtime/state/attachments";
-import { readFilePreviewResponse } from "@t3tools/client-runtime/file-preview";
-import { settlePromise } from "@t3tools/client-runtime/state/runtime";
+import { filePreviewDelimiter } from "@codenine/shared/delimitedPreview";
+import type { AssetResource, EnvironmentId } from "@codenine/contracts";
+import { formatAttachmentSize } from "@codenine/client-runtime/state/attachments";
+import { readFilePreviewResponse } from "@codenine/client-runtime/file-preview";
+import { settlePromise } from "@codenine/client-runtime/state/runtime";
 import * as AsyncResult from "effect/reactivity/AsyncResult";
 import * as Cause from "effect/Cause";
 import {
   filePreviewKind,
   officePreviewKind,
   FILE_TEXT_PREVIEW_MAX_BYTES,
-} from "@t3tools/shared/filePreview";
+} from "@codenine/shared/filePreview";
 import { ChevronRightIcon, DownloadIcon, Trash2Icon, WrapTextIcon, XIcon } from "lucide-react";
 import { Check, Code2, Copy, Eye, Table2 } from "lucide";
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 
 import { useAssetUrlRefresh } from "~/assets/assetUrls";
 import ChatMarkdown from "~/components/ChatMarkdown";
-import { maskMarkdownFrontmatter } from "@t3tools/shared/markdownFrontmatter";
+import { maskMarkdownFrontmatter } from "@codenine/shared/markdownFrontmatter";
 import { MorphIcon } from "~/components/MorphIcon";
 import { ScrollArea } from "~/components/ui/scroll-area";
 import { toastManager } from "~/components/ui/toast";
@@ -146,7 +146,7 @@ export function AttachmentFilePreview(props: {
   const [contentError, setContentError] = useState<string | null>(null);
   const copyContents = useRef<(() => Promise<string>) | null>(null);
   const authorizedAt = useRef(0);
-  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- creates an object URL for the local file and revokes it on cleanup
+  // oxlint-disable-next-line codenine/no-unreasoned-state-sync -- creates an object URL for the local file and revokes it on cleanup
   useEffect(() => {
     if (!props.file) return;
     const url = URL.createObjectURL(props.file);
@@ -154,7 +154,7 @@ export function AttachmentFilePreview(props: {
     setLocalUrl(url);
     return () => URL.revokeObjectURL(url);
   }, [props.file]);
-  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- authorizes a remote attachment URL from the server and ignores the result after cleanup
+  // oxlint-disable-next-line codenine/no-unreasoned-state-sync -- authorizes a remote attachment URL from the server and ignores the result after cleanup
   useEffect(() => {
     if (props.file) return;
     let cancelled = false;
@@ -184,7 +184,7 @@ export function AttachmentFilePreview(props: {
       (props.sizeBytes === 0 && (!resource || resource._tag === "attachment")));
   const needsText =
     kind === "text" || kind === "markdown" || kind === "mermaid" || (kind === "html" && !rendered);
-  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- fetches the file's text from its URL or Blob stream and aborts the request on cleanup
+  // oxlint-disable-next-line codenine/no-unreasoned-state-sync -- fetches the file's text from its URL or Blob stream and aborts the request on cleanup
   useEffect(() => {
     if (!needsText || streamsText || !url) return;
     const controller = new AbortController();

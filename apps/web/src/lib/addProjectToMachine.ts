@@ -2,14 +2,14 @@ import {
   executeAtomQuery,
   runAtomCommand,
   squashAtomCommandFailure,
-} from "@t3tools/client-runtime/state/runtime";
-import { scopedProjectKey } from "@t3tools/client-runtime/environment";
+} from "@codenine/client-runtime/state/runtime";
+import { scopedProjectKey } from "@codenine/client-runtime/environment";
 import type {
   EnvironmentId,
   ProjectCloneSnapshot,
   ProjectId,
   ScopedProjectRef,
-} from "@t3tools/contracts";
+} from "@codenine/contracts";
 import { create } from "zustand";
 
 import { appAtomRegistry } from "../rpc/atomRegistry";

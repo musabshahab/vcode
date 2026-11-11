@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { ThreadId, TurnItemId, type OrchestrationV2TurnItem } from "@t3tools/contracts";
+import { ThreadId, TurnItemId, type OrchestrationV2TurnItem } from "@codenine/contracts";
 import * as DateTime from "effect/DateTime";
 
 import {
@@ -114,7 +114,7 @@ describe("resolveWorkEntryToolPresentation", () => {
       id: "clone",
       createdAt: "2026-09-19T00:00:00.000Z",
       tone: "tool",
-      label: "T3-code.t3_project_clone",
+      label: "Codenine.codenine_project_clone",
       toolLifecycleStatus: "inProgress",
       itemType: "dynamic_tool",
       toolData: { output: { isError: true } },
@@ -125,24 +125,24 @@ describe("resolveWorkEntryToolPresentation", () => {
     expect(workEntryDisplayIndicatesToolFailure(entry)).toBe(true);
     const childFailure = {
       ...entry,
-      label: "T3-code.task_status",
+      label: "Codenine.task_status",
       toolLifecycleStatus: "completed" as const,
       toolData: { output: { taskId: "child", status: "failed", summary: "command not found" } },
     };
     expect(workEntryDisplayIndicatesToolFailure(childFailure)).toBe(false);
   });
   it.each([
-    "mcp__t3-code__t3_worktree_handoff",
-    "mcp__t3_code__t3_worktree_handoff",
-    "mcp__t3code__t3_worktree_handoff",
-    "T3-code.t3_worktree_handoff",
-    "t3-code · t3_worktree_handoff completed",
-    "t3_code/t3_worktree_handoff",
-    "t3_worktree_handoff",
-  ])("recognizes T3 tool names across providers: %s", (label) => {
+    "mcp__codenine__codenine_worktree_handoff",
+    "mcp__codenine__codenine_worktree_handoff",
+    "mcp__codenine__codenine_worktree_handoff",
+    "Codenine.codenine_worktree_handoff",
+    "codenine · codenine_worktree_handoff completed",
+    "codenine/codenine_worktree_handoff",
+    "codenine_worktree_handoff",
+  ])("recognizes Codenine tool names across providers: %s", (label) => {
     expect(resolveWorkEntryToolPresentation({ label })).toEqual({
       displayName: "Handing off thread to a git worktree",
-      icon: "t3-code",
+      icon: "codenine",
     });
   });
 
@@ -151,13 +151,17 @@ describe("resolveWorkEntryToolPresentation", () => {
       resolveWorkEntryToolPresentation({
         label: "Tool call complete",
         toolTitle: "Check the worktree",
-        toolData: { server: "t3-code", tool: "t3_worktree_status", result: { status: "ready" } },
+        toolData: {
+          server: "codenine",
+          tool: "codenine_worktree_status",
+          result: { status: "ready" },
+        },
       }),
-    ).toEqual({ displayName: "Getting thread worktree status", icon: "t3-code" });
+    ).toEqual({ displayName: "Getting thread worktree status", icon: "codenine" });
   });
 
   it("uses the summary's state only when the provider omitted a lifecycle status", () => {
-    const entry = { label: "T3-code.t3_worktree_handoff" };
+    const entry = { label: "Codenine.codenine_worktree_handoff" };
     expect(resolveWorkEntryToolPresentation(entry, "inProgress")?.displayName).toBe(
       "Handing off thread to a git worktree",
     );
@@ -177,7 +181,7 @@ describe("resolveWorkEntryToolPresentation", () => {
   it("names a linked change request with its host's term", () => {
     expect(
       resolveWorkEntryToolPresentation({
-        label: "T3-code.link_pull_request",
+        label: "Codenine.link_pull_request",
         toolLifecycleStatus: "completed",
         toolData: { arguments: { url: "https://github.com/acme/web/pull/7" } },
       })?.displayName,
@@ -186,17 +190,17 @@ describe("resolveWorkEntryToolPresentation", () => {
 
   it("does not brand unknown tools or another server's matching tool name", () => {
     for (const label of [
-      "mcp__github__t3_worktree_status",
-      "t3-code.unknown_tool",
-      "t3-code.toString",
+      "mcp__github__codenine_worktree_status",
+      "codenine.unknown_tool",
+      "codenine.toString",
       "Search files",
     ]) {
       expect(resolveWorkEntryToolPresentation({ label })).toBeNull();
     }
     expect(
       resolveWorkEntryToolPresentation({
-        label: "t3_worktree_status",
-        toolData: { server: "another-server", tool: "t3_worktree_status" },
+        label: "codenine_worktree_status",
+        toolData: { server: "another-server", tool: "codenine_worktree_status" },
       }),
     ).toBeNull();
   });

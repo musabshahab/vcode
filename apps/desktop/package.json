@@ -1,5 +1,5 @@
 {
-  "name": "@t3tools/desktop",
+  "name": "@codenine/desktop",
   "version": "0.1.7",
   "private": true,
   "type": "module",
@@ -12,13 +12,13 @@
   "dependencies": {
     "@clerk/electron": "catalog:",
     "@clerk/electron-passkeys": "catalog:",
+    "@codenine/client-runtime": "workspace:*",
+    "@codenine/contracts": "workspace:*",
+    "@codenine/shared": "workspace:*",
+    "@codenine/ssh": "workspace:*",
+    "@codenine/tailscale": "workspace:*",
     "@crowecawcaw/xa11y": "0.15.4",
     "@effect/platform-node": "catalog:",
-    "@t3tools/client-runtime": "workspace:*",
-    "@t3tools/contracts": "workspace:*",
-    "@t3tools/shared": "workspace:*",
-    "@t3tools/ssh": "workspace:*",
-    "@t3tools/tailscale": "workspace:*",
     "dbus-next": "0.10.2",
     "effect": "catalog:",
     "electron": "44.10.1",
@@ -35,5 +35,5 @@
     "electron-builder": "26.16.1",
     "vite-plus": "catalog:"
   },
-  "productName": "T3 Code (Beta)"
+  "productName": "Codenine (Beta)"
 }

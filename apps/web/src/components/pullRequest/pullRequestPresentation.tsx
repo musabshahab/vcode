@@ -1,4 +1,4 @@
-import type { PullRequestState } from "@t3tools/contracts";
+import type { PullRequestState } from "@codenine/contracts";
 
 import {
   PULL_REQUEST_STATE_PRESENTATION,

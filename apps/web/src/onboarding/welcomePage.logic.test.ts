@@ -5,7 +5,7 @@ import {
   ProviderInstanceId,
   type ServerProvider,
   type ServerSettings,
-} from "@t3tools/contracts";
+} from "@codenine/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
 import {
@@ -217,7 +217,7 @@ describe("codexCardProvider", () => {
 });
 
 describe("welcomeOffersPhone", () => {
-  it("offers the phone only through T3 Connect on the primary computer", () => {
+  it("offers the phone only through Codenine Connect on the primary computer", () => {
     const offers = (input: Partial<Parameters<typeof welcomeOffersPhone>[0]>) =>
       welcomeOffersPhone({
         isPrimary: true,
@@ -227,7 +227,7 @@ describe("welcomeOffersPhone", () => {
       });
 
     expect(offers({})).toBe(true);
-    // There is no pairing-code fallback; without T3 Connect the page leaves the phone out.
+    // There is no pairing-code fallback; without Codenine Connect the page leaves the phone out.
     expect(offers({ cloud: false })).toBe(false);
     expect(offers({ canShare: false })).toBe(false);
     expect(offers({ isPrimary: false })).toBe(false);

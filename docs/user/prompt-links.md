@@ -1,6 +1,6 @@
 # Prompt links
 
-A prompt link opens T3 Code with a prompt ready to send. Use one to share a prompt on social
+A prompt link opens Codenine with a prompt ready to send. Use one to share a prompt on social
 media, or to put a one-click fix in a pull request comment.
 
 A link never runs anything. It opens a draft. You read the prompt, then press Send. A link cannot
@@ -9,7 +9,7 @@ change your permission mode, branch, or worktree. Your own defaults apply.
 ## Make a link
 
 Open the command palette and choose **Copy prompt link**. It copies the draft in the composer. Unless
-the build names a hosted web app, the link is a `t3code://new?…` link that opens the desktop app.
+the build names a hosted web app, the link is a `codenine://new?…` link that opens the desktop app.
 When the project is on GitHub, **Copy prompt link with repo and model** also adds the repository
 and the model you picked. Sent messages have a **Copy prompt link** button too.
 
@@ -42,25 +42,25 @@ this step next time.
   counts only for its own owner. When you do not have the repository, choose **Clone** or **Use
   without project**.
 - **`provider` and `model`**: used when you have that provider set up. Otherwise your default
-  model is used, and T3 Code tells you.
+  model is used, and Codenine tells you.
 - **`pr`**: opens the thread linked to that pull request on any connected machine, with the prompt
   in its composer. When no thread is linked, the draft goes on the pull request branch in a new
-  worktree. T3 Code checks the code out only after you confirm, because the checkout runs your
+  worktree. Codenine checks the code out only after you confirm, because the checkout runs your
   setup script on it.
 
 A thread link with a prompt, such as `https://app.t3.codes/<environment>/<thread>?prompt=…`,
-puts the prompt in that thread's composer. If you already typed a draft there, T3 Code asks
+puts the prompt in that thread's composer. If you already typed a draft there, Codenine asks
 before it replaces it.
 
-T3 Code removes characters you cannot see, such as zero-width and hidden tag characters, because
-they can hide instructions for the agent. When a prompt had them, T3 Code warns you that it may be
+Codenine removes characters you cannot see, such as zero-width and hidden tag characters, because
+they can hide instructions for the agent. When a prompt had them, Codenine warns you that it may be
 malicious.
 
 ## Share a thread
 
 **Copy thread** copies a link such as `https://app.t3.codes/threads/<environment>/<thread>` when
-the build names a hosted web app, and a `t3-thread://` link otherwise. Paste
-it anywhere, such as Slack, a GitHub comment, or your notes. On a phone with T3 Code installed, it
+the build names a hosted web app, and a `codenine-thread://` link otherwise. Paste
+it anywhere, such as Slack, a GitHub comment, or your notes. On a phone with Codenine installed, it
 opens the thread in the app. Elsewhere, opening it asks where to open it, like a prompt link, then
-opens the thread. Only someone connected to the machine that runs the thread can see it. In T3 Code,
+opens the thread. Only someone connected to the machine that runs the thread can see it. In Codenine,
 a thread link in a message opens the thread in the app.

@@ -3,7 +3,7 @@ import type {
   ChatAttachment,
   ModelSelection,
   TextGenerationError,
-} from "@t3tools/contracts";
+} from "@codenine/contracts";
 import type * as Effect from "effect/Effect";
 
 import type { TextGenerationPolicy } from "./textGenerationPolicy.ts";

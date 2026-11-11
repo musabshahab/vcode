@@ -2,9 +2,9 @@ import type {
   ComposerContextClipboardFragment,
   ScopedThreadRef,
   ThreadPullRequestLink,
-} from "@t3tools/contracts";
-import { threadContextRecord } from "@t3tools/shared/composerContextReferences";
-import { formatThreadLink, hostedThreadLink } from "@t3tools/shared/threadLinks";
+} from "@codenine/contracts";
+import { threadContextRecord } from "@codenine/shared/composerContextReferences";
+import { formatThreadLink, hostedThreadLink } from "@codenine/shared/threadLinks";
 
 import { resolveThreadCurrentPullRequestLink } from "./threadPullRequests.ts";
 
@@ -14,7 +14,7 @@ export interface ThreadReferenceCopyTarget {
   readonly value: string;
   /** What a toast or palette row shows for the copy. */
   readonly description: string;
-  /** T3's clipboard format, which pastes a thread back into a composer as a chip. */
+  /** Codenine's clipboard format, which pastes a thread back into a composer as a chip. */
   readonly fragment?: ComposerContextClipboardFragment;
   readonly clipboardTarget: string;
   readonly successTitle: string;
@@ -23,7 +23,7 @@ export interface ThreadReferenceCopyTarget {
 
 /**
  * A link to the thread, through `hostedAppUrl` when the build has a hosted app, else a
- * `t3-thread` link. It pastes back as a chip into any composer whose agent reads that machine.
+ * `codenine-thread` link. It pastes back as a chip into any composer whose agent reads that machine.
  */
 export function threadChipCopyTarget(
   threadRef: ScopedThreadRef,

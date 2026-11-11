@@ -2,9 +2,9 @@ import {
   AuthOrchestrationOperateScope,
   AuthTerminalOperateScope,
   type ScopedThreadRef,
-} from "@t3tools/contracts";
-import { scopeThreadRef } from "@t3tools/client-runtime/environment";
-import { getTerminalLabel } from "@t3tools/shared/terminalLabels";
+} from "@codenine/contracts";
+import { scopeThreadRef } from "@codenine/client-runtime/environment";
+import { getTerminalLabel } from "@codenine/shared/terminalLabels";
 import { useThreadTerminalActions } from "../components/terminal/useThreadTerminalActions";
 import { confirmTerminalClose } from "../lib/terminalCloseConfirm";
 import { focusPanelTerminalAfterClose } from "../lib/terminalFocus";

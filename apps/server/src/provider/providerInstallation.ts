@@ -6,8 +6,8 @@ import {
   type ProviderInstanceId,
   ProviderSetupError,
   type ProviderSetupInput,
-} from "@t3tools/contracts";
-import { resolveCommandPath } from "@t3tools/shared/shell";
+} from "@codenine/contracts";
+import { resolveCommandPath } from "@codenine/shared/shell";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
@@ -21,7 +21,7 @@ import * as ServerSettings from "../serverSettings.ts";
 import { deriveProviderInstanceConfigMap } from "./ProviderInstanceRegistryHydration.ts";
 import * as ProviderInstanceRegistry from "./ProviderInstanceRegistry.ts";
 import * as ProviderRegistry from "./ProviderRegistry.ts";
-import { mergeProviderInstanceEnvironment } from "@t3tools/provider-core/server/instanceEnvironment";
+import { mergeProviderInstanceEnvironment } from "@codenine/provider-core/server/instanceEnvironment";
 
 const hasBinaryPath = Schema.is(Schema.Struct({ binaryPath: Schema.String }));
 const decodeCodexSettings = Schema.decodeUnknownEffect(CodexSettings);
@@ -42,7 +42,7 @@ export class ProviderInstallation extends Context.Service<
       input: ProviderSetupInput,
     ) => Effect.Effect<ProviderInstallState, ProviderSetupError>;
   }
->()("t3/provider/providerInstallation") {}
+>()("codenine/provider/providerInstallation") {}
 
 const make = Effect.fn("makeProviderInstallation")(function* () {
   const codexInstallation = yield* CodexInstallation.CodexInstallation;
@@ -96,7 +96,7 @@ const make = Effect.fn("makeProviderInstallation")(function* () {
       return yield* new ProviderSetupError({
         instanceId,
         operation,
-        detail: "Choose managed setup to install Codex in T3 Code.",
+        detail: "Choose managed setup to install Codex in Codenine.",
       });
     }
     if (managedOnly && config.binaryPath && config.binaryPath !== "codex") {
@@ -104,7 +104,7 @@ const make = Effect.fn("makeProviderInstallation")(function* () {
         instanceId,
         operation,
         detail:
-          "This instance uses a custom executable. Clear its binary path to manage installation in T3 Code.",
+          "This instance uses a custom executable. Clear its binary path to manage installation in Codenine.",
       });
     }
     return { installation: codexInstallation, driver: instance.driverKind };

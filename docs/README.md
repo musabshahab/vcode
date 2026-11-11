@@ -1,8 +1,8 @@
-# T3 Code docs
+# Codenine docs
 
-## Using T3 Code
+## Using Codenine
 
-- [Install T3 Code](./user/install.md)
+- [Install Codenine](./user/install.md)
 - [Messages and context](./user/composer.md)
 - [Working with threads](./user/thread-sidebar.md)
 - [Permission modes](./user/permission-modes.md)
@@ -16,15 +16,15 @@
 - [Secrets](./user/secrets.md)
 - [Diagnostics data](./user/telemetry.md)
 - [Remote access](./user/remote-access.md)
-- [T3 Connect troubleshooting](./user/t3-connect-troubleshooting.md)
+- [Codenine Connect troubleshooting](./user/codenine-connect-troubleshooting.md)
 - [Outside agents (MCP)](./user/outside-agents.md)
 - [Running in the background](./user/background-service.md)
-- [Updating T3 Code](./user/updating.md)
+- [Updating Codenine](./user/updating.md)
 - Provider guides: [Codex](./user/providers-codex.md) · [Claude](./user/providers-claude.md) · [OpenCode](./user/providers-opencode.md) · [Antigravity](./user/providers-antigravity.md) · [Kiro](./user/providers-kiro.md) · [Pi](./user/providers-pi.md) · [Muse Code](./user/providers-muse.md) · [fx](./user/providers-fx.md)
 
 ---
 
-## Working on T3 Code
+## Working on Codenine
 
 Start with the [development runbook](./operations/development.md) and
 [contribution policy](../CONTRIBUTING.md).
@@ -42,7 +42,7 @@ source alone does not explain. Most code changes do not need an internal documen
 - [Remote environments](./internals/remote.md)
 - [Server updates](./internals/server-updates.md)
 - [Environment auth](./internals/environment-auth.md)
-- [T3 Connect](./internals/t3-connect.md)
+- [Codenine Connect](./internals/codenine-connect.md)
 - [Assistant citations](./internals/assistant-citations.md)
 - [Mobile layout](./internals/mobile-layout.md)
 - [Mobile navigation](./internals/mobile-navigation.md)
@@ -52,7 +52,7 @@ source alone does not explain. Most code changes do not need an internal documen
 ### Runbooks
 
 - [Development and local builds](./operations/development.md)
-- [T3 Connect setup](./operations/connect-setup.md)
+- [Codenine Connect setup](./operations/connect-setup.md)
 - [Release](./operations/release.md)
 - [Observability](./operations/observability.md)
 - [Relay observability](./operations/relay-observability.md)

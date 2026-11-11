@@ -1,5 +1,5 @@
-import { parseScopedThreadKey, scopedThreadKey } from "@t3tools/client-runtime/environment";
-import { RunId, ThreadId, type ScopedThreadRef } from "@t3tools/contracts";
+import { parseScopedThreadKey, scopedThreadKey } from "@codenine/client-runtime/environment";
+import { RunId, ThreadId, type ScopedThreadRef } from "@codenine/contracts";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
@@ -39,7 +39,7 @@ export type RightPanelSurface =
     }
   | { id: `side-chat:${string}`; kind: "side-chat"; threadId: ThreadId };
 
-const RIGHT_PANEL_STORAGE_KEY = "t3code:right-panel-state:v2";
+const RIGHT_PANEL_STORAGE_KEY = "codenine:right-panel-state:v2";
 const RIGHT_PANEL_STORAGE_VERSION = 15;
 
 const isPullRequestsPanelKey = (threadKey: string) => threadKey.endsWith(":pull-requests-panel");

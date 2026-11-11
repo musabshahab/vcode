@@ -5,7 +5,7 @@ import {
   type PullRequestRef,
   PullRequestSummary,
   type VcsStatusResult,
-} from "@t3tools/contracts";
+} from "@codenine/contracts";
 import { Atom } from "effect/reactivity";
 
 import { persistQuery } from "./queryPersistence.ts";

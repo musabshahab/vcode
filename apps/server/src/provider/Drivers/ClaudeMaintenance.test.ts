@@ -5,15 +5,15 @@ import {
   ProviderDriverKind,
   ProviderInstanceId,
   type ServerProvider,
-} from "@t3tools/contracts";
-import * as HostProcess from "@t3tools/shared/HostProcess";
+} from "@codenine/contracts";
+import * as HostProcess from "@codenine/shared/HostProcess";
 import {
   enrichProviderSnapshotWithVersionAdvisory,
   invalidateLatestProviderVersion,
-} from "@t3tools/provider-core/server/maintenanceResolver";
-import * as ProviderLatestVersions from "@t3tools/provider-core/server/ProviderLatestVersions";
-import * as ProviderHost from "@t3tools/provider-core/server/ProviderHost";
-import { makeManagedServerProvider } from "@t3tools/provider-core/server/managedProvider";
+} from "@codenine/provider-core/server/maintenanceResolver";
+import * as ProviderLatestVersions from "@codenine/provider-core/server/ProviderLatestVersions";
+import * as ProviderHost from "@codenine/provider-core/server/ProviderHost";
+import { makeManagedServerProvider } from "@codenine/provider-core/server/managedProvider";
 import * as Effect from "effect/Effect";
 import * as Fiber from "effect/Fiber";
 import * as FileSystem from "effect/FileSystem";

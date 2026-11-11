@@ -6,7 +6,7 @@ import type {
   RelayAgentActivityState,
   RelayDeliveryResult,
   RelayPublishResponse,
-} from "@t3tools/contracts/relay";
+} from "@codenine/contracts/relay";
 import * as Arr from "effect/Array";
 import * as Context from "effect/Context";
 import * as DateTime from "effect/DateTime";
@@ -49,7 +49,7 @@ export class AgentActivityPublisher extends Context.Service<
       LiveActivities.LiveActivityIdleTargetListPersistenceError
     >;
   }
->()("t3code-relay/agentActivity/AgentActivityPublisher") {}
+>()("codenine-relay/agentActivity/AgentActivityPublisher") {}
 
 const make = Effect.gen(function* () {
   const rows = yield* AgentActivityRows.AgentActivityRows;

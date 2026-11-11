@@ -103,7 +103,7 @@ describe("DesktopBackendPool", () => {
               mode: "desktop",
               noBrowser: true,
               port: 3774,
-              t3Home: "/tmp/t3",
+              codenineHome: "/tmp/codenine",
               host: "127.0.0.1",
               desktopBootstrapToken: "token",
               tailscaleServeEnabled: false,

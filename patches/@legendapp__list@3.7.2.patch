@@ -6,7 +6,7 @@ index 4af685dfb961eb0c8a4bf1ae9132c9304cf4fa4d..df4ead7ae4f03cd0fbcd99a3df7d95e1
    }
    return false;
  }
-+// T3 patch: while following the end, a size-only change keeps the end in the same pass that
++// Codenine patch: while following the end, a size-only change keeps the end in the same pass that
 +// repositions the items. Native end following otherwise runs a frame later, after MVCP has
 +// anchored the top row, so the feed visibly jumps twice.
 +function shouldHoldEndOnSizeChange(ctx, dataChanged) {
@@ -46,7 +46,7 @@ index 9ebfddc183a9b202d35c990a387c9b628feeb185..c414a49e866ecab1393645101fb67d55
    }
    return false;
  }
-+// T3 patch: while following the end, a size-only change keeps the end in the same pass that
++// Codenine patch: while following the end, a size-only change keeps the end in the same pass that
 +// repositions the items. Native end following otherwise runs a frame later, after MVCP has
 +// anchored the top row, so the feed visibly jumps twice.
 +function shouldHoldEndOnSizeChange(ctx, dataChanged) {

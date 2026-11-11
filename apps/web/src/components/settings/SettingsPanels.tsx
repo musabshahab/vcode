@@ -11,7 +11,7 @@ import {
   ProviderDriverKind,
   type ProviderInstanceId,
   type SidebarProjectGroupingMode,
-} from "@t3tools/contracts";
+} from "@codenine/contracts";
 import {
   DEFAULT_UNIFIED_SETTINGS,
   type DiffLayout,
@@ -21,10 +21,10 @@ import {
   type QuitConfirmationMode,
   SidebarProjectSortOrder,
   ToolCallVisibility,
-} from "@t3tools/contracts/settings";
-import { desktopUpdateChannelOf } from "@t3tools/shared/cliRelease";
-import { createModelSelection } from "@t3tools/shared/model";
-import { resolvePastedPath } from "@t3tools/shared/path";
+} from "@codenine/contracts/settings";
+import { desktopUpdateChannelOf } from "@codenine/shared/cliRelease";
+import { createModelSelection } from "@codenine/shared/model";
+import { resolvePastedPath } from "@codenine/shared/path";
 import * as Equal from "effect/Equal";
 import * as Schema from "effect/Schema";
 import { APP_VERSION, HOSTED_APP_CHANNEL, HOSTED_APP_CHANNEL_LABEL } from "../../branding";
@@ -2055,7 +2055,7 @@ export function AboutSettingsPanel() {
         />
         <SettingsRow
           {...searchableSetting("open-source-licenses")}
-          description="Notices for dependencies, assets, and optional tools used by T3 Code."
+          description="Notices for dependencies, assets, and optional tools used by Codenine."
           control={
             <Button
               render={<Link to="/settings/open-source-licenses" />}

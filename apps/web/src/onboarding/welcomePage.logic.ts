@@ -5,7 +5,7 @@ import {
   resolveProjectProviderInstanceEnabled,
   type ServerProvider,
   type ServerSettings,
-} from "@t3tools/contracts";
+} from "@codenine/contracts";
 
 import { getOnboardingProviderState } from "./providerReadiness.logic";
 
@@ -79,7 +79,7 @@ export function turnedOnInstance(instance: ProviderInstanceConfig): ProviderInst
   };
 }
 
-/** A CLI the server knows is too old or otherwise broken for T3 Code; Settings updates it. */
+/** A CLI the server knows is too old or otherwise broken for Codenine; Settings updates it. */
 export function isBrokenVersion(provider: ServerProvider) {
   return provider.installed && provider.compatibilityAdvisory?.status === "broken";
 }
@@ -130,13 +130,13 @@ export function codexNeedsSetup(
 }
 
 /**
- * The phone joins by signing in to T3 Connect, which shares the primary computer. Another
- * computer or a build without T3 Connect gets no Phone section.
+ * The phone joins by signing in to Codenine Connect, which shares the primary computer. Another
+ * computer or a build without Codenine Connect gets no Phone section.
  */
 export function welcomeOffersPhone(input: {
   readonly isPrimary: boolean;
   readonly cloud: boolean;
-  // Relay read and write access, which sharing this computer through T3 Connect needs.
+  // Relay read and write access, which sharing this computer through Codenine Connect needs.
   readonly canShare: boolean;
 }) {
   return input.isPrimary && input.cloud && input.canShare;

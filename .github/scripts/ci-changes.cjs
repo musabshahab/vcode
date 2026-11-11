@@ -21,21 +21,21 @@ const RUNS_EVERYTHING = [
 // Includes cross-package reads absent from package.json dependencies.
 const EXTRA_OWNERS = [
   // Vite configs and tsconfigs of these apps import scripts/lib directly.
-  [/^scripts\/lib\//, ["@t3tools/desktop", "@t3tools/mobile", "@t3tools/web", "t3"]],
-  [/^native\/browser-secret\//, ["@t3tools/desktop"]],
-  [/^native\/libghostty-vt\//, ["@t3tools/web"]],
+  [/^scripts\/lib\//, ["@codenine/desktop", "@codenine/mobile", "@codenine/web", "codenine"]],
+  [/^native\/browser-secret\//, ["@codenine/desktop"]],
+  [/^native\/libghostty-vt\//, ["@codenine/web"]],
   // apps/server/src/cloud/ConnectReachability.test.ts checks the guide's headings.
-  [/^docs\/user\/t3-connect-troubleshooting\.md$/, ["t3"]],
+  [/^docs\/user\/codenine-connect-troubleshooting\.md$/, ["codenine"]],
 ];
 
 // These tests read other packages without declaring dependencies.
 const TEST_ONLY_DEPS = {
   // Evals import the server's source to test its real model-facing text.
-  "@t3tools/evals": ["t3"],
-  "@t3tools/scripts": ["@t3tools/desktop", "@t3tools/web", "t3"],
+  "@codenine/evals": ["codenine"],
+  "@codenine/scripts": ["@codenine/desktop", "@codenine/web", "codenine"],
 };
 // The server bundles the web build without importing it.
-const BUILD_ONLY_DEPS = { t3: ["@t3tools/web"] };
+const BUILD_ONLY_DEPS = { codenine: ["@codenine/web"] };
 
 const MOBILE_NATIVE =
   /^apps\/mobile\/.*\.(swift|kt|kts)$|^apps\/mobile\/(\.swiftlint\.yml|detekt\.yml|\.editorconfig|Brewfile)$|^scripts\/mobile-native-static-check\.ts$|^package\.json$|^\.github\/workflows\/ci\.yml$|^\.github\/scripts\/ci-changes\.cjs$|^\.github\/actions\/ci-changes\//;
@@ -55,7 +55,7 @@ const DESKTOP_LAUNCH = [
   /^scripts\/(smoke-desktop-app\.ts|fixtures\/desktop-launch\/)/,
 ];
 
-const OWN_TEST_JOB = new Set(["t3", "@t3tools/web", "@t3tools/monorepo"]);
+const OWN_TEST_JOB = new Set(["codenine", "@codenine/web", "@codenine/monorepo"]);
 
 function readWorkspace() {
   const patterns = [];
@@ -141,7 +141,7 @@ function decide(files, packages, full) {
         }
       }
     }
-    scriptsChanged = affected.has("@t3tools/scripts");
+    scriptsChanged = affected.has("@codenine/scripts");
     for (const [name, deps] of Object.entries(TEST_ONLY_DEPS)) {
       if (deps.some((dep) => affected.has(dep))) affected.add(name);
     }
@@ -161,13 +161,13 @@ function decide(files, packages, full) {
     affected: [...affected].sort(),
     outputs: {
       typecheck: affected.size > 0,
-      build: has("@t3tools/desktop") || has("t3") || has("@t3tools/web") || desktopLaunch,
+      build: has("@codenine/desktop") || has("codenine") || has("@codenine/web") || desktopLaunch,
       desktop_launch: desktopLaunch,
       test: tested.length > 0,
       // Empty means every package the Test job covers.
       test_packages: everything ? "" : tested.map((pkg) => pkg.name).join(" "),
-      test_web: has("@t3tools/web"),
-      test_server: has("t3"),
+      test_web: has("@codenine/web"),
+      test_server: has("codenine"),
       release_smoke: scriptsChanged,
       mobile_native: files === null || files.some((file) => MOBILE_NATIVE.test(file)),
     },

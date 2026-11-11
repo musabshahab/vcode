@@ -14,8 +14,8 @@ import {
   AuthOrchestrationOperateScope,
   AuthOrchestrationReadScope,
   mcpClientScopes,
-} from "@t3tools/contracts";
-import { encodeOAuthScope } from "@t3tools/shared/oauthScope";
+} from "@codenine/contracts";
+import { encodeOAuthScope } from "@codenine/shared/oauthScope";
 import * as Clock from "effect/Clock";
 import * as Context from "effect/Context";
 import * as Digest from "effect/crypto/Digest";
@@ -78,7 +78,7 @@ export const protectedResourceMetadata = (
   authorization_servers: [urls.issuer],
   scopes_supported: MCP_OAUTH_SCOPES,
   bearer_methods_supported: ["header"],
-  resource_name: "T3 Code",
+  resource_name: "Codenine",
 });
 
 export const authorizationServerMetadata = (
@@ -216,7 +216,7 @@ export class McpOAuth extends Context.Service<
       readonly token: AuthMcpTokenRequest;
     }) => Effect.Effect<AuthMcpTokenResult, AuthMcpTokenError>;
   }
->()("t3/auth/McpOAuth") {}
+>()("codenine/auth/McpOAuth") {}
 
 const redirectWith = (
   redirectUri: string,
@@ -545,7 +545,7 @@ export const layerMcpClientAuthenticator = Layer.effect(
     const environmentAuth = yield* EnvironmentAuth.EnvironmentAuth;
     const environment = yield* ServerEnvironment.ServerEnvironment;
     const environmentId = yield* environment.getEnvironmentId;
-    // Unset, outside MCP clients get t3-thread links.
+    // Unset, outside MCP clients get codenine-thread links.
     const hostedAppUrl = yield* hostedAppUrlConfig.pipe(
       Effect.map((url): string | undefined => url),
       Effect.orElseSucceed(() => undefined),

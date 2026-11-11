@@ -1,4 +1,4 @@
-import { remapComposerContextAttachments } from "@t3tools/shared/composerContextReferences";
+import { remapComposerContextAttachments } from "@codenine/shared/composerContextReferences";
 import {
   type ThreadLinkedPullRequest,
   CommandId,
@@ -26,9 +26,9 @@ import {
   type ThreadId,
   type ThreadEnvMode,
   type UploadChatAttachment,
-} from "@t3tools/contracts";
-import { derivePendingBackgroundWork } from "@t3tools/shared/orchestrationV2PendingBackgroundWork";
-import { visibleThreadPullRequests } from "@t3tools/shared/threadPullRequests";
+} from "@codenine/contracts";
+import { derivePendingBackgroundWork } from "@codenine/shared/orchestrationV2PendingBackgroundWork";
+import { visibleThreadPullRequests } from "@codenine/shared/threadPullRequests";
 import * as SecureRandom from "effect/crypto/SecureRandom";
 import * as Effect from "effect/Effect";
 
@@ -126,7 +126,7 @@ export interface VisitThreadInput extends ThreadCommandInput {
 export type MarkThreadUnreadInput = ThreadCommandInput;
 
 export interface UpdateThreadMetadataInput extends ThreadCommandInput {
-  readonly limitRecovery?: import("@t3tools/contracts").OrchestrationV2LimitRecoveryUpdate | null;
+  readonly limitRecovery?: import("@codenine/contracts").OrchestrationV2LimitRecoveryUpdate | null;
   readonly title?: string;
   readonly modelSelection?: ModelSelection;
   readonly branch?: string | null;
@@ -172,8 +172,8 @@ export interface StartThreadTurnInput extends ThreadCommandInput {
     readonly role: "user";
     readonly text: string;
     readonly attachments: ReadonlyArray<ChatAttachment | UploadChatAttachment>;
-    readonly context?: import("@t3tools/contracts").OrchestrationMessageContext;
-    readonly idleCompaction?: import("@t3tools/contracts").OrchestrationV2IdleCompaction;
+    readonly context?: import("@codenine/contracts").OrchestrationMessageContext;
+    readonly idleCompaction?: import("@codenine/contracts").OrchestrationV2IdleCompaction;
   };
   readonly modelSelection?: ModelSelection;
   readonly titleSeed?: string;
@@ -201,7 +201,7 @@ export interface RespondToThreadApprovalInput extends ThreadCommandInput {
 export interface RespondToThreadUserInputInput extends ThreadCommandInput {
   readonly requestId: RuntimeRequestId;
   readonly answers: ProviderUserInputAnswers;
-  readonly attachmentsByQuestionId?: import("@t3tools/contracts").UserInputAttachments;
+  readonly attachmentsByQuestionId?: import("@codenine/contracts").UserInputAttachments;
 }
 
 export interface DismissThreadUserInputInput extends ThreadCommandInput {
@@ -263,7 +263,7 @@ export interface EditQueuedRunInput extends ThreadCommandInput {
   readonly edit?: {
     readonly messageId: MessageId;
     readonly attachments: ReadonlyArray<ChatAttachment | UploadChatAttachment>;
-    readonly context?: import("@t3tools/contracts").OrchestrationMessageContext;
+    readonly context?: import("@codenine/contracts").OrchestrationMessageContext;
   };
 }
 

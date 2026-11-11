@@ -6,7 +6,7 @@ import {
   SecretProviderId,
   SecretProviderKind,
   type ServerSettings,
-} from "@t3tools/contracts";
+} from "@codenine/contracts";
 import { it as effectIt } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";

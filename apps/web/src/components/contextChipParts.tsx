@@ -1,4 +1,4 @@
-import type { EnvironmentId, PullRequestContextMetadata } from "@t3tools/contracts";
+import type { EnvironmentId, PullRequestContextMetadata } from "@codenine/contracts";
 import { CircleDashedIcon, FilmIcon, ImageIcon } from "lucide-react";
 import {
   useEffect,
@@ -253,7 +253,7 @@ function SvgFileChip(props: ComponentProps<typeof FileChip>) {
         }
       : null,
   );
-  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- creates an object URL for the local SVG file and revokes it on cleanup
+  // oxlint-disable-next-line codenine/no-unreasoned-state-sync -- creates an object URL for the local SVG file and revokes it on cleanup
   useEffect(() => {
     const file = preview?.file;
     if (!file) return;

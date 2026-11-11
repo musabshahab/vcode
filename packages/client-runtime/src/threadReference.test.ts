@@ -1,9 +1,9 @@
-import { EnvironmentId, ThreadId, type ThreadPullRequestLink } from "@t3tools/contracts";
+import { EnvironmentId, ThreadId, type ThreadPullRequestLink } from "@codenine/contracts";
 import {
   decodeComposerContextFragment,
   encodeComposerContextFragment,
-} from "@t3tools/shared/composerContextClipboard";
-import { threadLinkContextReferences } from "@t3tools/shared/composerContextReferences";
+} from "@codenine/shared/composerContextClipboard";
+import { threadLinkContextReferences } from "@codenine/shared/composerContextReferences";
 import { describe, expect, it } from "vite-plus/test";
 
 import { resolveThreadReferenceCopyTarget } from "./threadReference.ts";
@@ -25,7 +25,7 @@ const crossRepositoryPullRequest: ThreadPullRequestLink = {
 };
 
 describe("resolveThreadReferenceCopyTarget", () => {
-  it.each([null, "https://github.com/t3/pr/12"])(
+  it.each([null, "https://github.com/codenine/pr/12"])(
     "copies a native cross-repository link before the fallback URL %s",
     (linkedPullRequestUrl) => {
       expect(
@@ -46,9 +46,9 @@ describe("resolveThreadReferenceCopyTarget", () => {
       resolveThreadReferenceCopyTarget({
         ...thread,
         pullRequests: [{ ...crossRepositoryPullRequest, source: "stack-dismissed" }],
-        linkedPullRequestUrl: "https://github.com/t3/pr/12",
+        linkedPullRequestUrl: "https://github.com/codenine/pr/12",
       }),
-    ).toMatchObject({ kind: "pull-request", value: "https://github.com/t3/pr/12" });
+    ).toMatchObject({ kind: "pull-request", value: "https://github.com/codenine/pr/12" });
   });
 
   it("copies a thread chip that pastes back as the same thread on its machine", () => {
@@ -73,9 +73,9 @@ describe("resolveThreadReferenceCopyTarget", () => {
       ],
     });
     // Without a hosted app, the plain text is a thread link that pastes back as the record's chip.
-    expect(target!.value).toBe("[Fix the login flow](t3-thread://v2/env-1/thread-1)");
+    expect(target!.value).toBe("[Fix the login flow](codenine-thread://v2/env-1/thread-1)");
     expect(threadLinkContextReferences(target!.value, pasted!.records, () => undefined)).toEqual({
-      text: `[Fix the login flow](t3-context://v1/thread/${pasted!.records[0]!.contextId})`,
+      text: `[Fix the login flow](codenine-context://v1/thread/${pasted!.records[0]!.contextId})`,
       records: pasted!.records,
     });
   });

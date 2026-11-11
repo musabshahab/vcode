@@ -1,4 +1,4 @@
-import type { RelayEnvironmentEndpointFailure } from "@t3tools/contracts/relay";
+import type { RelayEnvironmentEndpointFailure } from "@codenine/contracts/relay";
 import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
@@ -38,7 +38,7 @@ export function classifyEndpointResponse(
     case 526:
       return "tls";
     default:
-      // Any other status came from T3 Code itself, in a shape we did not expect.
+      // Any other status came from Codenine itself, in a shape we did not expect.
       return "invalid_response";
   }
 }

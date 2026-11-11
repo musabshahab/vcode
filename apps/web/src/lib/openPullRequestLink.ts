@@ -1,7 +1,7 @@
-import type { EnvironmentId, ScopedThreadRef } from "@t3tools/contracts";
+import type { EnvironmentId, ScopedThreadRef } from "@codenine/contracts";
 import { type MouseEvent } from "react";
 
-import { sourceControlClients } from "@t3tools/client-runtime/source-control-clients";
+import { sourceControlClients } from "@codenine/client-runtime/source-control-clients";
 
 import { openExternalLink } from "./openExternalLink";
 import { useClientSettings } from "../hooks/useSettings";

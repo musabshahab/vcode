@@ -1,8 +1,8 @@
-import { EnvironmentId } from "@t3tools/contracts";
+import { EnvironmentId } from "@codenine/contracts";
 import {
   type RelayClientDeviceRecord,
   type RelayClientEnvironmentRecord,
-} from "@t3tools/contracts/relay";
+} from "@codenine/contracts/relay";
 import { describe, expect, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 import * as Fiber from "effect/Fiber";
@@ -141,7 +141,7 @@ describe("createManagedRelayQueryManager", () => {
       yield* Effect.promise(() => failed.promise);
       for (const unsubscribe of readers) unsubscribe();
 
-      expect(logs).toEqual([["[t3-cloud] Relay device listing failed"]]);
+      expect(logs).toEqual([["[codenine-cloud] Relay device listing failed"]]);
     }),
   );
 

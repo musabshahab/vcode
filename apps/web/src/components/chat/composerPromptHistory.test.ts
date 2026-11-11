@@ -79,9 +79,9 @@ describe("recallableComposerPrompt", () => {
 
   it("removes canonical references without restoring dangling chips", () => {
     const sent =
-      "Look at [Terminal](t3-context://v1/terminal/term-1) please\n    indented  code\n![image](t3-context://v1/image/img-1)";
+      "Look at [Terminal](codenine-context://v1/terminal/term-1) please\n    indented  code\n![image](codenine-context://v1/image/img-1)";
     expect(recallableComposerPrompt(sent)).toBe("Look at please\n    indented  code");
-    expect(recallableComposerPrompt("![image](t3-context://v1/image/img-1)")).toBe("");
+    expect(recallableComposerPrompt("![image](codenine-context://v1/image/img-1)")).toBe("");
   });
 });
 
@@ -100,7 +100,7 @@ describe("buildComposerPromptHistoryEntries", () => {
     ]);
   });
 
-  it("skips messages sent by agents and T3 Code", () => {
+  it("skips messages sent by agents and Codenine", () => {
     const typed = buildComposerPromptHistoryEntries([
       { id: "m1", role: "user", text: "typed" },
       { id: "m3", role: "user", text: "from agent", createdBy: "agent", creationSource: "mcp" },

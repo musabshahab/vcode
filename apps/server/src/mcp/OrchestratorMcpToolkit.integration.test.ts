@@ -17,7 +17,7 @@ import {
   type ProviderOptionDescriptor,
   type ServerProvider,
   ThreadId,
-} from "@t3tools/contracts";
+} from "@codenine/contracts";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
 import * as Layer from "effect/Layer";
@@ -35,14 +35,14 @@ import * as GitVcsDriver from "../vcs/GitVcsDriver.ts";
 import * as ThreadManagementService from "../orchestration-v2/ThreadManagementService.ts";
 import * as ServerSettings from "../serverSettings.ts";
 import * as SqlitePersistence from "../persistence/Sqlite.ts";
-import * as McpProviderSessions from "@t3tools/provider-core/server/McpProviderSessions";
-import * as SecretResolver from "@t3tools/secret-provider-core/server/SecretResolver";
-import { checkpointWorkspace } from "@t3tools/provider-testing/replayWorkspace";
+import * as McpProviderSessions from "@codenine/provider-core/server/McpProviderSessions";
+import * as SecretResolver from "@codenine/secret-provider-core/server/SecretResolver";
+import { checkpointWorkspace } from "@codenine/provider-testing/replayWorkspace";
 import * as ProviderReplayHarness from "../orchestration-v2/testkit/ProviderReplayHarness.ts";
 import {
   decodeProviderReplayNdjson,
   materializeReplayTranscriptWorkspace,
-} from "@t3tools/provider-testing/replayTranscript";
+} from "@codenine/provider-testing/replayTranscript";
 import * as ProviderRegistryMock from "../provider/testUtils/providerRegistryMock.ts";
 import * as ProjectService from "../project/ProjectService.ts";
 import * as SecretRequests from "../secrets/SecretRequests.ts";
@@ -362,7 +362,7 @@ describe("orchestrator MCP toolkit", () => {
           const followupStartSequence = yield* orchestrator.getThreadEventSequence(
             localChild(delegated.childThreadId),
           );
-          const runningFollowupCall = yield* invoke("t3_thread_send", {
+          const runningFollowupCall = yield* invoke("codenine_thread_send", {
             threadId: localChild(delegated.childThreadId),
             message: cancellationPrompt,
             clientRequestId: "delegated-child-replay-running-1",
@@ -390,7 +390,7 @@ describe("orchestrator MCP toolkit", () => {
               ),
             );
 
-          const queuedFollowupCall = yield* invoke("t3_thread_send", {
+          const queuedFollowupCall = yield* invoke("codenine_thread_send", {
             threadId: localChild(delegated.childThreadId),
             message: queuedFollowupPrompt,
             mode: "queue",
@@ -455,7 +455,7 @@ describe("orchestrator MCP toolkit", () => {
           const finalSequence = yield* orchestrator.getThreadEventSequence(
             localChild(delegated.childThreadId),
           );
-          const interruptCall = yield* invoke("t3_thread_interrupt", {
+          const interruptCall = yield* invoke("codenine_thread_interrupt", {
             threadId: localChild(delegated.childThreadId),
             runId: runningFollowup.runId,
             reason: "Allow the queued replay follow-up to run.",
@@ -598,7 +598,7 @@ describe("orchestrator MCP toolkit", () => {
             },
           });
           const wait = yield* invoke(
-            "t3_thread_wait",
+            "codenine_thread_wait",
             { threadId: delegated.childThreadId, runId: queuedFollowup.runId },
             { ...invocation, thread: undefined },
           ).pipe(Effect.withTracer(tracer));
@@ -613,7 +613,7 @@ describe("orchestrator MCP toolkit", () => {
           expect(messageReads).toEqual([]);
           expect(transferReads).toHaveLength(0);
           const settledWait = yield* invoke(
-            "t3_thread_wait",
+            "codenine_thread_wait",
             {
               threadId: delegated.childThreadId,
               runId: queuedFollowup.runId,
@@ -635,7 +635,7 @@ describe("orchestrator MCP toolkit", () => {
             messageReads.filter((query) => !query.includes("$.notification.source.kind")),
           ).toHaveLength(1);
           const parentlessRead = yield* invoke(
-            "t3_thread_read",
+            "codenine_thread_read",
             {
               threadId: delegated.childThreadId,
               limit: 100,
@@ -651,7 +651,7 @@ describe("orchestrator MCP toolkit", () => {
               ?.completionDelivery?.state,
           ).toBe("claimed");
 
-          const read = yield* invoke("t3_thread_read", {
+          const read = yield* invoke("codenine_thread_read", {
             threadId: delegated.childThreadId,
             limit: 100,
             maxCharsPerItem: result === "😀" ? 1 : 20_000,

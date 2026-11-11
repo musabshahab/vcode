@@ -3,7 +3,7 @@ import {
   type AuthMcpApprovalDetails,
   type AuthMcpClientAccess,
   parseMcpApprovalCode,
-} from "@t3tools/contracts";
+} from "@codenine/contracts";
 
 /**
  * The picker's access: the user's choice, else Auto for a typed code, else Read only, since

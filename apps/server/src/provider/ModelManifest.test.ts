@@ -1,7 +1,7 @@
 import { assert, describe, it } from "@effect/vitest";
 import * as NodeServices from "@effect/platform-node/NodeServices";
-import { ProviderDriverKind } from "@t3tools/contracts";
-import * as ModelCatalog from "@t3tools/provider-core/server/ModelCatalog";
+import { ProviderDriverKind } from "@codenine/contracts";
+import * as ModelCatalog from "@codenine/provider-core/server/ModelCatalog";
 import * as ConfigProvider from "effect/ConfigProvider";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
@@ -272,7 +272,7 @@ const layerService = (input: {
             input.manifestUrl === null
               ? {}
               : {
-                  T3CODE_MODEL_MANIFEST_URL:
+                  CODENINE_MODEL_MANIFEST_URL:
                     input.manifestUrl ?? "https://manifest.example.test/model-manifest.json",
                 },
         }),

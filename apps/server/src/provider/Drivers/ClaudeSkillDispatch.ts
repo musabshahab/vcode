@@ -1,4 +1,4 @@
-import type { ServerProviderSkill } from "@t3tools/contracts";
+import type { ServerProviderSkill } from "@codenine/contracts";
 
 /**
  * Claude expands one skill per message only when `/name` starts the text block.

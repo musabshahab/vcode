@@ -1,4 +1,4 @@
-import { normalizeProjectPathForComparison } from "@t3tools/shared/path";
+import { normalizeProjectPathForComparison } from "@codenine/shared/path";
 
 import type { ThreadShell } from "./types";
 

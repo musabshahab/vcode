@@ -1,5 +1,5 @@
 {
-  "name": "@t3tools/source-control-github",
+  "name": "@codenine/source-control-github",
   "private": true,
   "type": "module",
   "exports": {
@@ -18,17 +18,17 @@
     "generate": "graphqlgen"
   },
   "dependencies": {
+    "@codenine/contracts": "workspace:*",
+    "@codenine/provider-core": "workspace:*",
+    "@codenine/shared": "workspace:*",
+    "@codenine/source-control-core": "workspace:*",
     "@effect/platform-node": "catalog:",
-    "@t3tools/contracts": "workspace:*",
-    "@t3tools/provider-core": "workspace:*",
-    "@t3tools/shared": "workspace:*",
-    "@t3tools/source-control-core": "workspace:*",
     "effect": "catalog:"
   },
   "devDependencies": {
+    "@codenine/source-control-testing": "workspace:*",
     "@effect/graphql-generator": "catalog:",
     "@effect/vitest": "catalog:",
-    "@t3tools/source-control-testing": "workspace:*",
     "@types/node": "catalog:",
     "vite-plus": "catalog:"
   }

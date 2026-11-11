@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // @effect-diagnostics nodeBuiltinImport:off
 /**
- * Replays small fake threads on a Claude or Codex model to check T3's MCP tool use. A trimmed
+ * Replays small fake threads on a Claude or Codex model to check Codenine's MCP tool use. A trimmed
  * harness capture supplies the prompt and native tools; a cheap model plays the shell. See
  * README.md for how to run it and add cases.
  */
@@ -17,7 +17,7 @@ import {
   ComposerContextRecord,
   OrchestratorMcpTaskRole,
   ProviderInstanceId,
-} from "@t3tools/contracts";
+} from "@codenine/contracts";
 import * as Cause from "effect/Cause";
 import * as Context from "effect/Context";
 import * as Config from "effect/Config";
@@ -36,15 +36,15 @@ import { FetchHttpClient, HttpClient, HttpClientRequest } from "effect/http";
 import { taskPrompt } from "../../apps/server/src/mcp/delegatedTaskModes.ts";
 import * as McpInvocationContext from "../../apps/server/src/mcp/McpInvocationContext.ts";
 import { advertisedJsonSchema } from "../../apps/server/src/mcp/advertisedJsonSchema.ts";
-import * as Contracts from "@t3tools/contracts";
+import * as Contracts from "@codenine/contracts";
 import {
   EnvironmentId,
   ORCHESTRATOR_MCP_RUNNING_TASK_NEXT,
   PullRequestState,
   ThreadId,
-} from "@t3tools/contracts";
-import { projectComposerContextForProvider } from "@t3tools/shared/composerContextReferences";
-import { formatThreadLink } from "@t3tools/shared/threadLinks";
+} from "@codenine/contracts";
+import { projectComposerContextForProvider } from "@codenine/shared/composerContextReferences";
+import { formatThreadLink } from "@codenine/shared/threadLinks";
 import { buildCodexAdditionalContext } from "../../apps/server/src/provider/CodexDeveloperInstructions.ts";
 import { makeSideChatContext } from "../../apps/server/src/orchestration-v2/ContextHandoffService.ts";
 import { withInlineContext } from "../../apps/server/src/orchestration-v2/ContextHandoffDelivery.ts";
@@ -94,7 +94,7 @@ type PricedModel = keyof typeof PRICES;
 const PROXY_SHELL_MODELS = ["gpt-6-luna", "gpt-6.1-terra"] as const;
 type ShellModel = PricedModel | (typeof PROXY_SHELL_MODELS)[number];
 const isPricedModel = (model: ShellModel): model is PricedModel => model in PRICES;
-const T3_PREFIX = "mcp__t3-code__";
+const CODENINE_PREFIX = "mcp__codenine__";
 const RUNTIME_MARKER = "<runtime_info>";
 const TOOL_LOADED = "Tool loaded.";
 
@@ -135,7 +135,7 @@ export type SampleRun = {
   stopReason: string;
   /** The agent's final answer: its last response's text, if it ended its turn. */
   readonly finalText?: string;
-  /** PRs linked to the thread when the sample ends, by the agent or by T3. */
+  /** PRs linked to the thread when the sample ends, by the agent or by Codenine. */
   readonly linked?: ReadonlyArray<string>;
 };
 
@@ -173,7 +173,7 @@ const McpToolUseExpect = Schema.Struct({
   minCalls: Schema.optional(Schema.Record(Schema.String, Schema.Number)),
   maxCalls: Schema.optional(Schema.Record(Schema.String, Schema.Number)),
   /**
-   * One `args`-style value per new top-level thread the agent asks for, by `t3_thread_launch` or a
+   * One `args`-style value per new top-level thread the agent asks for, by `codenine_thread_launch` or a
    * `create_threads` entry. Each matches a different thread's request; no other thread is asked for.
    */
   newThreads: Schema.optional(Schema.Array(Schema.Unknown)),
@@ -219,7 +219,7 @@ const McpToolUseWorld = Schema.StructWithRest(
         Schema.StructWithRest(Schema.Struct({ sha: Schema.String, subject: Schema.String }), Rest),
       ),
     ),
-    /** PRs already linked to the thread, with the state T3 last saw. */
+    /** PRs already linked to the thread, with the state Codenine last saw. */
     linkedPullRequests: Schema.optional(
       Schema.Array(
         Schema.Struct({ number: Schema.Number, state: PullRequestState, title: Schema.String }),
@@ -242,7 +242,7 @@ export const McpToolUseCase = Schema.Struct({
     role: Schema.Literals(["top", "delegated-child", "native-subagent"]),
     /** Runs only on this harness, for cases whose right answer depends on it. */
     harness: Schema.optional(Schema.Literals(["claude", "codex"])),
-    /** delegate_task `role` for a delegated child. T3 builds the child's first message from it. */
+    /** delegate_task `role` for a delegated child. Codenine builds the child's first message from it. */
     delegateRole: Schema.optional(OrchestratorMcpTaskRole),
     context: Schema.optional(Schema.String),
     priorTurns: Schema.optional(
@@ -255,20 +255,20 @@ export const McpToolUseCase = Schema.Struct({
       ),
     ),
     world: Schema.optional(McpToolUseWorld),
-    /** Canned tool results by bare name, T3 or native. `"default"` uses the runner's result. */
+    /** Canned tool results by bare name, Codenine or native. `"default"` uses the runner's result. */
     mocks: Schema.optional(Schema.Record(Schema.String, Schema.Unknown)),
     /** Regexes on one part of a shell command. A match wins over the shell simulator. */
     shellMocks: Schema.optional(
       Schema.Array(Schema.Struct({ match: Schema.String, output: Schema.String })),
     ),
-    /** The thread is a side chat's first turn: T3 puts the parent's digest ahead of `prompt`. */
+    /** The thread is a side chat's first turn: Codenine puts the parent's digest ahead of `prompt`. */
     sideChat: Schema.optional(
       Schema.Struct({ parentThreadId: Schema.String, digest: Schema.Array(Schema.String) }),
     ),
   }),
   /** Empty to resume a top-level thread without side-chat context after its last tool result. */
   prompt: Schema.String,
-  /** Records for the context chips `prompt` links, projected as T3 sends them. */
+  /** Records for the context chips `prompt` links, projected as Codenine sends them. */
   promptContext: Schema.optional(Schema.Struct({ records: Schema.Array(ComposerContextRecord) })),
   expect: McpToolUseExpect,
   /** Model calls this case may need. Overrides `--max-steps`. */
@@ -340,11 +340,12 @@ const toolResult = (id: string, content: unknown): Block => ({
 });
 const texts = (content: typeof Content.Type) =>
   typeof content === "string" ? [content] : content.flatMap((block) => block.text ?? []);
-const isT3Name = (name: string) => name.startsWith(T3_PREFIX) || name.startsWith("mcp__t3_code__");
+const isCodenineName = (name: string) =>
+  name.startsWith(CODENINE_PREFIX) || name.startsWith("mcp__codenine__");
 const hasTool = (tools: ReadonlyArray<ApiTool>, name: string) =>
   tools.some((tool) => tool.name === name);
 
-/** Grading name: T3 tools lose their MCP prefix, native tools keep the part after the last `_`. */
+/** Grading name: Codenine tools lose their MCP prefix, native tools keep the part after the last `_`. */
 const CODEX_NAMES: Readonly<Record<string, string>> = {
   exec_command: "Bash",
   shell_command: "Bash",
@@ -358,12 +359,12 @@ const CODEX_NAMES: Readonly<Record<string, string>> = {
 };
 export const normalizeToolName = (name: string) => {
   const bare = name.slice(name.lastIndexOf(".") + 1);
-  return isT3Name(bare)
-    ? bare.slice(T3_PREFIX.length)
+  return isCodenineName(bare)
+    ? bare.slice(CODENINE_PREFIX.length)
     : (CODEX_NAMES[bare] ?? bare.slice(bare.lastIndexOf("_") + 1));
 };
 export const normalizeToolInput = (name: string, input: unknown) => {
-  const decode = t3InputDecoders.get(normalizeToolName(name));
+  const decode = codenineInputDecoders.get(normalizeToolName(name));
   if (decode !== undefined) return Option.getOrElse(decode(input), () => input);
   return normalizeToolName(name) === "Bash" && isRecord(input)
     ? { ...input, command: input.command ?? input.cmd }
@@ -374,7 +375,7 @@ export const normalizeToolInput = (name: string, input: unknown) => {
 
 // McpHttpServer advertises each tool's JSON schema, and Claude Code passes the MCP name,
 // description, and schema through unchanged.
-const t3SourceTools: ReadonlyArray<Tool.Any> = [
+const codenineSourceTools: ReadonlyArray<Tool.Any> = [
   OrchestratorToolkit,
   ThreadToolkit,
   AttachmentToolkit,
@@ -384,76 +385,78 @@ const t3SourceTools: ReadonlyArray<Tool.Any> = [
   PullRequestsToolkit,
 ].flatMap((toolkit): ReadonlyArray<Tool.Any> => Object.values(toolkit.tools));
 // McpHttpServer decodes arguments with each tool's JSON codec, which drops undeclared keys.
-const t3InputDecoders = new Map(
-  t3SourceTools.map((tool) => [
+const codenineInputDecoders = new Map(
+  codenineSourceTools.map((tool) => [
     tool.name,
     Schema.decodeUnknownOption(
       Schema.toCodecJson(tool.parametersSchema as Schema.Codec<unknown, unknown>),
     ),
   ]),
 );
-const t3Tools: ReadonlyArray<ApiTool> = t3SourceTools.map((tool) => ({
-  name: `${T3_PREFIX}${tool.name}`,
+const codenineTools: ReadonlyArray<ApiTool> = codenineSourceTools.map((tool) => ({
+  name: `${CODENINE_PREFIX}${tool.name}`,
   description: Tool.getDescription(tool) ?? "",
   input_schema: advertisedJsonSchema(tool),
 }));
 const enabledWhen = (predicate: () => boolean) =>
   new Set(
-    t3SourceTools
+    codenineSourceTools
       .filter(
         (tool) => Context.getOrUndefined(tool.annotations, McpSchema.EnabledWhen) === predicate,
       )
-      .map((tool) => `${T3_PREFIX}${tool.name}`),
+      .map((tool) => `${CODENINE_PREFIX}${tool.name}`),
   );
 // Claude Code loads a tool whose `_meta` sets anthropic/alwaysLoad up front instead of deferring it.
 const alwaysLoaded = new Set(
-  t3SourceTools
+  codenineSourceTools
     .filter((tool) => {
       const meta = Context.getOrUndefined(tool.annotations, Tool.Meta);
       return meta !== undefined && meta["anthropic/alwaysLoad"] === true;
     })
-    .map((tool) => `${T3_PREFIX}${tool.name}`),
+    .map((tool) => `${CODENINE_PREFIX}${tool.name}`),
 );
 // Refs whose request_secret takes `value` save a secret the user already pasted, with no card.
-export const savesPastedSecrets = t3Tools.some(
+export const savesPastedSecrets = codenineTools.some(
   (tool) =>
-    tool.name === `${T3_PREFIX}request_secret` &&
+    tool.name === `${CODENINE_PREFIX}request_secret` &&
     isRecord(tool.input_schema) &&
     isRecord(tool.input_schema.properties) &&
     "value" in tool.input_schema.properties,
 );
-/** A request_secret call that hands T3 a pasted secret, on a ref that takes one. */
+/** A request_secret call that hands Codenine a pasted secret, on a ref that takes one. */
 const pastedSecret = (name: string, input: Readonly<Record<string, unknown>>) =>
   savesPastedSecrets && name === "request_secret" && typeof input.value === "string";
-// T3 does not offer these to a delegated child, so its harness never lists them.
+// Codenine does not offer these to a delegated child, so its harness never lists them.
 const hiddenFromSubagents = enabledWhen(McpInvocationContext.hiddenFromSubagents);
-const visibleT3Tools = (options: { readonly subagent?: boolean }) =>
-  t3Tools.filter((tool) => !(options.subagent === true && hiddenFromSubagents.has(tool.name)));
+const visibleCodenineTools = (options: { readonly subagent?: boolean }) =>
+  codenineTools.filter(
+    (tool) => !(options.subagent === true && hiddenFromSubagents.has(tool.name)),
+  );
 
-/** T3's Claude Code options for an eval thread: its system prompt append and its hooks. */
+/** Codenine's Claude Code options for an eval thread: its system prompt append and its hooks. */
 const claudeQueryOptions = (model: Model) =>
   makeClaudeQueryOptions({
     modelSelection: { instanceId: ProviderInstanceId.make(CLAUDE_PROVIDER), model },
     nativeThreadId: "mcp-tool-use-eval",
     resume: false,
     cwd: null,
-    mcpServers: { "t3-code": { type: "http", url: "http://127.0.0.1/mcp" } },
+    mcpServers: { codenine: { type: "http", url: "http://127.0.0.1/mcp" } },
   });
 
-/** Text T3 appends to Claude Code's system prompt. Delegated children get the same text. */
-export const t3SystemAppend = (model: Model) => {
+/** Text Codenine appends to Claude Code's system prompt. Delegated children get the same text. */
+export const codenineSystemAppend = (model: Model) => {
   const { systemPrompt } = claudeQueryOptions(model);
   if (isRecord(systemPrompt) && systemPrompt.type === "preset" && systemPrompt.append) {
     return systemPrompt.append;
   }
-  throw new Error("makeClaudeQueryOptions no longer appends T3 text to a preset prompt.");
+  throw new Error("makeClaudeQueryOptions no longer appends Codenine text to a preset prompt.");
 };
 
 /**
- * The context T3's SubagentStart hooks give a native subagent, which gets none of the append.
- * Empty when T3 registers no such hook.
+ * The context Codenine's SubagentStart hooks give a native subagent, which gets none of the append.
+ * Empty when Codenine registers no such hook.
  */
-export const t3SubagentContext = async (model: Model) => {
+export const codenineSubagentContext = async (model: Model) => {
   const hooks = (claudeQueryOptions(model).hooks?.SubagentStart ?? []).flatMap((m) => m.hooks);
   const input = {
     hook_event_name: "SubagentStart" as const,
@@ -477,18 +480,21 @@ export const t3SubagentContext = async (model: Model) => {
 };
 
 /**
- * Size of the context T3 adds: the system text every Claude thread gets, and the tool
+ * Size of the context Codenine adds: the system text every Claude thread gets, and the tool
  * descriptions and schemas (loaded on demand here, sent up front by harnesses without
  * deferred tools). Tokens are estimated at 4 characters each.
  */
-const t3ContextReport = (model: Model) => {
+const codenineContextReport = (model: Model) => {
   const size = (chars: number) => `${chars} chars (~${Math.round(chars / 4)} tokens)`;
-  const descriptions = t3Tools.reduce((sum, tool) => sum + valueText(tool.description).length, 0);
-  const schemas = JSON.stringify(t3Tools).length;
+  const descriptions = codenineTools.reduce(
+    (sum, tool) => sum + valueText(tool.description).length,
+    0,
+  );
+  const schemas = JSON.stringify(codenineTools).length;
   return [
-    `- T3 context: system text ${size((isCodex(model) ? JSON.stringify(buildCodexAdditionalContext({ model })) : t3SystemAppend(model)).length)}`,
+    `- Codenine context: system text ${size((isCodex(model) ? JSON.stringify(buildCodexAdditionalContext({ model })) : codenineSystemAppend(model)).length)}`,
     `tool descriptions ${size(descriptions)}`,
-    `full tool schemas ${size(schemas)} across ${t3Tools.length} tools.`,
+    `full tool schemas ${size(schemas)} across ${codenineTools.length} tools.`,
   ].join(", ");
 };
 
@@ -522,11 +528,11 @@ export const buildBase = (
     readonly model: Model;
     readonly keepUserInstructions: boolean;
     readonly subagent?: boolean;
-    /** A native subagent starts from its task: T3 appends nothing to its system prompt. */
+    /** A native subagent starts from its task: Codenine appends nothing to its system prompt. */
     readonly nativeSubagent?: boolean;
   },
 ) => {
-  const t3 = visibleT3Tools(options);
+  const codenine = visibleCodenineTools(options);
   const firstAssistant = template.messages.findIndex((message) => message.role === "assistant");
   const head = template.messages.slice(0, firstAssistant === -1 ? undefined : firstAssistant);
   const systemTexts = [
@@ -539,15 +545,15 @@ export const buildBase = (
   if (systemTexts.filter((value) => value.includes(RUNTIME_MARKER)).length !== 1 || !deferredList) {
     throw new Error(`The template needs one ${RUNTIME_MARKER} block and a deferred tool list.`);
   }
-  const nativeDeferred = deferredList.split("\n").filter((name) => name && !isT3Name(name));
+  const nativeDeferred = deferredList.split("\n").filter((name) => name && !isCodenineName(name));
   const names = [
     ...nativeDeferred,
-    ...t3.filter((tool) => !alwaysLoaded.has(tool.name)).map((tool) => tool.name),
+    ...codenine.filter((tool) => !alwaysLoaded.has(tool.name)).map((tool) => tool.name),
   ]
     .toSorted()
     .join("\n");
   const { model } = options;
-  const append = options.nativeSubagent ? "" : t3SystemAppend(model);
+  const append = options.nativeSubagent ? "" : codenineSystemAppend(model);
   const modelLine = `You are powered by the model named ${MODELS[model]}. The exact model ID is ${model}.`;
   const joined = systemTexts.join("\n");
   // The capture's home directory names its user. Cases use `/home/user` paths instead.
@@ -556,7 +562,7 @@ export const buildBase = (
   const anonymize = (value: string) =>
     home === undefined ? value : value.replaceAll(home, home.replace(/[^/]+$/, "user"));
   const system = systemTexts.map((value) => {
-    // T3's append is the tail of its block: runtime info, PR linking, then orchestration.
+    // Codenine's append is the tail of its block: runtime info, PR linking, then orchestration.
     const at = value.indexOf(RUNTIME_MARKER);
     return anonymize(at === -1 ? value : value.slice(0, at) + append)
       .replace(DEFERRED_LIST, (_, header: string) => `${header}${names}\n`)
@@ -588,18 +594,18 @@ export const buildBase = (
       date: /Today's date is ([\d-]+)/.exec(reminders.join("\n"))?.[1],
     },
     nativeTools: [
-      ...template.tools.filter((tool) => !isT3Name(tool.name)),
-      ...t3.filter((tool) => alwaysLoaded.has(tool.name)),
+      ...template.tools.filter((tool) => !isCodenineName(tool.name)),
+      ...codenine.filter((tool) => alwaysLoaded.has(tool.name)),
     ],
-    /** Tools ToolSearch loads: T3 tools from source, and native tools the template only names. */
-    t3,
-    deferred: [...t3, ...nativeDeferred.map((name) => ({ name, ...nativeSchema(name) }))],
+    /** Tools ToolSearch loads: Codenine tools from source, and native tools the template only names. */
+    codenine,
+    deferred: [...codenine, ...nativeDeferred.map((name) => ({ name, ...nativeSchema(name) }))],
   };
 };
 
 type Base = ReturnType<typeof buildBase> & {
   readonly codex?: typeof ResponsesRequest.Type;
-  /** What T3's SubagentStart hooks give a native subagent. */
+  /** What Codenine's SubagentStart hooks give a native subagent. */
   readonly subagentContext?: string;
 };
 
@@ -613,14 +619,14 @@ const buildCodexBase = (
     readonly subagent?: boolean;
   },
 ): Base => {
-  const t3 = visibleT3Tools(options);
+  const codenine = visibleCodenineTools(options);
   const contentText = (item: Block) =>
     Array.isArray(item.content)
       ? item.content.map((block: Block) => valueText(block.text)).join("\n")
       : valueText(item.content);
   const joined = template.input.map(contentText).join("\n");
-  if (!joined.includes("<t3_code_runtime>"))
-    throw new Error("Codex template needs full T3 context.");
+  if (!joined.includes("<codenine_runtime>"))
+    throw new Error("Codex template needs full Codenine context.");
   const cwd = /<cwd>(.*?)<\/cwd>/.exec(joined)?.[1] ?? "/home/user/app";
   const home = /^\/(?:home|Users)\/[^/]+/.exec(cwd)?.[0];
   const clean = (s: string) => (home ? s.replaceAll(home, home.replace(/[^/]+$/, "user")) : s);
@@ -633,7 +639,7 @@ const buildCodexBase = (
   // The captured <collaboration_mode> message stays: Codex supplies its own mode text natively.
   const input = template.input.flatMap((item) => {
     const content = contentText(item);
-    if (content.includes("<t3_code_")) return [];
+    if (content.includes("<codenine_")) return [];
     if (item.role === "user") {
       const env = /<environment_context>[\s\S]*?<\/environment_context>/.exec(content)?.[0];
       return env ? [message(clean(options.keepUserInstructions ? content : env), "user")] : [];
@@ -670,8 +676,8 @@ const buildCodexBase = (
       date: /<current_date>(.*?)<\/current_date>/.exec(joined)?.[1],
     },
     nativeTools,
-    t3,
-    deferred: [...t3],
+    codenine,
+    deferred: [...codenine],
     codex: { ...template, input, reasoning: { ...template.reasoning, effort } },
   };
 };
@@ -691,7 +697,7 @@ const codexCall = (name: string, input: unknown) => {
           : `python3 -c ${JSON.stringify(`from pathlib import Path; p=Path(${JSON.stringify(file)}); p.write_text(p.read_text().replace(${JSON.stringify(args.old_string)}, ${JSON.stringify(args.new_string)}))`)}`;
     return `text(await tools.exec_command(${JSON.stringify({ cmd: command })}));`;
   }
-  return `text(await tools.${name.replace("mcp__t3-code__", "mcp__t3_code__")}(${JSON.stringify(input)}));`;
+  return `text(await tools.${name.replace("mcp__codenine__", "mcp__codenine__")}(${JSON.stringify(input)}));`;
 };
 const codexMessages = (messages: ReadonlyArray<ApiMessage>): Array<Block> =>
   messages.flatMap((message) =>
@@ -723,7 +729,7 @@ const codexMessages = (messages: ReadonlyArray<ApiMessage>): Array<Block> =>
   );
 /** One tool call the shell simulator has answered, or one from the case's prior turns. */
 type ShellEntry = { readonly tool: string; readonly input: unknown; readonly output: string };
-/** PRs T3 links by itself because a shell command created them, as `gh pr create` does. */
+/** PRs Codenine links by itself because a shell command created them, as `gh pr create` does. */
 const createdPullRequests = ({ tool, input, output }: ShellEntry) =>
   tool === "Bash" && isRecord(input) && typeof input.command === "string"
     ? changeRequestsCreatedBy(input.command, output).map(({ url }) => url)
@@ -731,7 +737,7 @@ const createdPullRequests = ({ tool, input, output }: ShellEntry) =>
 /**
  * One sample's state. ToolSearch adds loaded schemas to `tools`, like Claude Code. `shell` is the
  * history the simulator keeps consistent with; `linked`, `nextTask` and `threads` do the same for
- * T3 results.
+ * Codenine results.
  */
 type Sample = {
   readonly testCase: McpToolUseCase;
@@ -745,7 +751,7 @@ type Sample = {
   nextTask: number;
   /** Threads the agent launched in this sample, by id, so reading one shows its own brief. */
   readonly threads: Map<string, { readonly title: string; readonly brief: string }>;
-  /** Files T3's request_secret saved in this sample, in call order. */
+  /** Files Codenine's request_secret saved in this sample, in call order. */
   readonly secretFiles: Array<string>;
   secretRequests: number;
 };
@@ -883,7 +889,7 @@ export const buildMessages = (sample: Sample) => {
       if (tool === undefined) throw new Error(`${testCase.id}: unknown prior tool ${call.tool}.`);
       return { ...call, id: `toolu_prior_${nextId++}`, name: tool.name, tool };
     });
-    // Prior T3 calls load their schemas first, as in a real deferred session.
+    // Prior Codenine calls load their schemas first, as in a real deferred session.
     const unloaded = [...new Set(calls.map((call) => call.tool))].filter(
       (tool) => !hasTool(tools, tool.name),
     );
@@ -921,7 +927,7 @@ export const buildMessages = (sample: Sample) => {
   return messages;
 };
 
-// Results for T3 tools a case does not mock. The model ids are public in this repo's catalog.
+// Results for Codenine tools a case does not mock. The model ids are public in this repo's catalog.
 const claudeModel = (id: string) => ({ id, options: [{ id: "effort", values: EFFORTS }] });
 const codexModel = (id: string) => ({ id, options: [{ id: "reasoningEffort", values: EFFORTS }] });
 // Mirrors the real catalog's main models, so a case's named model is not missing by accident.
@@ -959,7 +965,7 @@ const DEFAULT_THREAD = {
 
 const PULL_REQUEST_URL = /\/pull\/\d+\/?$/;
 
-/** Pull request identity from a `url` or `repository` plus `number` input, like T3's results. */
+/** Pull request identity from a `url` or `repository` plus `number` input, like Codenine's results. */
 const pullRequest = (repo: string, input: Readonly<Record<string, unknown>>) => {
   const url = typeof input.url === "string" ? input.url : "";
   const repository =
@@ -982,8 +988,8 @@ const linkedEntry = (sample: Sample, url: string) => {
   return { ...pr, state: seeded?.state ?? "open", title: seeded?.title ?? null };
 };
 
-/** A believable T3 result for a tool the case does not mock. */
-export const t3Default = (
+/** A believable Codenine result for a tool the case does not mock. */
+export const codenineDefault = (
   sample: Sample,
   name: string,
   input: Readonly<Record<string, unknown>>,
@@ -1002,7 +1008,7 @@ export const t3Default = (
     };
   };
   switch (name) {
-    case "t3_thread_launch":
+    case "codenine_thread_launch":
       return newThread(input, input.message);
     case "create_threads":
       return {
@@ -1079,7 +1085,7 @@ export const t3Default = (
       };
     }
     case "request_secret": {
-      // T3 names a ref and a file with 32 hex characters, new for each request, in its secrets dir.
+      // Codenine names a ref and a file with 32 hex characters, new for each request, in its secrets dir.
       const id = NodeCrypto.createHash("sha256")
         .update(`${sample.testCase.id}:${sample.secretRequests++}`)
         .digest("hex")
@@ -1087,7 +1093,7 @@ export const t3Default = (
       const home =
         /^\/(?:home|Users)\/[^/]+/.exec(sample.base.environment.cwd)?.[0] ?? "/home/user";
       return input.delivery === "file" || pastedSecret(name, input)
-        ? { status: "saved", file: `${home}/.t3/userdata/secrets/files/${id}` }
+        ? { status: "saved", file: `${home}/.codenine/userdata/secrets/files/${id}` }
         : { status: "saved", secretRef: `secret-ref:${id}` };
     }
     case "unlink_pull_request":
@@ -1124,7 +1130,7 @@ export const t3Default = (
         })),
         chains: [],
       };
-    case "t3_thread_read": {
+    case "codenine_thread_read": {
       const threadId = valueText(input.threadId);
       const launched = sample.threads.get(threadId);
       if (launched !== undefined) {
@@ -1151,13 +1157,13 @@ export const t3Default = (
 /** The machine the fake threads live on. */
 const EVAL_ENVIRONMENT_ID = EnvironmentId.make("eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee");
 
-// The note T3 adds when a secret card ends unsaved, on refs that have one (looked up by name so
+// The note Codenine adds when a secret card ends unsaved, on refs that have one (looked up by name so
 // the runner still builds on refs without it).
 const unsavedSecretNote = (Contracts as Record<string, unknown>).SECRET_REQUEST_UNSAVED_NOTE as
   | Readonly<Record<string, string>>
   | undefined;
 
-/** Fields T3 adds to real thread and task results, applied to mocks and defaults alike. */
+/** Fields Codenine adds to real thread and task results, applied to mocks and defaults alike. */
 const withProductFields = (name: string, value: unknown, child: boolean): unknown => {
   if (!isRecord(value)) return value;
   const linked = (thread: unknown, idKey = "threadId") => {
@@ -1186,15 +1192,15 @@ const withProductFields = (name: string, value: unknown, child: boolean): unknow
       const running = task.status === "running" && task.next === undefined;
       return running ? { ...task, next: ORCHESTRATOR_MCP_RUNNING_TASK_NEXT } : task;
     }
-    case "t3_thread_read":
+    case "codenine_thread_read":
       return { ...value, thread: linked(value.thread) };
-    case "t3_thread_launch":
-    case "t3_thread_send":
+    case "codenine_thread_launch":
+    case "codenine_thread_send":
       return linked(value);
-    case "t3_thread_list":
+    case "codenine_thread_list":
     case "create_threads":
       return listed("threads");
-    case "t3_thread_search":
+    case "codenine_thread_search":
       return listed("matches");
     case "link_pull_request":
     case "link_pull_requests":
@@ -1304,7 +1310,7 @@ export const shellRequest = (sample: Sample, call: Omit<ShellEntry, "output">, m
       : []),
     ...(sample.secretFiles.length > 0
       ? [
-          `T3's request_secret saved these files in this sample: ${sample.secretFiles.join(", ")}. Each exists, is readable only by the user, and holds exactly the value the user gave, typed into T3's private card or pasted in chat and saved by the agent, the right one for the task, with no trailing newline. A program that reads it, as in "$(cat <file>)", < <file> or a --*-file flag, gets that value. What appears in the output is whatever that program prints: one that prints or logs its input shows the value. No other file in that directory exists.`,
+          `Codenine's request_secret saved these files in this sample: ${sample.secretFiles.join(", ")}. Each exists, is readable only by the user, and holds exactly the value the user gave, typed into Codenine's private card or pasted in chat and saved by the agent, the right one for the task, with no trailing newline. A program that reads it, as in "$(cat <file>)", < <file> or a --*-file flag, gets that value. What appears in the output is whatever that program prints: one that prints or logs its input shows the value. No other file in that directory exists.`,
         ]
       : []),
     ...(context ? [`The agent was told: ${context}`] : []),
@@ -1442,12 +1448,12 @@ export const answerToolCall = Effect.fn("evaluateMcpToolUse.answerToolCall")(fun
         : withProductFields(name, mock, testCase.setup.role === "delegated-child"),
     );
   }
-  if (isT3Name(call.name)) {
-    // T3 refuses a watch from a delegated child.
+  if (isCodenineName(call.name)) {
+    // Codenine refuses a watch from a delegated child.
     if (name === "watch_pull_request" && testCase.setup.role === "delegated-child") {
       return failed(SUBAGENT_WATCH_ERROR);
     }
-    const value = t3Default(sample, name, input);
+    const value = codenineDefault(sample, name, input);
     if (name === "request_secret") savedSecretFile(sample, value);
     return toolResult(
       call.id,
@@ -1500,7 +1506,7 @@ const matches = (expected: unknown, actual: unknown): boolean => {
 const newThreadRequests = (calls: ReadonlyArray<Call>) =>
   calls.flatMap((call): ReadonlyArray<{ request: unknown; brief: unknown }> => {
     if (call.failed === true || !isRecord(call.input)) return [];
-    if (call.tool === "t3_thread_launch")
+    if (call.tool === "codenine_thread_launch")
       return [{ request: call.input, brief: call.input.message }];
     if (call.tool !== "create_threads" || !Array.isArray(call.input.threads)) return [];
     return call.input.threads.map((request: unknown) => ({
@@ -1704,8 +1710,8 @@ export const executeCodex = async (
 };
 
 const codexCatalog = (base: Base) => [
-  ...base.t3.map((tool) => ({
-    name: tool.name.replace("mcp__t3-code__", "mcp__t3_code__"),
+  ...base.codenine.map((tool) => ({
+    name: tool.name.replace("mcp__codenine__", "mcp__codenine__"),
     description: `${valueText(tool.description)}\nInput JSON schema: ${JSON.stringify(tool.input_schema)}`,
   })),
   ...[
@@ -1922,7 +1928,7 @@ const runSample = Effect.fn("evaluateMcpToolUse.runSample")(function* (
             Effect.map((result) => settle(recorded, result)),
             Effect.map((result) => {
               const output = valueText(result.content);
-              if (isT3Name(name))
+              if (isCodenineName(name))
                 return {
                   content: [text(output)],
                   ...(!result.is_error
@@ -2059,7 +2065,7 @@ export const summarize = (
   );
   const errorNote = `- Errored: ${errors.map(([id, failed]) => `${id} ×${failed.length}`).join(", ")}. These samples did not finish, even after retries, so pass rates leave them out; tokens they spent are counted.`;
   const nativeNote =
-    "- native-subagent cases are approximate: the harness gives subagents their own system prompt, which this runner does not rebuild. T3's append is left out and its SubagentStart hook context added after the task.";
+    "- native-subagent cases are approximate: the harness gives subagents their own system prompt, which this runner does not rebuild. Codenine's append is left out and its SubagentStart hook context added after the task.";
   const identityNote = `- The captured Claude Code identity line is replaced with "${NEUTRAL_IDENTITY}"`;
   const finished = rows.filter((row) => row.error === undefined).length;
   return [
@@ -2144,18 +2150,18 @@ const main = Effect.gen(function* () {
       "max-steps": string,
       effort: string,
       "shell-model": { ...string, default: "claude-haiku-5-5" },
-      // T3's text must work for every user, so the captured CLAUDE.md is dropped by default.
+      // Codenine's text must work for every user, so the captured CLAUDE.md is dropped by default.
       "user-instructions": { ...string, default: "drop" },
       "dry-run": { type: "boolean", default: false },
       "stop-on-regression": { type: "boolean", default: false },
       "regression-budget": string,
-      // Prints the size of T3's text and tool schemas, then exits. Needs no template or key.
+      // Prints the size of Codenine's text and tool schemas, then exits. Needs no template or key.
       context: { type: "boolean", default: false },
     },
   });
   const flags = yield* decodeFlags({ template: "", ...values });
   if (flags.context) {
-    process.stdout.write(`${t3ContextReport(flags.model)}\n`);
+    process.stdout.write(`${codenineContextReport(flags.model)}\n`);
     return;
   }
   if (flags["stop-on-regression"] && flags.baseline === undefined) {
@@ -2241,7 +2247,7 @@ const main = Effect.gen(function* () {
               nativeSubagent: role === "native-subagent",
             });
             return role === "native-subagent"
-              ? Effect.promise(() => t3SubagentContext(flags.model)).pipe(
+              ? Effect.promise(() => codenineSubagentContext(flags.model)).pipe(
                   Effect.map((subagentContext): Base => ({ ...built, subagentContext })),
                 )
               : Effect.succeed(built);
@@ -2390,7 +2396,7 @@ const main = Effect.gen(function* () {
   const summary = summarize(
     rows,
     {
-      header: [header, t3ContextReport(flags.model), ...stopped].join("\n"),
+      header: [header, codenineContextReport(flags.model), ...stopped].join("\n"),
       shellModel: config.shellModel,
       model: config.model,
     },

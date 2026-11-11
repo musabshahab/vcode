@@ -1,7 +1,7 @@
-import type { ChatAttachment } from "@t3tools/contracts";
-import { assistantCitationsToPlainText } from "@t3tools/shared/assistantCitations";
-import { replaceComposerContextReferences } from "@t3tools/shared/composerContextReferences";
-import { truncate } from "@t3tools/shared/String";
+import type { ChatAttachment } from "@codenine/contracts";
+import { assistantCitationsToPlainText } from "@codenine/shared/assistantCitations";
+import { replaceComposerContextReferences } from "@codenine/shared/composerContextReferences";
+import { truncate } from "@codenine/shared/String";
 
 import { collectComposerModelMentions } from "../composerModelMentions.ts";
 

@@ -1,5 +1,5 @@
 {
-  "name": "@t3tools/provider-testing",
+  "name": "@codenine/provider-testing",
   "private": true,
   "type": "module",
   "exports": {
@@ -24,9 +24,9 @@
     "typecheck": "effect-tsgo tsrs --noEmit"
   },
   "dependencies": {
+    "@codenine/contracts": "workspace:*",
+    "@codenine/shared": "workspace:*",
     "@effect/platform-node": "catalog:",
-    "@t3tools/contracts": "workspace:*",
-    "@t3tools/shared": "workspace:*",
     "effect": "catalog:"
   },
   "devDependencies": {

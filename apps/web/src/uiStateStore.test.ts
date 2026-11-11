@@ -1,4 +1,4 @@
-import { ThreadId } from "@t3tools/contracts";
+import { ThreadId } from "@codenine/contracts";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 import {
@@ -244,7 +244,7 @@ describe("uiStateStore persistence", () => {
   });
 
   it("restores the sidebar project scope across reloads", () => {
-    const keys = ["github.com/pingdotgg/t3code", "github.com/pingdotgg/uploadthing"];
+    const keys = ["github.com/acme/codenine", "github.com/acme/uploadthing"];
     persistState(makeUiState({ sidebarProjectScopeKeys: keys }));
 
     const persisted = JSON.parse(
@@ -255,19 +255,19 @@ describe("uiStateStore persistence", () => {
   });
 
   it("keeps a single-project scope readable by older clients", () => {
-    persistState(makeUiState({ sidebarProjectScopeKeys: ["github.com/pingdotgg/t3code"] }));
+    persistState(makeUiState({ sidebarProjectScopeKeys: ["github.com/acme/codenine"] }));
 
     const persisted = JSON.parse(
       localStorageStub.getItem(PERSISTED_STATE_KEY) ?? "{}",
     ) as PersistedUiState;
 
-    expect(persisted.sidebarProjectScopeKey).toBe("github.com/pingdotgg/t3code");
+    expect(persisted.sidebarProjectScopeKey).toBe("github.com/acme/codenine");
   });
 
   it("restores a single-project scope saved before multi-project filtering", () => {
     expect(
-      parsePersistedState({ sidebarProjectScopeKey: "github.com/pingdotgg/t3code" })
+      parsePersistedState({ sidebarProjectScopeKey: "github.com/acme/codenine" })
         .sidebarProjectScopeKeys,
-    ).toEqual(["github.com/pingdotgg/t3code"]);
+    ).toEqual(["github.com/acme/codenine"]);
   });
 });

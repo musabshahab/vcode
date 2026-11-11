@@ -2,7 +2,7 @@ import {
   EnvironmentId,
   type OrchestrationV2ArchivedShellSnapshot,
   type ScopedThreadRef,
-} from "@t3tools/contracts";
+} from "@codenine/contracts";
 import * as Cause from "effect/Cause";
 import { AsyncResult, Atom, AtomRegistry } from "effect/reactivity";
 import { expect, it } from "vite-plus/test";

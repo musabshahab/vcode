@@ -1,4 +1,4 @@
-import type { DesktopUpdateState } from "@t3tools/contracts";
+import type { DesktopUpdateState } from "@codenine/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
 import { type BootErrorEnvironment, buildErrorReport, updateActionFor } from "./bootError";

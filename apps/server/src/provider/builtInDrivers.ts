@@ -3,7 +3,7 @@ import { CodexDriver, type CodexDriverEnv } from "./Drivers/CodexDriver.ts";
 import type {
   AnyProviderDriver,
   ProviderUsageReaderEnv,
-} from "@t3tools/provider-core/server/driver";
+} from "@codenine/provider-core/server/driver";
 
 export type BuiltInDriversEnv = ClaudeDriverEnv | CodexDriverEnv;
 

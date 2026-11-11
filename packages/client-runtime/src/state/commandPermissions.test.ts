@@ -19,7 +19,7 @@ import {
   ProjectId,
   WS_METHODS,
   type AuthSessionState,
-} from "@t3tools/contracts";
+} from "@codenine/contracts";
 import * as Cause from "effect/Cause";
 import * as Effect from "effect/Effect";
 import * as Fiber from "effect/Fiber";

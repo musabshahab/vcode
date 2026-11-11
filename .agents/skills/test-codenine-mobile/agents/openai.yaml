@@ -1,0 +1,4 @@
+interface:
+  display_name: "Test Codenine Mobile"
+  short_description: "Test iOS and Android in Codenine's Device panel"
+  default_prompt: "Use $test-codenine-mobile to verify the affected native mobile flow through Codenine's Device panel and AgentDevice."

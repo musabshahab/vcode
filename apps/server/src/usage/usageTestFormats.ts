@@ -1,5 +1,5 @@
-import type { UsageProviderKind } from "@t3tools/contracts";
-import type { TranscriptUsageFormat } from "@t3tools/provider-core/server/usage";
+import type { UsageProviderKind } from "@codenine/contracts";
+import type { TranscriptUsageFormat } from "@codenine/provider-core/server/usage";
 
 import { claudeUsageFormat } from "../provider/Drivers/claudeUsage.ts";
 import { codexUsageFormat } from "../provider/Drivers/codexUsage.ts";

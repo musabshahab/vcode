@@ -9,10 +9,10 @@ const repoEnv = loadRepoEnv();
 // Install only bundle externals; the server bundle already carries its dependency tree.
 const isMainProcessExternal = (id: string) =>
   id === "electron" || id.startsWith("electron/") || isDesktopRuntimeExternalDependency(id);
-const shouldLaunchElectronAfterPack = process.env.T3CODE_DESKTOP_DEV === "1";
+const shouldLaunchElectronAfterPack = process.env.CODENINE_DESKTOP_DEV === "1";
 const publicConfigDefine = {
-  __T3CODE_BUILD_CLERK_PUBLISHABLE_KEY__: JSON.stringify(
-    repoEnv.T3CODE_CLERK_PUBLISHABLE_KEY?.trim() ?? "",
+  __CODENINE_BUILD_CLERK_PUBLISHABLE_KEY__: JSON.stringify(
+    repoEnv.CODENINE_CLERK_PUBLISHABLE_KEY?.trim() ?? "",
   ),
 };
 
@@ -21,17 +21,17 @@ export default defineConfig({
     tasks: {
       build: {
         command: "vp pack",
-        dependsOn: ["t3#build"],
+        dependsOn: ["codenine#build"],
         cache: false,
       },
       "build:bundle": {
         command: "vp pack",
-        dependsOn: ["t3#build"],
+        dependsOn: ["codenine#build"],
         cache: false,
       },
       dev: {
-        command: "cross-env T3CODE_DESKTOP_DEV=1 vp pack --watch",
-        dependsOn: ["t3#build"],
+        command: "cross-env CODENINE_DESKTOP_DEV=1 vp pack --watch",
+        dependsOn: ["codenine#build"],
         cache: false,
       },
       "dev:bundle": {
@@ -40,7 +40,7 @@ export default defineConfig({
       },
       "dev:electron": {
         command: "node scripts/dev-electron.mjs",
-        dependsOn: ["t3#build"],
+        dependsOn: ["codenine#build"],
         cache: false,
       },
       // A local tsbuildinfo is leftover build state, not a typecheck input.

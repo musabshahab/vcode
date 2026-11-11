@@ -1,4 +1,4 @@
-import { EnvironmentId, ThreadId } from "@t3tools/contracts";
+import { EnvironmentId, ThreadId } from "@codenine/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
 import {
@@ -41,14 +41,14 @@ describe("sanitizeLinkedPrompt", () => {
 describe("parseNewThreadLink", () => {
   it("reads a shared prompt with its optional repository and model", () => {
     const result = parseNewThreadLink(
-      "?prompt=Rate+me&repo=https://github.com/pingdotgg/t3code.git&provider=Codex&model=gpt-5",
+      "?prompt=Rate+me&repo=https://github.com/acme/codenine.git&provider=Codex&model=gpt-5",
     );
     expect(result).toEqual({
       ok: true,
       value: {
         kind: "new",
         prompt: { text: "Rate me", hiddenCharacters: 0 },
-        repository: { owner: "pingdotgg", name: "t3code" },
+        repository: { owner: "acme", name: "codenine" },
         provider: "codex",
         model: "gpt-5",
       },
@@ -57,15 +57,15 @@ describe("parseNewThreadLink", () => {
 
   it("reads a pull request link, whose prompt is optional", () => {
     for (const pr of [
-      "pingdotgg/t3code/42",
-      "pingdotgg/t3code%2342",
-      "https://github.com/pingdotgg/t3code/pull/42/files",
+      "acme/codenine/42",
+      "acme/codenine%2342",
+      "https://github.com/acme/codenine/pull/42/files",
     ]) {
       expect(parseNewThreadLink(`?pr=${pr}`)).toEqual({
         ok: true,
         value: {
           kind: "pull-request",
-          pullRequest: { owner: "pingdotgg", name: "t3code", number: 42 },
+          pullRequest: { owner: "acme", name: "codenine", number: 42 },
           prompt: null,
         },
       });
@@ -98,7 +98,7 @@ describe("link round trips", () => {
   it("builds a link that parses back to the same prompt", () => {
     const link = buildNewThreadLink({
       prompt: "Swear count & rating?",
-      repository: { owner: "pingdotgg", name: "t3code" },
+      repository: { owner: "acme", name: "codenine" },
       provider: "claudeAgent",
       model: "opus",
       origin: HOSTED,
@@ -113,7 +113,7 @@ describe("link round trips", () => {
 
   it("opens a desktop link to a new thread when no hosted app is configured", () => {
     const link = buildNewThreadLink({ prompt: "hi" });
-    expect(link).toBe("t3code://new?prompt=hi");
+    expect(link).toBe("codenine://new?prompt=hi");
     expect(promptLinkAppPath(link)).toBe("/new?prompt=hi");
     expect(promptLinkAppPath("https://app.t3.codes/new?prompt=hi")).toBeNull();
   });
@@ -129,13 +129,13 @@ describe("link round trips", () => {
     const path = promptLinkAppPath(link, HOSTED);
     expect(path).toBe("/env-1/mcp%3A1");
     const deepLink = promptLinkDeepLink(path!);
-    expect(deepLink).toBe("t3code://threads/env-1/mcp%3A1");
+    expect(deepLink).toBe("codenine://threads/env-1/mcp%3A1");
     expect(promptLinkAppPath(deepLink)).toBe(path);
   });
 
   it("maps app scheme and hosted links to in-app paths, and nothing else", () => {
-    expect(promptLinkAppPath("t3code://new?prompt=hi")).toBe("/new?prompt=hi");
-    expect(promptLinkAppPath("t3code-dev://threads/env-1/thread-1")).toBe("/env-1/thread-1");
+    expect(promptLinkAppPath("codenine://new?prompt=hi")).toBe("/new?prompt=hi");
+    expect(promptLinkAppPath("codenine-dev://threads/env-1/thread-1")).toBe("/env-1/thread-1");
     expect(promptLinkAppPath("https://app.t3.codes/env-1/thread-1?prompt=go", HOSTED)).toBe(
       "/env-1/thread-1?prompt=go",
     );
@@ -150,6 +150,6 @@ describe("link round trips", () => {
     expect(promptLinkAppPath("https://app.t3.codes/threads/env-1", HOSTED)).toBeNull();
     expect(promptLinkAppPath("https://app.t3.codes/settings/general", HOSTED)).toBeNull();
     expect(promptLinkAppPath("https://evil.test/new?prompt=hi", HOSTED)).toBeNull();
-    expect(promptLinkAppPath("t3code://app/index.html")).toBeNull();
+    expect(promptLinkAppPath("codenine://app/index.html")).toBeNull();
   });
 });

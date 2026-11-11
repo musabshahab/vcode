@@ -1,4 +1,4 @@
-import type { ContextMenuItem } from "@t3tools/contracts";
+import type { ContextMenuItem } from "@codenine/contracts";
 
 type ExternalLinkContextMenuAction =
   | "open-external"

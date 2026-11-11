@@ -26,13 +26,13 @@ import {
   type SecretReference,
   type ServerProvider,
   type ServerProviderModel,
-} from "@t3tools/contracts";
+} from "@codenine/contracts";
 
 import {
   type CustomModelDefinition,
   readCustomModelEntries,
   toCustomModelSetting,
-} from "@t3tools/shared/model";
+} from "@codenine/shared/model";
 import { cn } from "../../lib/utils";
 import { useCopyToClipboard } from "../../hooks/useCopyToClipboard";
 import { useStableCallback } from "../../hooks/useStableCallback";
@@ -49,7 +49,7 @@ import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import type {
   ProviderClientDefinition,
   ProviderEnvironmentField,
-} from "@t3tools/provider-core/client";
+} from "@codenine/provider-core/client";
 import {
   deriveProviderSettingsFields,
   ProviderSettingsForm,

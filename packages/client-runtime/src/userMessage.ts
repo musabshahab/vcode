@@ -6,16 +6,16 @@ import {
   type OrchestrationV2CreationSource,
   type OrchestrationV2IdleCompaction,
   type OrchestrationV2UserMessageInputIntent,
-} from "@t3tools/contracts";
+} from "@codenine/contracts";
 import {
   isAttachmentOnlyBootstrapPrompt,
   replaceComposerContextReferences,
-} from "@t3tools/shared/composerContextReferences";
-import { filePreviewKind } from "@t3tools/shared/filePreview";
-import { imageMimeType } from "@t3tools/shared/image";
-import { videoMimeType } from "@t3tools/shared/video";
+} from "@codenine/shared/composerContextReferences";
+import { filePreviewKind } from "@codenine/shared/filePreview";
+import { imageMimeType } from "@codenine/shared/image";
+import { videoMimeType } from "@codenine/shared/video";
 
-/** The working row while T3 Code's own compaction runs. */
+/** The working row while Codenine's own compaction runs. */
 export const IDLE_COMPACTING_LABELS = {
   beforeCacheExpires: "Compacting before the cache expires…",
   onReturn: "Compacting…",
@@ -61,7 +61,7 @@ export function resolveUserMessagePresentation(message: {
   readonly creationSource?: OrchestrationV2CreationSource;
 }): {
   readonly text: string;
-  readonly attribution: "agent" | "t3code" | null;
+  readonly attribution: "agent" | "codenine" | null;
 } {
   if (message.role !== "user") {
     return { text: message.text, attribution: null };
@@ -73,7 +73,7 @@ export function resolveUserMessagePresentation(message: {
       message.createdBy !== "agent"
         ? null
         : message.creationSource === "server"
-          ? "t3code"
+          ? "codenine"
           : "agent",
   };
 }

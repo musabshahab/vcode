@@ -9,7 +9,7 @@ import {
   DPOP_MAX_CLOCK_SKEW_SECONDS,
   DpopVerificationFailureCode,
   verifyDpopProof,
-} from "@t3tools/shared/dpop";
+} from "@codenine/shared/dpop";
 import * as RelayDb from "../db.ts";
 import { relayDpopProofs } from "../persistence/schema.ts";
 
@@ -65,7 +65,7 @@ export class DpopProofReplay extends Context.Service<
     }) => Effect.Effect<boolean, DpopProofReplayPersistenceError>;
     readonly pruneExpired: Effect.Effect<void, DpopProofReplayPersistenceError>;
   }
->()("t3code-relay/auth/DpopProofs/DpopProofReplay") {}
+>()("codenine-relay/auth/DpopProofs/DpopProofReplay") {}
 
 const make = Effect.gen(function* () {
   const db = yield* RelayDb.RelayDb;

@@ -6,8 +6,8 @@ import type {
   OrchestrationV2Subagent,
   OrchestrationV2SubagentWorkflow,
   OrchestrationV2TurnItem,
-} from "@t3tools/contracts";
-import { isOrchestrationV2WorkActive, isProviderNativeSubagentThread } from "@t3tools/contracts";
+} from "@codenine/contracts";
+import { isOrchestrationV2WorkActive, isProviderNativeSubagentThread } from "@codenine/contracts";
 
 export type RuntimeSubagentStatus =
   | "pending"

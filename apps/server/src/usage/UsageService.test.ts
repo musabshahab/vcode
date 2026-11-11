@@ -10,8 +10,8 @@ import { assert, describe, it } from "@effect/vitest";
 import { vi } from "vite-plus/test";
 import * as NodeCrypto from "@effect/platform-node/NodeCrypto";
 import * as NodeServices from "@effect/platform-node/NodeServices";
-import * as HostProcess from "@t3tools/shared/HostProcess";
-import { mergeUsage } from "@t3tools/shared/usageMerge";
+import * as HostProcess from "@codenine/shared/HostProcess";
+import { mergeUsage } from "@codenine/shared/usageMerge";
 import {
   EnvironmentId,
   ProviderDriverKind,
@@ -19,7 +19,7 @@ import {
   UsageDay,
   type UsageSummary,
   type UsageSummaryInput,
-} from "@t3tools/contracts";
+} from "@codenine/contracts";
 import * as Clock from "effect/Clock";
 import * as Deferred from "effect/Deferred";
 import * as Effect from "effect/Effect";
@@ -40,7 +40,7 @@ import * as CodexUsageHistory from "./CodexUsageHistory.ts";
 import * as ServerSecretStore from "../auth/ServerSecretStore.ts";
 import * as BackgroundPolicy from "../background/BackgroundPolicy.ts";
 import * as ProviderHostLive from "../provider/ProviderHostLive.ts";
-import { totalTokens } from "@t3tools/provider-core/server/usage";
+import { totalTokens } from "@codenine/provider-core/server/usage";
 import * as UsageService from "./UsageService.ts";
 import { makeScanCacheWriter, SCAN_CACHE_FILE_NAME } from "./usageScanCache.ts";
 
@@ -466,7 +466,7 @@ describe("UsageService", () => {
               home,
               settings,
               hostname,
-              environment: override === undefined ? {} : { T3CODE_HOST_ID: override },
+              environment: override === undefined ? {} : { CODENINE_HOST_ID: override },
             }),
           ),
         );
@@ -1939,7 +1939,7 @@ describe("UsageService", () => {
       );
 
       let orphanedAt: number | undefined;
-      // oxlint-disable-next-line t3code/no-polling-loop-in-tests -- Fixed-count scheduler interruption matrix; each iteration exercises a different interruption point.
+      // oxlint-disable-next-line codenine/no-polling-loop-in-tests -- Fixed-count scheduler interruption matrix; each iteration exercises a different interruption point.
       for (let interruptAt = 1; interruptAt <= 31; interruptAt += 1) {
         const tasks: Array<() => void> = [];
         const dispatcher: Scheduler.SchedulerDispatcher = {

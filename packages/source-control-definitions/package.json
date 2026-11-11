@@ -1,5 +1,5 @@
 {
-  "name": "@t3tools/source-control-definitions",
+  "name": "@codenine/source-control-definitions",
   "private": true,
   "type": "module",
   "exports": {
@@ -12,7 +12,7 @@
     "typecheck": "effect-tsgo tsrs --noEmit"
   },
   "dependencies": {
-    "@t3tools/source-control-core": "workspace:*",
-    "@t3tools/source-control-github": "workspace:*"
+    "@codenine/source-control-core": "workspace:*",
+    "@codenine/source-control-github": "workspace:*"
   }
 }

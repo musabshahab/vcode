@@ -4,7 +4,7 @@
   "compatibility": [
     {
       "driver": "codex",
-      "t3CodeRange": ">=0.0.44",
+      "codenineRange": ">=0.0.44",
       "recommendedRange": ">=0.159.0",
       "ranges": [
         {
@@ -23,7 +23,7 @@
     },
     {
       "driver": "codex",
-      "t3CodeRange": ">=0.0.42 <0.0.44",
+      "codenineRange": ">=0.0.42 <0.0.44",
       "recommendedRange": ">=0.156.0",
       "ranges": [
         {
@@ -42,7 +42,7 @@
     },
     {
       "driver": "claudeAgent",
-      "t3CodeRange": ">=0.0.42",
+      "codenineRange": ">=0.0.42",
       "recommendedRange": ">=2.1.301",
       "ranges": [
         {

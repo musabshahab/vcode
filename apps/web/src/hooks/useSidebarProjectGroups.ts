@@ -2,7 +2,7 @@ import { orderItemsByPreferredIds, sortSidebarV2ProjectGroups } from "../compone
 import {
   getProjectOrderKey,
   selectProjectGroupingSettings,
-} from "@t3tools/client-runtime/state/project-grouping";
+} from "@codenine/client-runtime/state/project-grouping";
 import { buildSidebarProjectSnapshots } from "../sidebarProjectGrouping";
 import { useEnvironmentIdentities, usePrimaryEnvironmentId } from "../state/environments";
 import { useProjects, useQuietThreadShells } from "../state/entities";

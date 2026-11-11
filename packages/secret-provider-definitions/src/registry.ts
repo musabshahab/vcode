@@ -1,3 +1,3 @@
-import { makeSecretProviderDefinitionRegistry } from "@t3tools/secret-provider-core/shared/definition";
+import { makeSecretProviderDefinitionRegistry } from "@codenine/secret-provider-core/shared/definition";
 
 export const builtInSecretProviderDefinitions = makeSecretProviderDefinitionRegistry([]);

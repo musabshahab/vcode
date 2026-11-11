@@ -48,8 +48,8 @@ const config = {
 } satisfies RelayConfiguration.RelayConfiguration["Service"];
 const input = {
   token: "device-token",
-  packageName: "com.t3tools.t3code.dev",
-  data: { t3_kind: "agent_activity", active: "true" },
+  packageName: "com.codenine.app.dev",
+  data: { codenine_kind: "agent_activity", active: "true" },
   alert: false,
 };
 
@@ -133,7 +133,7 @@ describe("FCM delivery", () => {
             android: {
               priority: "HIGH",
               ttl: "300s",
-              collapse_key: "t3-agent-activity",
+              collapse_key: "codenine-agent-activity",
               restricted_package_name: input.packageName,
             },
           },

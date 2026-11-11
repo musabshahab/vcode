@@ -3,7 +3,7 @@ import {
   type ChatAttachment,
   MessageId,
   OrchestratorMcpFailure,
-} from "@t3tools/contracts";
+} from "@codenine/contracts";
 import * as Clock from "effect/Clock";
 import * as Effect from "effect/Effect";
 import * as AssetSigner from "../../../assets/AssetSigner.ts";
@@ -49,7 +49,7 @@ export const layer = McpToolAccess.toLayer(
     const uploadOwners = new Map<string, { readonly owner: string; readonly issuedAt: number }>();
     return {
       // A pending upload belongs to its caller until a send claims it.
-      t3_attachment_prepare_upload: McpToolAccess.writes((input) =>
+      codenine_attachment_prepare_upload: McpToolAccess.writes((input) =>
         Effect.gen(function* () {
           const result = yield* Upload.issueAttachmentUploadUrl(input.upload).pipe(
             Effect.provideService(AssetSigner.AssetSigner, assetSigner),
@@ -63,7 +63,7 @@ export const layer = McpToolAccess.toLayer(
           return result;
         }),
       ),
-      t3_attachment_discard: McpToolAccess.writes((input) =>
+      codenine_attachment_discard: McpToolAccess.writes((input) =>
         Effect.gen(function* () {
           if (uploadOwners.get(input.attachmentId)?.owner !== (yield* uploadOwner)) {
             return yield* new OrchestratorMcpFailure({
@@ -76,7 +76,7 @@ export const layer = McpToolAccess.toLayer(
           return {};
         }),
       ),
-      t3_thread_send_attachments: McpToolAccess.writesThreads(
+      codenine_thread_send_attachments: McpToolAccess.writesThreads(
         (input) => [input.threadId],
         (input) =>
           Effect.gen(function* () {

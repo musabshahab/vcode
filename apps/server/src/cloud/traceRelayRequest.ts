@@ -2,7 +2,7 @@ import {
   RelayClientTracer,
   withLocalTracing,
   withRelayClientTracing,
-} from "@t3tools/shared/relayTracing";
+} from "@codenine/shared/relayTracing";
 import * as Clock from "effect/Clock";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
@@ -15,7 +15,7 @@ export const traceRelayRequest = <A, E, R>(
   effect: Effect.Effect<A, E, R>,
 ): Effect.Effect<A, E, R> => effect.pipe(withRelayClientTracing);
 
-/** Call only after T3 Connect verification to prevent trace injection. Authenticate on the local tracer and record its timing here. */
+/** Call only after Codenine Connect verification to prevent trace injection. Authenticate on the local tracer and record its timing here. */
 export const traceAuthenticatedRelayRequest = <A, E, R>(
   effect: Effect.Effect<A, E, R>,
   authentication: { readonly startTime: bigint; readonly endTime: bigint },

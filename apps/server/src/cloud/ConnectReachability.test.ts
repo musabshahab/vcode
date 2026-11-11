@@ -2,7 +2,7 @@
 import * as NodeFS from "node:fs";
 import * as NodeNet from "node:net";
 
-import { T3_CONNECT_TROUBLESHOOTING_SECTIONS } from "@t3tools/contracts";
+import { CODENINE_CONNECT_TROUBLESHOOTING_SECTIONS } from "@codenine/contracts";
 import { describe, expect, it } from "@effect/vitest";
 import * as Clock from "effect/Clock";
 import * as Deferred from "effect/Deferred";
@@ -97,10 +97,10 @@ describe("classifyReachability", () => {
   });
 
   it("does not point an unlinked server at a background service it may not have", () => {
-    // Desktop and `t3 serve` run the server without a background service.
+    // Desktop and `codenine serve` run the server without a background service.
     const result = classifyReachability(facts({ managedTunnelConfigured: false }), checkedAt);
     expect(result).toMatchObject({ cause: "not_linked" });
-    expect(result.status === "unreachable" && result.fix).not.toContain("t3 service");
+    expect(result.status === "unreachable" && result.fix).not.toContain("codenine service");
   });
 });
 
@@ -378,10 +378,10 @@ describe("ConnectReachability stale connector recovery", () => {
   );
 });
 
-describe("T3 Connect troubleshooting links", () => {
+describe("Codenine Connect troubleshooting links", () => {
   it("each section names a heading in the user guide", () => {
     const guide = NodeFS.readFileSync(
-      new URL("../../../../docs/user/t3-connect-troubleshooting.md", import.meta.url),
+      new URL("../../../../docs/user/codenine-connect-troubleshooting.md", import.meta.url),
       "utf8",
     );
     // GitHub's heading anchors: lowercase, drop punctuation, spaces become hyphens.
@@ -393,7 +393,7 @@ describe("T3 Connect troubleshooting links", () => {
           .replace(/ /g, "-"),
       ),
     );
-    for (const section of T3_CONNECT_TROUBLESHOOTING_SECTIONS) {
+    for (const section of CODENINE_CONNECT_TROUBLESHOOTING_SECTIONS) {
       expect(anchors, section).toContain(section);
     }
   });

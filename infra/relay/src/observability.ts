@@ -31,15 +31,15 @@ const relayRecentSpansQuery = (dataset: string) =>
 export const RelayObservability = Effect.gen(function* () {
   const { stage } = yield* Alchemy.Stack;
   const traces = yield* Axiom.Dataset("RelayTracesDataset", {
-    name: relayResourceNameForStage("t3-code-relay-traces", stage),
+    name: relayResourceNameForStage("codenine-relay-traces", stage),
     kind: "otel:traces:v1",
-    description: "T3 Code relay Worker HTTP request spans.",
+    description: "Codenine relay Worker HTTP request spans.",
     retentionDays: 30,
     useRetentionPeriod: true,
   });
 
   const workerIngestToken = yield* Axiom.ApiToken("RelayWorkerAxiomIngestToken", {
-    name: relayResourceNameForStage("t3-code-relay-otel-ingest", stage),
+    name: relayResourceNameForStage("codenine-relay-otel-ingest", stage),
     description: "Owned by Alchemy. Scoped OTLP ingest token for relay HTTP spans.",
     datasetCapabilities: Output.map(traces.name, (dataset) => ({
       [dataset]: { ingest: ["create" as const] },
@@ -47,15 +47,15 @@ export const RelayObservability = Effect.gen(function* () {
   });
 
   const mobileIngestToken = yield* Axiom.ApiToken("RelayMobileAxiomIngestToken", {
-    name: relayResourceNameForStage("t3-code-mobile-otel-ingest", stage),
-    description: "Owned by Alchemy. Scoped OTLP ingest token for T3 Code mobile spans.",
+    name: relayResourceNameForStage("codenine-mobile-otel-ingest", stage),
+    description: "Owned by Alchemy. Scoped OTLP ingest token for Codenine mobile spans.",
     datasetCapabilities: Output.map(traces.name, (dataset) => ({
       [dataset]: { ingest: ["create" as const] },
     })),
   });
 
   const clientIngestToken = yield* Axiom.ApiToken("RelayClientAxiomIngestToken", {
-    name: relayResourceNameForStage("t3-code-relay-client-otel-ingest", stage),
+    name: relayResourceNameForStage("codenine-relay-client-otel-ingest", stage),
     description: "Owned by Alchemy. Scoped OTLP ingest token for first-party relay client spans.",
     datasetCapabilities: Output.map(traces.name, (dataset) => ({
       [dataset]: { ingest: ["create" as const] },
@@ -64,21 +64,21 @@ export const RelayObservability = Effect.gen(function* () {
 
   // expo-observe data, forwarded by src/mobileTelemetry. Mobile spans share the traces dataset.
   const mobileLogs = yield* Axiom.Dataset("MobileLogsDataset", {
-    name: relayResourceNameForStage("t3-code-mobile-logs", stage),
+    name: relayResourceNameForStage("codenine-mobile-logs", stage),
     kind: "otel:logs:v1",
-    description: "T3 Code mobile app errors, crashes, and log events from expo-observe.",
+    description: "Codenine mobile app errors, crashes, and log events from expo-observe.",
     retentionDays: 30,
     useRetentionPeriod: true,
   });
   const mobileMetrics = yield* Axiom.Dataset("MobileMetricsDataset", {
-    name: relayResourceNameForStage("t3-code-mobile-metrics", stage),
+    name: relayResourceNameForStage("codenine-mobile-metrics", stage),
     kind: "otel:metrics:v1",
-    description: "T3 Code mobile app startup and update metrics from expo-observe.",
+    description: "Codenine mobile app startup and update metrics from expo-observe.",
     retentionDays: 30,
     useRetentionPeriod: true,
   });
   const mobileTelemetryIngestToken = yield* Axiom.ApiToken("MobileTelemetryAxiomIngestToken", {
-    name: relayResourceNameForStage("t3-code-mobile-telemetry-ingest", stage),
+    name: relayResourceNameForStage("codenine-mobile-telemetry-ingest", stage),
     description: "Owned by Alchemy. Scoped ingest token the relay forwards mobile telemetry with.",
     datasetCapabilities: Output.map(
       Output.all(traces.name, mobileLogs.name, mobileMetrics.name),
@@ -94,7 +94,7 @@ export const RelayObservability = Effect.gen(function* () {
   });
 
   yield* Axiom.View("RelayRecentSpansView", {
-    name: relayResourceNameForStage("t3-code-relay-recent-spans", stage),
+    name: relayResourceNameForStage("codenine-relay-recent-spans", stage),
     description: "Recent relay HTTP request spans.",
     datasets: [traces.name],
     aplQuery: Output.map(traces.name, relayRecentSpansQuery),
@@ -116,7 +116,7 @@ export const RelayObservability = Effect.gen(function* () {
 });
 
 const mobileSourceMapsBucketName = (stage: string) =>
-  relayResourceNameForStage("t3-code-mobile-sourcemaps", stage);
+  relayResourceNameForStage("codenine-mobile-sourcemaps", stage);
 
 /**
  * Write-only S3 credentials for the source maps bucket: the `MOBILE_SOURCEMAPS_R2` secret.
@@ -127,7 +127,7 @@ export const MobileSourceMapsUploadCredentials = Effect.gen(function* () {
   const { accountId } = yield* yield* Cloudflare.CloudflareEnvironment;
   const bucketName = mobileSourceMapsBucketName(stage);
   const token = yield* Cloudflare.ApiToken.AccountApiToken("MobileSourceMapsUploadToken", {
-    name: relayResourceNameForStage("t3-code-mobile-sourcemaps-upload", stage),
+    name: relayResourceNameForStage("codenine-mobile-sourcemaps-upload", stage),
     policies: [
       {
         effect: "allow",

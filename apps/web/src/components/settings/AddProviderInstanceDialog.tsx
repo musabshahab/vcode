@@ -6,16 +6,16 @@ import { useState } from "react";
 import {
   deriveAvailableInstanceId,
   deriveInstanceId,
-} from "@t3tools/client-runtime/provider-instance-ids";
-import { squashAtomCommandFailure } from "@t3tools/client-runtime/state/runtime";
-import type { ProviderClientDefinition } from "@t3tools/provider-core/client";
+} from "@codenine/client-runtime/provider-instance-ids";
+import { squashAtomCommandFailure } from "@codenine/client-runtime/state/runtime";
+import type { ProviderClientDefinition } from "@codenine/provider-core/client";
 import {
   AuthProvidersManageScope,
   ProviderInstanceId,
   ProviderDriverKind,
   type EnvironmentId,
   type ProviderInstanceConfig,
-} from "@t3tools/contracts";
+} from "@codenine/contracts";
 
 import {
   useEnvironmentSettings,

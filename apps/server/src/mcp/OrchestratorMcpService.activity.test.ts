@@ -10,7 +10,7 @@ import {
   SECRET_REQUEST_UNSAVED_NOTE,
   ThreadId,
   TurnItemId,
-} from "@t3tools/contracts";
+} from "@codenine/contracts";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
 import * as Fiber from "effect/Fiber";
@@ -640,7 +640,7 @@ it("requestSecret saves a pasted value to a file without opening a card", async 
     readonly requestKey: string;
     readonly value: string;
   }> = [];
-  const file = "/home/user/.t3/userdata/secrets/files/0123456789abcdef0123456789abcdef";
+  const file = "/home/user/.codenine/userdata/secrets/files/0123456789abcdef0123456789abcdef";
 
   const layer = layerOrchestratorService.pipe(
     Layer.provide(
@@ -683,7 +683,7 @@ it("requestSecret saves a pasted value to a file without opening a card", async 
     Effect.map((snapshots) => {
       const found = snapshots.find(
         (snapshot) =>
-          snapshot.id === "t3_secret_requests_total" &&
+          snapshot.id === "codenine_secret_requests_total" &&
           snapshot.attributes?.status === "saved_pasted",
       );
       return found?.type === "Counter" ? Number(found.state.count) : 0;

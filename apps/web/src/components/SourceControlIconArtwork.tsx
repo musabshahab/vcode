@@ -1,4 +1,4 @@
-import type { SourceControlIcon } from "@t3tools/client-runtime/source-control-clients";
+import type { SourceControlIcon } from "@codenine/client-runtime/source-control-clients";
 import { useId, type SVGProps } from "react";
 
 /** Draws a host's mark from its definition's artwork. */
