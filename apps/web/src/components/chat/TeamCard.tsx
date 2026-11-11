@@ -122,7 +122,8 @@ function TeamPlanCard({ threadRef, plan }: { threadRef: ScopedThreadRef; plan: T
   const issue = plan.status === "proposed" ? teamDraftIssue(resolved.draft) : null;
   // While this client approves or cancels, the plan leaves `proposed` before its edits are cleared.
   const shownNotice = notice ?? (resolved.overtaken && pending === null ? OVERTAKEN_NOTICE : null);
-  const open = expanded ?? (plan.status === "proposed" || plan.status === "running");
+  // A failed team stays open so its Retry buttons are visible without a click.
+  const open = expanded ?? (plan.status !== "completed" && plan.status !== "cancelled");
   const completed = plan.tasks.filter((task) => task.status === "completed").length;
   const failed = plan.tasks.filter((task) => task.status === "failed").length;
   const newCommandId = () => CommandId.make(randomUUID());
