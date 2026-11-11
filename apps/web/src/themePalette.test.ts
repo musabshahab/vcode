@@ -633,7 +633,7 @@ describe("context chip colors", () => {
   it("reads at 5:1 on the standard surfaces as index.css paints them", () => {
     const painted = {
       light: ["#fcfcfc", "#ffffff", "#ebebed"],
-      dark: ["#000000", "#0a0a0a", "#111111", "#141414", "#1e1e1e"],
+      dark: ["#0c0c0e", "#101013", "#131316", "#1a1a1e"],
     } as const;
     const properties = new Map<string, string>();
     vi.stubGlobal("window", { localStorage: { getItem: () => null } });

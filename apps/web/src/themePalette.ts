@@ -364,18 +364,15 @@ export function subscribeToCustomThemes(listener: () => void): () => void {
 
 export function getStandardThemeColors(appearance: ThemeAppearance): ThemeColors {
   if (appearance === "dark") {
-    return (standardDarkThemeColors ??= decodeThemeColors({
-      ...CODENINE_DARK_THEME_COLORS,
-      canvas: "#000000",
-    }));
+    return (standardDarkThemeColors ??= decodeThemeColors(CODENINE_DARK_THEME_COLORS));
   }
   return (standardLightThemeColors ??= decodeThemeColors(CODENINE_LIGHT_THEME_COLORS));
 }
 
-// index.css paints the light bubble a step darker than the shared palette mobile uses.
+// index.css paints the light bubble a step darker than the shared palette.
 const STANDARD_WEB_PAINTED_COLORS: Record<ThemeAppearance, Partial<ThemeColors>> = {
   light: { messageSurface: "#ebebed" },
-  dark: { canvas: "#000000", messageSurface: "#1e1e1e" },
+  dark: {},
 };
 
 /** The standard theme as index.css paints it, for solves that measure the page. */
