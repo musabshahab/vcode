@@ -3893,7 +3893,14 @@ it.each([true, false])(
   "keeps completed responses folded across notification wakes, working=%s",
   (isWorking) => {
     const time = (second: number) => new Date(Date.UTC(2026, 0, 1, 0, 0, second)).toISOString();
-    const work = (id: string, run: string, second: number, notification = false) => ({
+    const now = DateTime.makeUnsafe(time(0));
+    // A team's finished wake is a completed system notification; a restart continuation is updated.
+    const work = (
+      id: string,
+      run: string,
+      second: number,
+      notification?: "completed" | "updated",
+    ) => ({
       kind: "work" as const,
       id,
       createdAt: time(second),
@@ -3903,7 +3910,31 @@ it.each([true, false])(
         createdAt: time(second),
         label: id,
         tone: "info" as const,
-        ...(notification ? { itemType: "notification" as const } : {}),
+        ...(notification
+          ? {
+              itemType: "notification" as const,
+              structuredPayload: {
+                id: TurnItemId.make(id),
+                threadId: ThreadId.make("lead"),
+                runId: RunId.make(run),
+                nodeId: null,
+                providerThreadId: null,
+                providerTurnId: null,
+                nativeItemRef: null,
+                parentItemId: null,
+                ordinal: second,
+                status: "completed" as const,
+                title: null,
+                startedAt: now,
+                completedAt: now,
+                updatedAt: now,
+                type: "notification" as const,
+                source: { kind: "system" as const },
+                outcome: notification,
+                summary: id,
+              },
+            }
+          : {}),
       },
     });
     const answer = (id: string, run: string, second: number) => ({
@@ -3924,10 +3955,10 @@ it.each([true, false])(
       timelineEntries: [
         work("launch-tools", "initial", 1),
         answer("launched", "initial", 5),
-        work("notification-a", "wake-a", 20, true),
+        work("notification-a", "wake-a", 20, "completed"),
         work("read-a", "wake-a", 21),
         answer("ack-a", "wake-a", 25),
-        work("notification-b", "wake-b", 40, true),
+        work("notification-b", "wake-b", 40, "updated"),
         work("read-b", "wake-b", 41),
         ...(!isWorking ? [answer("ack-b", "wake-b", 45)] : []),
       ],
@@ -3952,6 +3983,10 @@ it.each([true, false])(
     expect(ids).toContain(boundary);
     expect(ids.indexOf("notification-b")).toBeLessThan(ids.indexOf(boundary));
     if (isWorking) expect(rows.find((row) => row.id === boundary)?.createdAt).toBe(time(40));
+    const taskResults = rows.flatMap((row) =>
+      row.kind === "message" && row.taskResult ? [row.id] : [],
+    );
+    expect(taskResults).toEqual(["ack-a"]);
   },
 );
 

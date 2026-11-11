@@ -14,6 +14,7 @@ import {
   IDLE_COMPACTION_TITLES,
 } from "@codenine/client-runtime/user-message";
 import type { HandoffTimelineRun } from "@codenine/client-runtime/handoff";
+import { isTeamFinishedNotification } from "@codenine/client-runtime/team";
 import { renderCodexDirectivesForCopy } from "@codenine/shared/codexMarkdownDirectives";
 import {
   commandDisplayText,
@@ -599,6 +600,8 @@ type MessagesTimelineRowContent =
       groupedWithPrevious?: boolean;
       /** Set when the message above is a steer too, so the label shows once. */
       continuesSteer?: boolean;
+      /** The lead's final message in the run its team's finished wake started. */
+      taskResult?: true;
     }
   | {
       kind: "assistant-meta";
@@ -688,6 +691,17 @@ function deriveTerminalAssistantMessageIds(timelineEntries: ReadonlyArray<Timeli
   }
 
   return new Set(lastAssistantMessageIdByResponseKey.values());
+}
+
+function deriveTaskResultRunIds(timelineEntries: ReadonlyArray<TimelineEntry>): Set<RunId> {
+  const runIds = new Set<RunId>();
+  for (const entry of timelineEntries) {
+    const item = entry.kind === "work" ? entry.entry.structuredPayload : undefined;
+    if (item?.type === "notification" && item.runId !== null && isTeamFinishedNotification(item)) {
+      runIds.add(item.runId);
+    }
+  }
+  return runIds;
 }
 
 interface TurnFold {
@@ -1523,6 +1537,7 @@ export function deriveMessagesTimelineRows(input: {
     : new Map<MessageId, number>();
   const nextRows: MessagesTimelineRow[] = [];
   const terminalAssistantMessageIds = deriveTerminalAssistantMessageIds(timelineEntries);
+  const taskResultRunIds = deriveTaskResultRunIds(timelineEntries);
   const failedRunIds = failedTimelineRunIds(timelineEntries, input.latestRun ?? null);
   const itemizedRunIds = itemizedFailedRunIds(timelineEntries, failedRunIds);
   const liveSubagentEntryIds = liveSubagentCardEntryIds(timelineEntries);
@@ -2120,6 +2135,11 @@ export function deriveMessagesTimelineRows(input: {
         : { projectedItem: timelineEntry.projectedItem }),
       showAssistantMeta,
       showAssistantCopyButton: showAssistantMeta,
+      ...(showAssistantMeta &&
+      timelineEntry.message.runId !== null &&
+      taskResultRunIds.has(timelineEntry.message.runId)
+        ? { taskResult: true as const }
+        : {}),
       assistantCopyStreaming: timelineEntry.message.streaming || assistantResponseStillInProgress,
       assistantTurnDiffSummary:
         timelineEntry.message.role === "assistant"
@@ -2579,7 +2599,8 @@ function isRowUnchanged(a: MessagesTimelineRow, b: MessagesTimelineRow): boolean
         a.revertTurnCount === bm.revertTurnCount &&
         a.groupedWithNext === bm.groupedWithNext &&
         a.groupedWithPrevious === bm.groupedWithPrevious &&
-        a.continuesSteer === bm.continuesSteer
+        a.continuesSteer === bm.continuesSteer &&
+        a.taskResult === bm.taskResult
       );
     }
   }
