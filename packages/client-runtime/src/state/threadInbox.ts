@@ -30,6 +30,90 @@ export function isThreadWorking(thread: WorkingThreadInput): boolean {
   return !(thread.interactionMode === "plan" && thread.hasActionableProposedPlan && runSettled);
 }
 
+export type SidebarThreadStatus =
+  | "approval"
+  | "input"
+  | "preparing"
+  | "working"
+  | "waiting"
+  | "failed"
+  | "limited"
+  | "ready";
+
+type SidebarThreadStatusInput = Pick<
+  EnvironmentThreadShell,
+  | "hasPendingApprovals"
+  | "hasPendingUserInput"
+  | "pendingSubagentRequest"
+  | "runtime"
+  | "blockedOnThreadWait"
+>;
+
+export function resolveSidebarThreadStatus(thread: SidebarThreadStatusInput): SidebarThreadStatus {
+  if (thread.hasPendingApprovals || thread.pendingSubagentRequest === "approval") {
+    return "approval";
+  }
+  if (thread.hasPendingUserInput || thread.pendingSubagentRequest === "user_input") {
+    return "input";
+  }
+  if (thread.runtime?.status === "running" && thread.blockedOnThreadWait === true) {
+    return "waiting";
+  }
+  if (thread.runtime?.status === "preparing") {
+    return "preparing";
+  }
+  if (
+    thread.runtime !== null &&
+    ["queued", "starting", "running", "waiting"].includes(thread.runtime.status)
+  ) {
+    return "working";
+  }
+  if (thread.runtime?.status === "idle") {
+    return "waiting";
+  }
+  if (thread.runtime?.status === "failed") {
+    return thread.runtime.lastErrorClass === "usage_limit" ? "limited" : "failed";
+  }
+  return "ready";
+}
+
+/** Why a thread waits on the user: a request it holds, or the team plan it leads. */
+export type NeedsYouReason = "approval" | "question" | "review" | "failed";
+
+const NEEDS_YOU_ORDER: ReadonlyArray<NeedsYouReason> = ["approval", "question", "review", "failed"];
+
+export type NeedsYouInput = SidebarThreadStatusInput & {
+  readonly source?: Pick<EnvironmentThreadShell["source"], "teamSummary">;
+};
+
+export function needsYouReason(thread: NeedsYouInput): NeedsYouReason | null {
+  const status = resolveSidebarThreadStatus(thread);
+  if (status === "approval") return "approval";
+  if (status === "input") return "question";
+  const team = thread.source?.teamSummary?.status;
+  if (team === "proposed") return "review";
+  if (team === "failed") return "failed";
+  return null;
+}
+
+/**
+ * One entry per thread that waits on the user, the most pressing reason first and otherwise in
+ * the order given. Pass the threads listed as open work, team tasks included: a snoozed or done
+ * thread stays out until it wakes or the user brings it back.
+ */
+export function selectNeedsYou<T extends NeedsYouInput>(
+  threads: ReadonlyArray<T>,
+): ReadonlyArray<{ readonly thread: T; readonly reason: NeedsYouReason }> {
+  return threads
+    .flatMap((thread) => {
+      const reason = needsYouReason(thread);
+      return reason === null ? [] : [{ thread, reason }];
+    })
+    .toSorted(
+      (left, right) => NEEDS_YOU_ORDER.indexOf(left.reason) - NEEDS_YOU_ORDER.indexOf(right.reason),
+    );
+}
+
 type InboxThreadInput = Pick<
   EnvironmentThreadShell,
   "id" | "environmentId" | "createdAt" | "unsettledAt" | "latestRun"

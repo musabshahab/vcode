@@ -1,4 +1,25 @@
+import type { TeamPlanSummary } from "@codenine/contracts";
+
 export type TeamThreadSection = "pinned" | "active" | "working" | "snoozed" | "settled";
+
+/** The short status a task's lead row shows for its team. */
+export function teamTaskStatusLabel(
+  summary: Pick<TeamPlanSummary, "status" | "total" | "completed" | "failed">,
+): string {
+  switch (summary.status) {
+    case "proposed":
+      return "Review";
+    case "running":
+      return `Running ${summary.completed}/${summary.total}`;
+    case "completed":
+      return "Done";
+    case "failed":
+      // A task whose run was stopped counts as cancelled, so a plan can fail with none failed.
+      return summary.failed > 0 ? `Failed ${summary.failed}` : "Failed";
+    case "cancelled":
+      return "Cancelled";
+  }
+}
 
 /** What a row shows when it needs a look, most urgent first. */
 export type TeamThreadAttention = "attention" | "failed" | "unread" | "working";

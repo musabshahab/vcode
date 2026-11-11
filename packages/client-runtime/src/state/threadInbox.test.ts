@@ -1,9 +1,18 @@
-import { EnvironmentId, ProviderInstanceId, RunId, ThreadId } from "@codenine/contracts";
+import {
+  EnvironmentId,
+  ProviderInstanceId,
+  RunId,
+  TeamPlanId,
+  ThreadId,
+  type TeamPlanStatus,
+} from "@codenine/contracts";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 import {
   createInboxReturnTracker,
   isThreadWorking,
+  needsYouReason,
+  selectNeedsYou,
   sortInboxThreadsByReturn,
   sortWorkingThreadsBySend,
 } from "./threadInbox.ts";
@@ -238,5 +247,68 @@ describe("sortWorkingThreadsBySend", () => {
     expect(
       sortWorkingThreadsBySend([launched, sentFirst, sentLast]).map((thread) => thread.id),
     ).toEqual(["sent-last", "sent-first", "launched"]);
+  });
+});
+
+describe("needs you", () => {
+  const team = (status: TeamPlanStatus) => ({
+    teamSummary: {
+      planId: TeamPlanId.make("plan"),
+      status,
+      revision: 1,
+      total: 3,
+      completed: 1,
+      failed: status === "failed" ? 1 : 0,
+      running: 0,
+      cancelled: 0,
+    },
+  });
+  const failedRun = {
+    status: "failed" as const,
+    activeRunId: null,
+    providerInstanceId: ProviderInstanceId.make("codex"),
+    providerName: "Codex",
+    lastError: "boom",
+    updatedAt: "2026-06-01T00:00:00.000Z",
+  };
+
+  it.each([
+    ["a plain chat", {}, null],
+    ["a pending approval", { hasPendingApprovals: true }, "approval"],
+    ["a subagent's approval", { pendingSubagentRequest: "approval" }, "approval"],
+    ["a question", { hasPendingUserInput: true }, "question"],
+    ["a subagent's question", { pendingSubagentRequest: "user_input" }, "question"],
+    ["a team waiting for approval", { source: team("proposed") }, "review"],
+    ["a failed team", { source: team("failed") }, "failed"],
+    ["a running team", { source: team("running") }, null],
+    ["a finished team", { source: team("completed") }, null],
+    ["a cancelled team", { source: team("cancelled") }, null],
+    ["a chat whose run failed", { runtime: failedRun }, null],
+    [
+      "a question before the team",
+      { hasPendingUserInput: true, source: team("proposed") },
+      "question",
+    ],
+    ["a working thread", { runtime: thread("working", true).runtime }, null],
+  ] as const)("%s", (_name, overrides, reason) => {
+    expect(needsYouReason({ ...thread("thread", false), ...overrides })).toBe(reason);
+  });
+
+  it("lists the most pressing reason first and keeps the given order within each", () => {
+    const entries = selectNeedsYou([
+      { ...thread("failed-team", false), source: team("failed") },
+      { ...thread("quiet", false) },
+      { ...thread("review", false), source: team("proposed") },
+      { ...thread("asks", false), hasPendingUserInput: true },
+      { ...thread("approve-a", false), hasPendingApprovals: true },
+      { ...thread("approve-b", false), pendingSubagentRequest: "approval" as const },
+    ]);
+    expect(entries.map(({ thread, reason }) => [thread.id, reason])).toEqual([
+      ["approve-a", "approval"],
+      ["approve-b", "approval"],
+      ["asks", "question"],
+      ["review", "review"],
+      ["failed-team", "failed"],
+    ]);
   });
 });

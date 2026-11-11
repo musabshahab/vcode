@@ -4,6 +4,7 @@ import {
   groupTeamThreads,
   type TeamThreadAttention,
   type TeamThreadSection,
+  teamTaskStatusLabel,
   withTeamTaskRows,
 } from "./teamThreads.ts";
 
@@ -147,3 +148,20 @@ it("draws each lead's shown tasks right after it", () => {
     keys(withTeamTaskRows(grouping.sections.active, grouping, (thread) => thread.key)),
   ).toEqual(["lead", "b", "other"]);
 });
+
+it.each([
+  ["proposed", 0, 0, "Review"],
+  ["running", 0, 0, "Running 0/3"],
+  ["running", 2, 0, "Running 2/3"],
+  ["running", 1, 1, "Running 1/3"],
+  ["completed", 3, 0, "Done"],
+  ["failed", 1, 1, "Failed 1"],
+  ["failed", 0, 2, "Failed 2"],
+  ["failed", 1, 0, "Failed"],
+  ["cancelled", 1, 0, "Cancelled"],
+] as const)(
+  "labels a %s team with %i of 3 done and %i failed as %s",
+  (status, completed, failed, label) => {
+    expect(teamTaskStatusLabel({ status, total: 3, completed, failed })).toBe(label);
+  },
+);

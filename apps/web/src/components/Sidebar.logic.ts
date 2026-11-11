@@ -1,6 +1,12 @@
 import type { EnvironmentServerConfig } from "@codenine/client-runtime/connection";
 import { scopeThreadRef, scopedThreadKey } from "@codenine/client-runtime/environment";
 import { resolveThreadWorkingStartedAt } from "@codenine/client-runtime/state/models";
+import {
+  needsYouReason,
+  resolveSidebarThreadStatus,
+  type NeedsYouInput,
+  type SidebarThreadStatus,
+} from "@codenine/client-runtime/state/thread-inbox";
 import { backgroundWorkHoldsCompletion } from "@codenine/shared/orchestrationV2PendingBackgroundWork";
 import { threadPullRequestSearchTerms } from "@codenine/shared/threadPullRequests";
 import * as React from "react";
@@ -802,16 +808,6 @@ export function resolveAdjacentThreadId<T>(input: {
   return currentIndex < threadIds.length - 1 ? (threadIds[currentIndex + 1] ?? null) : null;
 }
 
-export type SidebarThreadStatus =
-  | "approval"
-  | "input"
-  | "preparing"
-  | "working"
-  | "waiting"
-  | "failed"
-  | "limited"
-  | "ready";
-
 export function shouldRecedeSidebarThread(input: {
   status: SidebarThreadStatus;
   isUnread: boolean;
@@ -831,55 +827,24 @@ export function shouldRecedeSidebarThread(input: {
   return false;
 }
 
-type SidebarThreadStatusInput = Pick<
-  SidebarThreadSummary,
-  | "hasPendingApprovals"
-  | "hasPendingUserInput"
-  | "pendingSubagentRequest"
-  | "runtime"
-  | "blockedOnThreadWait"
->;
-
-export function resolveSidebarThreadStatus(thread: SidebarThreadStatusInput): SidebarThreadStatus {
-  if (thread.hasPendingApprovals || thread.pendingSubagentRequest === "approval") {
-    return "approval";
-  }
-  if (thread.hasPendingUserInput || thread.pendingSubagentRequest === "user_input") {
-    return "input";
-  }
-  if (thread.runtime?.status === "running" && thread.blockedOnThreadWait === true) {
-    return "waiting";
-  }
-  if (thread.runtime?.status === "preparing") {
-    return "preparing";
-  }
-  if (
-    thread.runtime !== null &&
-    ["queued", "starting", "running", "waiting"].includes(thread.runtime.status)
-  ) {
-    return "working";
-  }
-  if (thread.runtime?.status === "idle") {
-    return "waiting";
-  }
-  if (thread.runtime?.status === "failed") {
-    return thread.runtime.lastErrorClass === "usage_limit" ? "limited" : "failed";
-  }
-  return "ready";
-}
-
 /**
- * The dot on a closed boring-sidebar folder: the most urgent state among its
- * hidden threads. Waiting threads stay quiet, like their rows.
+ * The dot on a closed project folder: the most urgent state among its hidden
+ * threads, a lead's team included. Waiting threads stay quiet, like their rows.
  */
 export function resolveSidebarFolderDot(
-  threads: ReadonlyArray<ThreadStatusInput & SidebarThreadStatusInput>,
+  threads: ReadonlyArray<ThreadStatusInput & NeedsYouInput>,
 ): "attention" | "failed" | "unread" | "working" | null {
   const statuses = new Set(threads.map(resolveSidebarThreadStatus));
-  if (statuses.has("input") || statuses.has("approval") || statuses.has("limited")) {
+  const reasons = new Set(threads.map(needsYouReason));
+  if (
+    reasons.has("approval") ||
+    reasons.has("question") ||
+    reasons.has("review") ||
+    statuses.has("limited")
+  ) {
     return "attention";
   }
-  if (statuses.has("failed")) return "failed";
+  if (statuses.has("failed") || reasons.has("failed")) return "failed";
   // Rows show Done only for ready threads, so the dot follows the same rule.
   const hasUnread = threads.some(
     (thread) => resolveSidebarThreadStatus(thread) === "ready" && hasUnseenCompletion(thread),
@@ -891,7 +856,7 @@ export function resolveSidebarFolderDot(
 
 /**
  * Keys the old per-project sidebar saved folder open state under, most
- * specific first, for `resolveProjectExpanded`. Boring folders read and write
+ * specific first, for `resolveProjectExpanded`. Project folders read and write
  * the same keys, so a legacy user's closed folders stay closed after regrouping.
  */
 export function sidebarFolderExpansionKeys(group: {
@@ -909,7 +874,7 @@ export function sidebarFolderExpansionKeys(group: {
 }
 
 /**
- * Boring sidebar folders. Folders follow `groups` order and threads keep their
+ * Project folders. Folders follow `groups` order and threads keep their
  * input order. A project with no threads gets a folder only when `keepEmpty` says so.
  * A thread whose project is in no group has no folder and is left out.
  */
@@ -962,8 +927,10 @@ export function firstValidTimestampMs(
 
 export { sortActiveThreadsByOrderKey as sortThreadsForSidebar } from "@codenine/client-runtime/state/thread-sort";
 export {
+  resolveSidebarThreadStatus,
   sortInboxThreadsByReturn,
   sortWorkingThreadsBySend,
+  type SidebarThreadStatus,
 } from "@codenine/client-runtime/state/thread-inbox";
 
 export { pinOrderKeyBetween } from "@codenine/client-runtime/state/thread-sort";

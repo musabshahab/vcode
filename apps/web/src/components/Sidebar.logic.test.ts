@@ -42,7 +42,15 @@ import {
 } from "@codenine/client-runtime/state/thread-sort";
 import { resolveProjectExpanded } from "../uiStateStore";
 import { threadSearchMatchKey } from "@codenine/client-runtime/state/thread-search";
-import { EnvironmentId, ProjectId, ProviderInstanceId, RunId, ThreadId } from "@codenine/contracts";
+import {
+  EnvironmentId,
+  ProjectId,
+  ProviderInstanceId,
+  RunId,
+  TeamPlanId,
+  ThreadId,
+  type TeamPlanStatus,
+} from "@codenine/contracts";
 
 import {
   DEFAULT_INTERACTION_MODE,
@@ -1623,6 +1631,25 @@ describe("resolveSidebarFolderDot", () => {
     expect(resolveSidebarFolderDot([idle, working])).toBe("working");
     expect(resolveSidebarFolderDot([working, unread])).toBe("unread");
     expect(resolveSidebarFolderDot([unread, limited])).toBe("attention");
+    // A lead's team speaks for it: a plan to approve needs you, a stuck one failed.
+    const lead = (status: TeamPlanStatus) => ({
+      ...idle,
+      source: {
+        teamSummary: {
+          planId: TeamPlanId.make("plan"),
+          status,
+          revision: 1,
+          total: 2,
+          completed: 0,
+          failed: 0,
+          running: 0,
+          cancelled: 0,
+        },
+      },
+    });
+    expect(resolveSidebarFolderDot([working, lead("proposed")])).toBe("attention");
+    expect(resolveSidebarFolderDot([unread, lead("failed")])).toBe("failed");
+    expect(resolveSidebarFolderDot([lead("running"), lead("completed")])).toBeNull();
   });
 });
 
