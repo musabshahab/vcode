@@ -41,6 +41,7 @@ import {
 import { AuthMcpClientAccess } from "./auth.ts";
 import { ChatAttachment } from "./chatAttachment.ts";
 import { StoredThreadTags, ThreadTag } from "./threadTags.ts";
+import { StoredTeamPlan, TeamTaskRef } from "./team.ts";
 import {
   OrchestrationSearchThreadsInput,
   OrchestrationSearchThreadsResult,
@@ -473,6 +474,10 @@ export const OrchestrationV2AppThread = Schema.Struct({
       }),
     ),
   ),
+  /** On a lead thread: the team it proposed. Never copied to a fork or a subagent. */
+  team: Schema.optional(StoredTeamPlan),
+  /** On a team agent's thread: the task it runs. */
+  teamTask: Schema.optional(TeamTaskRef),
   deletedAt: Schema.NullOr(Schema.DateTimeUtc),
 });
 export type OrchestrationV2AppThread = typeof OrchestrationV2AppThread.Type;
