@@ -24,6 +24,8 @@ import * as Exit from "effect/Exit";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 import * as Queue from "effect/Queue";
+import type * as Scope from "effect/Scope";
+import * as Stream from "effect/Stream";
 
 import * as GitWorkflow from "../git/GitWorkflowService.ts";
 import * as SqlitePersistence from "../persistence/Sqlite.ts";
@@ -262,11 +264,12 @@ const runEffects = (launched: Queue.Queue<ThreadId>, expectedLaunches: number) =
     return yield* Queue.takeN(launched, expectedLaunches);
   });
 
-/** Ends a team agent's run as its provider would, then lets the reactor see it. */
+/** Ends a team agent's run as its provider would, then lets the reactor see it unless `unheard`. */
 const endRun = (
   threadId: ThreadId,
   status: "completed" | "failed" | "interrupted",
   result?: string,
+  unheard = false,
 ) =>
   Effect.gen(function* () {
     const sink = yield* EventSink.EventSinkV2;
@@ -317,14 +320,14 @@ const endRun = (
         ended,
       ],
     });
-    yield* reactor.handle(ended);
+    if (!unheard) yield* reactor.handle(ended);
     return ended;
   });
 
 const withTeam = <A, E>(
   test: (
     launched: Queue.Queue<ThreadId>,
-  ) => Effect.Effect<A, E, Layer.Success<ReturnType<typeof layerTeam>>>,
+  ) => Effect.Effect<A, E, Layer.Success<ReturnType<typeof layerTeam>> | Scope.Scope>,
   options?: Parameters<typeof layerTeam>[1],
 ) =>
   Effect.gen(function* () {
@@ -484,6 +487,60 @@ it.effect(
         assert.deepEqual(yield* taskStates, { build: "running#2", docs: "running#1" });
         assert.deepEqual((yield* thread(retryThreadId!)).thread.modelSelection, strong);
         assert.deepEqual((yield* thread(firstThreadId)).thread.modelSelection, fast);
+      }),
+    ),
+);
+
+it.effect(
+  "recovery settles once a task whose run ended unheard, and the task it unblocks starts once",
+  () =>
+    withTeam((launched) =>
+      Effect.gen(function* () {
+        const reactor = yield* TeamTaskReactor.TeamTaskReactor;
+        const sink = yield* EventSink.EventSinkV2;
+        yield* propose([task("build"), task("review", ["build"], reviewer)]);
+        yield* approve();
+        const [buildThreadId] = yield* runEffects(launched, 1);
+        const ended = yield* endRun(buildThreadId!, "completed", "Built it.", true);
+        assert.deepEqual(yield* taskStates, { build: "running#1", review: "pending#1" });
+
+        yield* reactor.recover();
+        yield* reactor.recover();
+        yield* reactor.handle(ended);
+        assert.deepEqual(yield* taskStates, { build: "completed#1", review: "running#1" });
+        const settles = yield* sink
+          .readByCommandId({
+            commandId: CommandId.make(`server:team-task-settle:${buildThreadId}`),
+          })
+          .pipe(Stream.runCollect);
+        assert.lengthOf(settles, 1);
+        const [reviewThreadId] = yield* runEffects(launched, 1);
+        assert.equal(reviewThreadId, yield* taskThreadId("review"));
+        assert.equal(yield* Queue.size(launched), 0);
+        assert.include((yield* thread(reviewThreadId!)).messages[0]!.text, "Built it.");
+      }),
+    ),
+);
+
+it.effect(
+  "recovery leaves an unlaunched task and a working one, and the reactor settles the latter",
+  () =>
+    withTeam((launched) =>
+      Effect.gen(function* () {
+        const reactor = yield* TeamTaskReactor.TeamTaskReactor;
+        yield* propose([task("build")]);
+        yield* approve();
+        // The plan names the task's thread before its launch effect has created it.
+        yield* reactor.recover();
+        assert.deepEqual(yield* taskStates, { build: "running#1" });
+
+        const [buildThreadId] = yield* runEffects(launched, 1);
+        yield* reactor.recover();
+        assert.deepEqual(yield* taskStates, { build: "running#1" });
+
+        yield* endRun(buildThreadId!, "completed", "Built it.");
+        assert.deepEqual(yield* taskStates, { build: "completed#1" });
+        assert.equal((yield* team).status, "completed");
       }),
     ),
 );

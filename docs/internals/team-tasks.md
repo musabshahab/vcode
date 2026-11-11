@@ -43,8 +43,11 @@ when the task or plan has moved on, so replaying one after a restart is safe.
 
 [`TeamTaskReactor`](../../apps/server/src/orchestration-v2/TeamTaskReactor.ts) settles a task when
 its thread's work has ended, by the same rule that decides a delegated task has a result
-(`delegatedTaskProgress`). It only sees events while the server runs: a run that ends during a
-restart leaves its task `running` until the user cancels the team.
+(`delegatedTaskProgress`). Like the other reactors it listens only after server activation, while
+restart recovery and the effect worker end runs before that. So once it listens, it sweeps the
+plans still `running` and settles each task whose work has ended. Reactor and sweep settle a task
+with the same command id, so whichever comes second is a no-op. A task waiting on a restart
+continuation is settled once that continuation is decided, since a declined one writes no event.
 
 `runtimeLayer.layer` leaves `TeamTaskService` unprovided, because it does not include thread launch.
 `layerProduction` provides it; a test built on `layer` supplies its own.
