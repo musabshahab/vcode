@@ -16,13 +16,18 @@ import {
   canRetryTeamTask,
   changeTeamDraft,
   editTeamDraft,
+  isTeamFinishedNotification,
   resolveTeamDraft,
   savedTeamDraftEdit,
   teamApproveCommands,
   teamCommandFailure,
   teamDraftIssue,
   teamDraftOf,
+  teamHandoffs,
   teamRetryCommand,
+  teamStatusText,
+  teamTaskOfThread,
+  threadTeam,
 } from "./team.ts";
 
 const threadId = ThreadId.make("thread:lead");
@@ -280,4 +285,128 @@ describe("teamCommandFailure", () => {
       message: "Socket closed",
     });
   });
+});
+
+describe("teamHandoffs", () => {
+  const started = (base: TeamTask): TeamTask => ({ ...base, status: "running" });
+
+  it("says whose results a task starts from, in the tense of whether it started", () => {
+    const handoffs = teamHandoffs(
+      plan({
+        tasks: [
+          { ...task("a", "builder"), status: "completed" },
+          started(task("b", "tester", ["a"])),
+          task("c", "reviewer", ["b", "a"]),
+        ],
+        agents: [agent("builder"), agent("tester"), agent("reviewer")],
+      }),
+    );
+    expect([...handoffs]).toEqual([
+      ["b", "Result passed to tester"],
+      ["c", "Both results go to reviewer"],
+    ]);
+  });
+
+  it("names the senders when they are not the tasks just above", () => {
+    const agents = [agent("builder"), agent("designer"), agent("tester"), agent("reviewer")];
+    const handoffs = teamHandoffs(
+      plan({
+        agents,
+        tasks: [
+          task("a", "builder"),
+          task("b", "designer"),
+          task("c", "tester"),
+          task("d", "reviewer", ["a"]),
+          task("e", "reviewer", ["a", "b", "c", "d"]),
+          task("f", "reviewer", ["a", "c"]),
+        ],
+      }),
+    );
+    expect(handoffs.get(TeamTaskId.make("d"))).toBe("Result from builder goes to reviewer");
+    expect(handoffs.get(TeamTaskId.make("e"))).toBe("All 4 results go to reviewer");
+    expect(handoffs.get(TeamTaskId.make("f"))).toBe(
+      "Results from builder and tester go to reviewer",
+    );
+    expect(handoffs.has(TeamTaskId.make("a"))).toBe(false);
+  });
+});
+
+describe("teamStatusText", () => {
+  const summary = (status: TeamPlan["status"], completed = 1, failed = 0) => ({
+    status,
+    total: 3,
+    completed,
+    failed,
+  });
+
+  it.each([
+    [summary("proposed", 0), "Waiting for your approval", null],
+    [summary("running"), "Running · 1 of 3 done", "1 of 3 done"],
+    [summary("failed", 1, 1), "Stuck · 1 of 3 done, 1 failed", "1 of 3 done, 1 failed"],
+    [summary("completed", 3), "Done", "3 of 3 done"],
+    [summary("cancelled"), "Cancelled", "1 of 3 done"],
+  ] as const)("%j reads %s", (input, line, progress) => {
+    expect(teamStatusText(input)).toMatchObject({ line, progress });
+  });
+});
+
+describe("threadTeam", () => {
+  const teamSummary = {
+    planId: TeamPlanId.make("plan-1"),
+    status: "running",
+    revision: 2,
+    total: 3,
+    completed: 1,
+    failed: 0,
+    running: 1,
+    cancelled: 0,
+  } as const;
+  const teamTask = {
+    rootThreadId: threadId,
+    planId: TeamPlanId.make("plan-1"),
+    taskId: TeamTaskId.make("b"),
+    attempt: 1,
+  };
+
+  it("reads a lead's own summary and an agent's from its lead, for the plan it ran", () => {
+    expect(threadTeam({ id: threadId, teamSummary }, null)).toEqual({
+      role: "lead",
+      leadThreadId: threadId,
+      planId: "plan-1",
+      summary: teamSummary,
+    });
+    const agentThread = { id: ThreadId.make("thread:agent"), teamTask };
+    expect(threadTeam(agentThread, { teamSummary })).toMatchObject({
+      role: "agent",
+      leadThreadId: threadId,
+      summary: teamSummary,
+    });
+    const replaced = { ...teamSummary, planId: TeamPlanId.make("plan-2") };
+    expect(threadTeam(agentThread, { teamSummary: replaced })?.summary).toBeNull();
+    expect(threadTeam(agentThread, null)?.summary).toBeNull();
+    expect(threadTeam({ id: threadId }, null)).toBeNull();
+  });
+});
+
+it("finds an agent thread's task, and whether a retry replaced its attempt", () => {
+  const current = plan({ tasks: [{ ...task("a", "builder"), attempt: 2 }] });
+  const ref = { planId: current.id, taskId: TeamTaskId.make("a") };
+  expect(teamTaskOfThread(current, { ...ref, attempt: 2 })?.superseded).toBe(false);
+  expect(teamTaskOfThread(current, { ...ref, attempt: 1 })?.superseded).toBe(true);
+  expect(
+    teamTaskOfThread(current, { ...ref, planId: TeamPlanId.make("plan-2"), attempt: 2 }),
+  ).toBeNull();
+});
+
+it("tells the team-finished wake from other system notifications", () => {
+  expect(isTeamFinishedNotification({ source: { kind: "system" }, outcome: "completed" })).toBe(
+    true,
+  );
+  expect(isTeamFinishedNotification({ source: { kind: "system" }, outcome: "failed" })).toBe(false);
+  expect(isTeamFinishedNotification({ source: { kind: "system" }, outcome: "updated" })).toBe(
+    false,
+  );
+  expect(
+    isTeamFinishedNotification({ source: { kind: "background_task" }, outcome: "completed" }),
+  ).toBe(false);
 });

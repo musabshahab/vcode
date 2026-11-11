@@ -2,13 +2,18 @@ import {
   type CommandId,
   type ModelSelection,
   type OrchestrationV2Command,
+  type OrchestrationV2Notification,
+  type OrchestrationV2ThreadShell,
   TeamAgentId,
   type TeamAgentRole,
   type TeamDraft,
   type TeamPlan,
   type TeamPlanId,
+  type TeamPlanStatus,
+  type TeamPlanSummary,
   type TeamTask,
   type TeamTaskId,
+  type TeamTaskRef,
   type TeamWorkspace,
   type ThreadId,
 } from "@codenine/contracts";
@@ -325,4 +330,129 @@ export function teamCommandFailure(error: unknown): TeamCommandFailure {
     conflict: coded?.[1] === "team_revision_conflict",
     message: coded?.[2] || text?.trim() || "The team could not be updated.",
   };
+}
+
+/** A team a thread belongs to: the plan it holds as the lead, or the one it runs a task for. */
+export interface ThreadTeam {
+  readonly role: "lead" | "agent";
+  readonly leadThreadId: ThreadId;
+  readonly planId: TeamPlanId;
+  /** Null while the lead's shell is not loaded, or once the lead holds another plan. */
+  readonly summary: TeamPlanSummary | null;
+}
+
+/** Reads shells only, so a thread list or a strip never subscribes to the lead's detail. */
+export function threadTeam(
+  thread: Pick<OrchestrationV2ThreadShell, "id" | "teamTask" | "teamSummary">,
+  lead: Pick<OrchestrationV2ThreadShell, "teamSummary"> | null,
+): ThreadTeam | null {
+  if (thread.teamTask !== undefined) {
+    const { rootThreadId, planId } = thread.teamTask;
+    const summary = lead?.teamSummary;
+    return {
+      role: "agent",
+      leadThreadId: rootThreadId,
+      planId,
+      summary: summary?.planId === planId ? summary : null,
+    };
+  }
+  if (thread.teamSummary === undefined) return null;
+  return {
+    role: "lead",
+    leadThreadId: thread.id,
+    planId: thread.teamSummary.planId,
+    summary: thread.teamSummary,
+  };
+}
+
+const TEAM_STATUS_LABELS: Record<TeamPlanStatus, string> = {
+  proposed: "Waiting for your approval",
+  running: "Running",
+  completed: "Done",
+  failed: "Stuck",
+  cancelled: "Cancelled",
+};
+
+export interface TeamStatusText {
+  readonly label: string;
+  /** How far the tasks got, such as "2 of 3 done, 1 failed"; null before the team starts. */
+  readonly progress: string | null;
+  /** The label, with the progress while the team still needs watching. */
+  readonly line: string;
+}
+
+export function teamStatusText(
+  summary: Pick<TeamPlanSummary, "status" | "total" | "completed" | "failed">,
+): TeamStatusText {
+  const label = TEAM_STATUS_LABELS[summary.status];
+  if (summary.status === "proposed") return { label, progress: null, line: label };
+  const failed = summary.failed > 0 ? `, ${summary.failed} failed` : "";
+  const progress = `${summary.completed} of ${summary.total} done${failed}`;
+  const watching = summary.status === "running" || summary.status === "failed";
+  return { label, progress, line: watching ? `${label} · ${progress}` : label };
+}
+
+function listLabels(labels: ReadonlyArray<string>): string {
+  return labels.length < 2
+    ? (labels[0] ?? "")
+    : `${labels.slice(0, -1).join(", ")} and ${labels.at(-1)}`;
+}
+
+/**
+ * The line shown above each task that starts from other tasks' results, keyed by that task. It
+ * names the senders unless they are the tasks just above it, which the list already shows.
+ */
+export function teamHandoffs(
+  plan: Pick<TeamPlan, "agents" | "tasks">,
+): ReadonlyMap<TeamTaskId, string> {
+  const labelOf = (task: TeamTask) =>
+    plan.agents.find((agent) => agent.id === task.agentId)?.label ?? task.title;
+  const indexById = new Map(plan.tasks.map((task, index) => [task.id, index]));
+  const handoffs = new Map<TeamTaskId, string>();
+  for (const [index, task] of plan.tasks.entries()) {
+    const sources = [...new Set(task.dependsOn)]
+      .flatMap((id) => {
+        const source = indexById.get(id);
+        return source === undefined ? [] : [source];
+      })
+      .toSorted((a, b) => a - b);
+    if (sources.length === 0) continue;
+    const plural = sources.length > 1;
+    const verb = task.status !== "pending" ? "passed to" : plural ? "go to" : "goes to";
+    const receiver = labelOf(task);
+    const adjacent = sources.every((source, k) => source === index - sources.length + k);
+    if (adjacent) {
+      const subject = !plural
+        ? "Result"
+        : sources.length === 2
+          ? "Both results"
+          : `All ${sources.length} results`;
+      handoffs.set(task.id, `${subject} ${verb} ${receiver}`);
+      continue;
+    }
+    const senders = listLabels([...new Set(sources.map((source) => labelOf(plan.tasks[source]!)))]);
+    handoffs.set(task.id, `${plural ? "Results" : "Result"} from ${senders} ${verb} ${receiver}`);
+  }
+  return handoffs;
+}
+
+/** The task an agent's thread runs in its lead's plan; null once the lead holds another plan. */
+export function teamTaskOfThread(
+  plan: Pick<TeamPlan, "id" | "tasks">,
+  ref: Pick<TeamTaskRef, "planId" | "taskId" | "attempt">,
+): { readonly task: TeamTask; readonly superseded: boolean } | null {
+  if (plan.id !== ref.planId) return null;
+  const task = plan.tasks.find((candidate) => candidate.id === ref.taskId);
+  // A retry runs the next attempt in a new thread, so this one's usage is no longer the task's.
+  return task === undefined ? null : { task, superseded: ref.attempt < task.attempt };
+}
+
+/**
+ * The notification that wakes a lead once every task of its team completed. TeamTaskService is
+ * the only sender of a completed system notification; a restart continuation is `updated`.
+ */
+export function isTeamFinishedNotification(
+  notification: Pick<OrchestrationV2Notification, "source" | "outcome">,
+): boolean {
+  return notification.source.kind === "system" && notification.outcome === "completed";
 }
