@@ -3,7 +3,7 @@ import { type ToolActivityIcon } from "@codenine/contracts";
 import { toolActivityFaviconUrl } from "@codenine/shared/favicon";
 import { getProjectFaviconCacheKey } from "@codenine/shared/projectFavicon";
 import { use, useState } from "react";
-import { CodenineWordmark } from "../CodenineWordmark";
+import { CodenineMark } from "../CodenineWordmark";
 import {
   BotIcon,
   BrainIcon,
@@ -241,7 +241,7 @@ function WorkEntryIcon({ name, className }: { name: WorkEntryIconName; className
     case "code":
       return <Code2Icon className={className} aria-hidden />;
     case "codenine":
-      return <CodenineWordmark className={className} aria-hidden />;
+      return <CodenineMark className={className} aria-hidden />;
     case "check":
       return <CheckIcon className={className} aria-hidden />;
     case "list-todo":
