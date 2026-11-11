@@ -1,6 +1,7 @@
 import {
   ProviderInstanceId,
   TeamAgentId,
+  TeamPlanId,
   TeamTaskId,
   type TeamAgent,
   type TeamTask,
@@ -8,7 +9,12 @@ import {
 } from "@codenine/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
-import { settledTeamPlanStatus, startableTeamTasks, validateTeamDraft } from "./team.ts";
+import {
+  settledTeamPlanStatus,
+  startableTeamTasks,
+  teamPlanSummary,
+  validateTeamDraft,
+} from "./team.ts";
 
 const agent = (id: string, instanceId = "codex"): TeamAgent => ({
   id: TeamAgentId.make(id),
@@ -152,5 +158,35 @@ describe("settledTeamPlanStatus", () => {
       task("second", { status: second, dependsOn: ["first"] }),
     ];
     expect(settledTeamPlanStatus(plan(tasks))).toBe(status);
+  });
+});
+
+describe("teamPlanSummary", () => {
+  it("counts the tasks in each status but pending", () => {
+    const statuses = [
+      "completed",
+      "pending",
+      "running",
+      "failed",
+      "cancelled",
+      "completed",
+    ] as const;
+    expect(
+      teamPlanSummary({
+        id: TeamPlanId.make("plan"),
+        status: "running",
+        revision: 2,
+        tasks: statuses.map((status, index) => task(`t${index}`, { status })),
+      }),
+    ).toEqual({
+      planId: "plan",
+      status: "running",
+      revision: 2,
+      total: 6,
+      completed: 2,
+      failed: 1,
+      running: 1,
+      cancelled: 1,
+    });
   });
 });

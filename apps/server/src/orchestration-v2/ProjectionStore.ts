@@ -3,6 +3,7 @@ import { applyThreadPullRequestLinkUpdate } from "../sourceControl/threadPullReq
 import { projectTurnItemForWire } from "./WireProjection.ts";
 import * as Stream from "effect/Stream";
 import * as NodeSqliteClient from "@codenine/shared/nodeSqliteClient";
+import { teamPlanSummary } from "@codenine/shared/team";
 import { makeThreadFind } from "./ThreadFind.ts";
 import type {
   OrchestrationV2ThreadLinkMetadata,
@@ -1689,6 +1690,9 @@ export function threadShellFromProjection(
     titleRegeneration: projection.thread.titleRegeneration ?? null,
     limitRecovery: projection.thread.limitRecovery ?? null,
     ...(projection.thread.teamTask === undefined ? {} : { teamTask: projection.thread.teamTask }),
+    ...(projection.thread.team == null
+      ? {}
+      : { teamSummary: teamPlanSummary(projection.thread.team) }),
     deletedAt: projection.thread.deletedAt,
   };
 }
@@ -1949,6 +1953,9 @@ function shellFromState(input: {
     titleRegeneration: input.state.thread.titleRegeneration ?? null,
     limitRecovery: input.state.thread.limitRecovery ?? null,
     ...(input.state.thread.teamTask === undefined ? {} : { teamTask: input.state.thread.teamTask }),
+    ...(input.state.thread.team == null
+      ? {}
+      : { teamSummary: teamPlanSummary(input.state.thread.team) }),
     deletedAt: input.state.thread.deletedAt,
   };
 }

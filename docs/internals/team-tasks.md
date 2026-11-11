@@ -36,6 +36,9 @@ event type or table. Two things follow:
 - A plan this build cannot decode reads as `null` instead of failing the thread, so a client older
   than its server keeps the thread and loses only the plan.
 
+Thread lists read shells, and every client receives every shell change, so a lead's shell carries
+`teamSummary` (the plan's status and task counts), never the plan.
+
 Only the server may set `teamTask`: a thread with it reports its result into the lead's plan, so a
 client's `thread.create` has the field removed, and `team.task.settle` is an internal command.
 Forks and delegated children reset both fields.

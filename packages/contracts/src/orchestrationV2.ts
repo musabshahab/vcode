@@ -46,6 +46,7 @@ import {
   TeamAgentId,
   TeamDraft,
   TeamPlanId,
+  TeamPlanSummary,
   TeamTaskId,
   TeamTaskRef,
   TeamTaskUsage,
@@ -2106,6 +2107,8 @@ export const OrchestrationV2ThreadShell = Schema.Struct({
   ),
   /** On a team agent's thread: the task it runs, so a list can show it under its lead. */
   teamTask: Schema.optional(TeamTaskRef),
+  /** On a lead thread with a plan: where the plan stands, without the plan itself. */
+  teamSummary: Schema.optional(TeamPlanSummary),
   deletedAt: Schema.NullOr(Schema.DateTimeUtc),
 });
 export type OrchestrationV2ThreadShell = typeof OrchestrationV2ThreadShell.Type;

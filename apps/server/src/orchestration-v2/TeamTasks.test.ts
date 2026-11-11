@@ -11,6 +11,7 @@ import {
   ProviderInstanceId,
   type TeamAgent,
   TeamAgentId,
+  type TeamPlanStatus,
   type TeamTaskDraft,
   TeamTaskId,
   ThreadId,
@@ -23,14 +24,17 @@ import * as Effect from "effect/Effect";
 import * as Exit from "effect/Exit";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
+import * as PubSub from "effect/PubSub";
 import * as Queue from "effect/Queue";
 import type * as Scope from "effect/Scope";
 import * as Stream from "effect/Stream";
 
 import * as GitWorkflow from "../git/GitWorkflowService.ts";
+import * as OrchestrationEventStore from "../persistence/OrchestrationEventStore.ts";
 import * as SqlitePersistence from "../persistence/Sqlite.ts";
 import * as ManagedProjectFolders from "../project/ManagedProjectFolders.ts";
 import * as ProjectCloneTracker from "../project/ProjectCloneTracker.ts";
+import * as ProjectEnrichmentService from "../project/ProjectEnrichmentService.ts";
 import * as ProjectService from "../project/ProjectService.ts";
 import * as ProjectSetupScriptRunner from "../project/ProjectSetupScriptRunner.ts";
 import * as WorktreeSetupTracker from "../project/WorktreeSetupTracker.ts";
@@ -39,12 +43,14 @@ import * as ServerSettings from "../serverSettings.ts";
 import * as TerminalManager from "../terminal/Manager.ts";
 import * as TextGeneration from "../textGeneration/TextGeneration.ts";
 import * as GitVcsDriver from "../vcs/GitVcsDriver.ts";
+import { subscribeOrchestrationV2Shell } from "../ws.ts";
 import { CodexProviderCapabilitiesV2 } from "./Adapters/CodexAdapterV2.ts";
 import * as CommandReceiptStore from "./CommandReceiptStore.ts";
 import * as EffectWorker from "./EffectWorker.ts";
 import * as EventSink from "./EventSink.ts";
 import * as Orchestrator from "./Orchestrator.ts";
 import * as ProjectionStore from "./ProjectionStore.ts";
+import * as ProjectStore from "./ProjectStore.ts";
 import * as ProviderAdapterRegistry from "./ProviderAdapterRegistry.ts";
 import * as TeamTaskReactor from "./TeamTaskReactor.ts";
 import * as TeamTaskService from "./TeamTaskService.ts";
@@ -194,6 +200,9 @@ const layerTeam = (
       Layer.provide(ProjectionStore.layer.pipe(Layer.provide(layerDatabase))),
     ),
     layerTeamTasks,
+    // A shell subscription reads these from the same database; see `streamedShell`.
+    layerThreadManagement,
+    OrchestrationEventStore.layer.pipe(Layer.provideMerge(layerDatabase)),
   ).pipe(Layer.provideMerge(layerHarness));
 };
 
@@ -214,6 +223,36 @@ const taskStates = team.pipe(
     ),
   ),
 );
+
+/** The last shell a client resuming the shell stream after `afterSequence` receives for a thread. */
+const streamedShell = (threadId: ThreadId, afterSequence: number) =>
+  subscribeOrchestrationV2Shell({ afterSequence, requestCompletionMarker: true }).pipe(
+    Effect.flatMap((stream) =>
+      stream.pipe(
+        Stream.takeUntil((item) => item.kind === "synchronized"),
+        Stream.runCollect,
+      ),
+    ),
+    Effect.map((items) =>
+      items
+        .flatMap((item) =>
+          item.kind === "thread.updated" && item.thread.id === threadId ? [item.thread] : [],
+        )
+        .at(-1),
+    ),
+    Effect.provide(
+      Layer.mergeAll(
+        Layer.mock(ProjectStore.ProjectStoreV2)({ listShells: () => Effect.succeed([]) }),
+        Layer.mock(ProjectService.ProjectService)({}),
+        Layer.mock(ProjectEnrichmentService.ProjectEnrichmentService)({
+          subscribeChanges: Effect.flatMap(
+            PubSub.unbounded<ProjectEnrichmentService.ProjectEnrichmentChange>(),
+            PubSub.subscribe,
+          ),
+        }),
+      ),
+    ),
+  );
 
 const settledOverrides = (threadIds: ReadonlyArray<ThreadId>) =>
   Effect.flatMap(Orchestrator.OrchestratorV2, (orchestrator) =>
@@ -240,22 +279,21 @@ const createLead = dispatch({
   creationSource: "web",
 });
 
-const propose = (
+const proposeOnLead = (
   tasks: ReadonlyArray<TeamTaskDraft>,
   agents: ReadonlyArray<TeamAgent> = [builder, reviewer],
 ) =>
-  createLead.pipe(
-    Effect.andThen(
-      dispatch({
-        type: "team.propose",
-        commandId: CommandId.make("propose"),
-        threadId: leadThreadId,
-        goal: "Ship the feature",
-        agents,
-        tasks,
-      }),
-    ),
-  );
+  dispatch({
+    type: "team.propose",
+    commandId: CommandId.make("propose"),
+    threadId: leadThreadId,
+    goal: "Ship the feature",
+    agents,
+    tasks,
+  });
+
+const propose = (...args: Parameters<typeof proposeOnLead>) =>
+  createLead.pipe(Effect.andThen(proposeOnLead(...args)));
 
 const approve = (expectedRevision = 1) =>
   dispatch({
@@ -384,8 +422,56 @@ it.effect(
   () =>
     withTeam((launched) =>
       Effect.gen(function* () {
-        yield* propose([task("a"), task("b"), task("c"), task("d", ["a"], reviewer)]);
-        yield* approve();
+        const orchestrator = yield* Orchestrator.OrchestratorV2;
+        const applicationEvents = yield* OrchestrationEventStore.OrchestrationEventStore;
+        const listed = (threadId: ThreadId, location: "active" | "archive") =>
+          orchestrator
+            .getShellSnapshot({ location })
+            .pipe(
+              Effect.map((snapshot) =>
+                [...snapshot.threads, ...snapshot.archivedThreads].find(
+                  (shell) => shell.id === threadId,
+                ),
+              ),
+            );
+        // Thread lists read where a lead's plan stands from its shell alone, and the shell
+        // stream resends the lead when the plan changes.
+        const expectLeadSummaryAfter = <E, R>(
+          change: Effect.Effect<unknown, E, R>,
+          status: TeamPlanStatus,
+          counts: { readonly running: number; readonly completed: number },
+        ) =>
+          Effect.gen(function* () {
+            const since = yield* applicationEvents.latestApplicationSequence;
+            yield* change;
+            const expected = {
+              planId: (yield* team).id,
+              status,
+              revision: 1,
+              total: 4,
+              failed: 0,
+              cancelled: 0,
+              ...counts,
+            };
+            for (const shell of [
+              yield* orchestrator.getThreadShell(leadThreadId),
+              yield* listed(leadThreadId, "active"),
+              ProjectionStore.threadShellFromProjection(yield* thread(leadThreadId)),
+              yield* streamedShell(leadThreadId, since),
+            ]) {
+              assert.deepEqual(shell?.teamSummary, expected);
+            }
+            return expected;
+          });
+
+        yield* createLead;
+        assert.isUndefined((yield* orchestrator.getThreadShell(leadThreadId))?.teamSummary);
+        yield* expectLeadSummaryAfter(
+          proposeOnLead([task("a"), task("b"), task("c"), task("d", ["a"], reviewer)]),
+          "proposed",
+          { running: 0, completed: 0 },
+        );
+        yield* expectLeadSummaryAfter(approve(), "running", { running: 2, completed: 0 });
         const first = yield* runEffects(launched, 2);
         assert.sameMembers(first, [yield* taskThreadId("a"), yield* taskThreadId("b")]);
         assert.deepEqual(yield* taskStates, {
@@ -439,31 +525,34 @@ it.effect(
         assert.notInclude(brief, "Wrote src/b.ts.");
 
         // Thread lists group a task thread under its lead from the shell alone.
-        const orchestrator = yield* Orchestrator.OrchestratorV2;
-        const listed = (location: "active" | "archive") =>
-          orchestrator
-            .getShellSnapshot({ location })
-            .pipe(
-              Effect.map((snapshot) =>
-                [...snapshot.threads, ...snapshot.archivedThreads].find(
-                  (shell) => shell.id === dThreadId,
-                ),
-              ),
-            );
         for (const shell of [
           yield* orchestrator.getThreadShell(dThreadId),
-          yield* listed("active"),
+          yield* listed(dThreadId, "active"),
           ProjectionStore.threadShellFromProjection(d),
         ]) {
           assert.deepEqual(shell?.teamTask, d.thread.teamTask);
+          assert.isUndefined(shell?.teamSummary);
         }
         assert.isUndefined((yield* orchestrator.getThreadShell(leadThreadId))?.teamTask);
-        yield* dispatch({
-          type: "thread.archive",
-          commandId: CommandId.make("archive-d"),
-          threadId: dThreadId,
-        });
-        assert.deepEqual((yield* listed("archive"))?.teamTask, d.thread.teamTask);
+
+        // The lead wakes and settles the team once it completes; neither is under test here.
+        const completed = yield* expectLeadSummaryAfter(
+          Effect.andThen(
+            endRun(yield* taskThreadId("c"), "completed", "Wrote src/c.ts."),
+            endRun(dThreadId, "completed", "Reviewed it."),
+          ),
+          "completed",
+          { running: 0, completed: 4 },
+        );
+        for (const threadId of [dThreadId, leadThreadId]) {
+          yield* dispatch({
+            type: "thread.archive",
+            commandId: CommandId.make(`archive:${threadId}`),
+            threadId,
+          });
+        }
+        assert.deepEqual((yield* listed(dThreadId, "archive"))?.teamTask, d.thread.teamTask);
+        assert.deepEqual((yield* listed(leadThreadId, "archive"))?.teamSummary, completed);
       }),
     ),
 );

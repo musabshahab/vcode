@@ -118,6 +118,19 @@ export const TeamPlan = Schema.Struct({
 });
 export type TeamPlan = typeof TeamPlan.Type;
 
+/** Where a lead's plan stands, for thread lists. Pending tasks are `total` less the other counts. */
+export const TeamPlanSummary = Schema.Struct({
+  planId: TeamPlanId,
+  status: TeamPlanStatus,
+  revision: PositiveInt,
+  total: NonNegativeInt,
+  completed: NonNegativeInt,
+  failed: NonNegativeInt,
+  running: NonNegativeInt,
+  cancelled: NonNegativeInt,
+});
+export type TeamPlanSummary = typeof TeamPlanSummary.Type;
+
 /** A plan this build cannot read becomes null instead of failing the whole thread. */
 export const StoredTeamPlan = Schema.NullOr(TeamPlan).pipe(
   Schema.catchDecoding(() => Effect.succeedSome(null)),

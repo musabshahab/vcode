@@ -5,6 +5,7 @@ import {
   TEAM_MAX_TASKS,
   type TeamDraft,
   type TeamPlan,
+  type TeamPlanSummary,
   type TeamTask,
   type TeamTaskId,
 } from "@codenine/contracts";
@@ -169,4 +170,21 @@ export function settledTeamPlanStatus(plan: SchedulablePlan): "running" | "compl
   if (plan.tasks.every((task) => task.status === "completed")) return "completed";
   if (plan.tasks.some((task) => task.status === "running")) return "running";
   return startableTeamTasks(plan).length > 0 ? "running" : "failed";
+}
+
+/** What a thread list shows of a plan: its state and how many tasks reached each status. */
+export function teamPlanSummary(
+  plan: Pick<TeamPlan, "id" | "status" | "revision" | "tasks">,
+): TeamPlanSummary {
+  const counts = { completed: 0, failed: 0, running: 0, cancelled: 0 };
+  for (const task of plan.tasks) {
+    if (task.status !== "pending") counts[task.status] += 1;
+  }
+  return {
+    planId: plan.id,
+    status: plan.status,
+    revision: plan.revision,
+    total: plan.tasks.length,
+    ...counts,
+  };
 }
