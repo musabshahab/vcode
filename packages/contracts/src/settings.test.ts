@@ -310,6 +310,15 @@ describe("ClientSettings notifications", () => {
   });
 });
 
+describe("ClientSettings sidebar grouping", () => {
+  it("groups chats by project on installs that stored the old Labs switch off", () => {
+    const settings = decodeClientSettings({ boringSidebarEnabled: false });
+
+    expect(settings.sidebarGroupByProject).toBe(true);
+    expect(encodeClientSettings(settings)).not.toHaveProperty("boringSidebarEnabled");
+  });
+});
+
 describe("ClientSettings quit confirmation", () => {
   it.each([
     [true, "hold"],

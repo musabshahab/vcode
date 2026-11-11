@@ -26,14 +26,14 @@ function project(id: string): Project {
 
 describe("new thread commands", () => {
   it.each([
-    { mode: "normal", count: 2, command: "chat.new", picker: true },
-    { mode: "boring", count: 2, command: "chat.new", picker: true },
-    { mode: "boring", count: 1, command: "chat.new", picker: false },
-    { mode: "boring", count: 2, command: "chat.newLocal", picker: false },
+    { mode: "flat", count: 2, command: "chat.new", picker: true },
+    { mode: "grouped", count: 2, command: "chat.new", picker: true },
+    { mode: "grouped", count: 1, command: "chat.new", picker: false },
+    { mode: "grouped", count: 2, command: "chat.newLocal", picker: false },
   ] as const)("$mode sidebar, $count projects, $command: picker=$picker", (scenario) => {
     using _settings = vi.spyOn(settings, "getClientSettings").mockReturnValue({
       ...DEFAULT_CLIENT_SETTINGS,
-      boringSidebarEnabled: scenario.mode === "boring",
+      sidebarGroupByProject: scenario.mode === "grouped",
     });
     using _projects = vi
       .spyOn(entities, "readProjects")
