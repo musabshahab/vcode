@@ -34,10 +34,6 @@ import { themeServerEnvironmentThemesAtom } from "./state/server";
 export { EMBER_THEME, GROVE_THEME, IRIS_THEME, OCEAN_THEME, THEME_COLOR_ROLES };
 export type { ThemeAppearance, ThemeColorRole, ThemeColors, ThemeDefinition, ThemeVariants };
 
-const GROVE_THEME_ID = "grove" as const;
-const OCEAN_THEME_ID = "ocean" as const;
-const EMBER_THEME_ID = "ember" as const;
-const IRIS_THEME_ID = "iris" as const;
 export const THEME_FILE_VERSION = 1 as const;
 export const CUSTOM_THEMES_STORAGE_KEY = "codenine:themes:v1";
 export const THEME_FOLLOW_SYSTEM_STORAGE_KEY = "codenine:theme-follow-system";
@@ -288,7 +284,7 @@ function environmentThemeDefinition(theme: EnvironmentTheme): ThemeDefinition {
 
 /**
  * Published palettes this client can render. Reserved ids are dropped here rather
- * than rendered: a published `codenine-iris.json` would show this palette on its
+ * than rendered: a published `iris.json` would show this palette on its
  * card while "Use" resolved the built-in, and a published `dark.json` would
  * capture everyone whose stored preference is the stock `"dark"`.
  */
@@ -364,25 +360,6 @@ export function subscribeToCustomThemes(listener: () => void): () => void {
     unsubscribeEnvironment();
     window.removeEventListener("storage", handleStorage);
   };
-}
-
-const LEGACY_THEME_ID_ALIASES: Readonly<Record<string, string>> = {
-  "codenine-grove": GROVE_THEME_ID,
-  "codenine-ocean": OCEAN_THEME_ID,
-  "codenine-ember": EMBER_THEME_ID,
-  "codenine-iris": IRIS_THEME_ID,
-};
-
-function normalizeThemeId(themeId: string): string {
-  return LEGACY_THEME_ID_ALIASES[themeId] ?? themeId;
-}
-
-export function canonicalThemePreference(theme: string): string {
-  return normalizeThemeId(theme);
-}
-
-function themeIdFromPreference(theme: ThemePreference): string {
-  return normalizeThemeId(theme);
 }
 
 export function getStandardThemeColors(appearance: ThemeAppearance): ThemeColors {
@@ -1174,19 +1151,17 @@ export function updateThemeColorFamily(
 const BUILT_IN_THEME_DEFINITIONS: ReadonlyArray<ThemeDefinition> = BUILT_IN_THEMES;
 
 export function getThemeDefinition(theme: ThemePreference): ThemeDefinition | null {
-  const themeId = themeIdFromPreference(theme);
   return (
-    BUILT_IN_THEME_DEFINITIONS.find((definition) => definition.id === themeId) ??
-    getCustomThemes().find((definition) => definition.id === themeId) ??
-    getEnvironmentThemes().find((definition) => definition.id === themeId) ??
+    BUILT_IN_THEME_DEFINITIONS.find((definition) => definition.id === theme) ??
+    getCustomThemes().find((definition) => definition.id === theme) ??
+    getEnvironmentThemes().find((definition) => definition.id === theme) ??
     null
   );
 }
 
 export function themeAllowsSidebarArtwork(theme: ThemePreference): boolean {
-  const themeId = themeIdFromPreference(theme);
   return (
-    BUILT_IN_THEME_DEFINITIONS.find((definition) => definition.id === themeId)?.sidebarArtwork ===
+    BUILT_IN_THEME_DEFINITIONS.find((definition) => definition.id === theme)?.sidebarArtwork ===
     true
   );
 }

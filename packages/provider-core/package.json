@@ -83,10 +83,6 @@
       "types": "./src/server/ModelCatalog.ts",
       "import": "./src/server/ModelCatalog.ts"
     },
-    "./server/nativeProtocolLogging": {
-      "types": "./src/server/nativeProtocolLogging.ts",
-      "import": "./src/server/nativeProtocolLogging.ts"
-    },
     "./server/notification": {
       "types": "./src/server/notification.ts",
       "import": "./src/server/notification.ts"

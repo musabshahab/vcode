@@ -181,11 +181,6 @@ describe("index.html boot script", () => {
       prefersDark: true,
     },
     {
-      name: "a legacy codenine-grove preference resolves through the alias",
-      storage: { [THEME_STORAGE_KEY]: "codenine-grove", [THEME_FOLLOW_SYSTEM_STORAGE_KEY]: "true" },
-      prefersDark: true,
-    },
-    {
       name: "a preference for a theme that no longer ships falls back to the default",
       storage: { [THEME_STORAGE_KEY]: "codenine-chat", [THEME_FOLLOW_SYSTEM_STORAGE_KEY]: "true" },
       prefersDark: true,

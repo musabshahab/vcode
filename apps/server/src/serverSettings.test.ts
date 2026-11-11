@@ -78,27 +78,6 @@ const layerFailingSecretStore = (cause: ServerSecretStore.SecretStoreError) =>
     }),
   );
 
-const recordProviderUsage = (provider: string, instanceId: string | null = provider) =>
-  Effect.gen(function* () {
-    const sql = yield* SqlClient.SqlClient;
-    yield* sql`
-      INSERT INTO projection_thread_sessions (
-        thread_id,
-        status,
-        provider_name,
-        provider_instance_id,
-        updated_at
-      )
-      VALUES (
-        ${`thread-${instanceId ?? provider}`},
-        ${"ready"},
-        ${provider},
-        ${instanceId},
-        ${"2026-08-25T00:00:00.000Z"}
-      )
-    `;
-  });
-
 /** Paths of fields typed `SettingsSecretValue` that clients decode with the settings schema itself. */
 function strictSecretReferencePaths(
   ast: SchemaAST.AST,
@@ -940,27 +919,6 @@ it.layer(Layer.mergeAll(NodeServices.layer, NodeCrypto.layer))("server settings"
         driver: ProviderDriverKind.make("codex"),
         enabled: true,
         config: { binaryPath: "/explicit/codex" },
-      });
-    }).pipe(Effect.provide(layerServerSettings())),
-  );
-
-  it.effect("keeps explicit legacy disables even when provider history shows use", () =>
-    Effect.gen(function* () {
-      const serverConfig = yield* ServerConfig.ServerConfig;
-      const fileSystem = yield* FileSystem.FileSystem;
-      const serverSettings = yield* ServerSettingsModule.ServerSettingsService;
-      yield* fileSystem.writeFileString(
-        serverConfig.settingsPath,
-        JSON.stringify({ providers: { grok: { enabled: false, binaryPath: "/opt/grok" } } }),
-      );
-      yield* recordProviderUsage("grok");
-
-      const settings = yield* serverSettings.getSettings;
-
-      assert.deepEqual(settings.providerInstances[ProviderInstanceId.make("grok")], {
-        driver: ProviderDriverKind.make("grok"),
-        enabled: false,
-        config: { binaryPath: "/opt/grok" },
       });
     }).pipe(Effect.provide(layerServerSettings())),
   );

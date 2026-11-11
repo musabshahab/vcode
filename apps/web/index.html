@@ -114,19 +114,7 @@
             Object.keys(palettes),
           ]),
         );
-        const RESERVED_THEME_IDS = [
-          "system",
-          "light",
-          "dark",
-          "grove",
-          "ocean",
-          "ember",
-          "iris",
-          "codenine-grove",
-          "codenine-ocean",
-          "codenine-ember",
-          "codenine-iris",
-        ];
+        const RESERVED_THEME_IDS = ["system", "light", "dark", "grove", "ocean", "ember", "iris"];
         const setThemeColor = (color) => {
           for (const meta of document.querySelectorAll('meta[name="theme-color"]')) {
             meta.setAttribute("content", color);
@@ -199,14 +187,7 @@
         try {
           const storedTheme = window.localStorage.getItem("codenine:theme");
           const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-          const LEGACY_THEME_IDS = {
-            "codenine-grove": "grove",
-            "codenine-ocean": "ocean",
-            "codenine-ember": "ember",
-            "codenine-iris": "iris",
-          };
-          const themeId =
-            storedTheme === null ? "" : (LEGACY_THEME_IDS[storedTheme] ?? storedTheme);
+          const themeId = storedTheme ?? "";
           const builtInModes = BUILT_IN_THEME_MODES[themeId] ?? null;
           const customTheme = builtInModes ? null : findCustomTheme(themeId);
           const themeModes =
@@ -251,7 +232,7 @@
             );
             const candidate = isRecord(halvesRaw) ? halvesRaw[wantedMode] : null;
             if (typeof candidate === "string") {
-              const halfId = LEGACY_THEME_IDS[candidate] ?? candidate;
+              const halfId = candidate;
               const halfBuiltIn = BUILT_IN_THEME_MODES[halfId] ?? null;
               const halfCustom = halfBuiltIn ? null : findCustomTheme(halfId);
               const halfModes =

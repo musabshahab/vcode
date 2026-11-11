@@ -9,7 +9,7 @@ import {
   environmentThemeFileHasColors,
 } from "@codenine/contracts";
 import { fromJsonStringPretty, fromLenientJson } from "@codenine/shared/schemaJson";
-import { BUILT_IN_THEME_IDS, UNPUBLISHABLE_THEME_IDS } from "@codenine/shared/themePalettes";
+import { BUILT_IN_THEME_IDS, RESERVED_THEME_IDS } from "@codenine/shared/themePalettes";
 import * as Config from "effect/Config";
 import * as Console from "effect/Console";
 import * as DateTime from "effect/DateTime";
@@ -283,7 +283,7 @@ const publishThemeFile = Effect.fn(function* (input: {
   const fileBasename = path.basename(input.filePath, ".json");
   const themeId = Option.getOrElse(input.explicitId, () => fileBasename);
   // Match watcher validation so published files will not be skipped.
-  if (!isEnvironmentThemeId(themeId) || UNPUBLISHABLE_THEME_IDS.has(themeId)) {
+  if (!isEnvironmentThemeId(themeId) || RESERVED_THEME_IDS.has(themeId)) {
     return yield* new ThemeFileIdInvalidError({ themeId, filePath: input.filePath });
   }
 

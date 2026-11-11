@@ -302,14 +302,7 @@ function parseCodenineMcpToolName(value: string): string | null {
   if (Object.hasOwn(CODENINE_MCP_TOOLS, label)) return label;
   const prefixed = /^(?:mcp[-_]{1,2})?codenine(?:__|[-_.:/ ])(?<tool>.+)$/i.exec(label);
   const candidate = prefixed?.groups?.tool;
-  if (candidate !== undefined && Object.hasOwn(CODENINE_MCP_TOOLS, candidate)) return candidate;
-  // OpenCode 2 thread prefixes can contain underscores; choose the longest known tool-name suffix.
-  if (!/^codenine-/i.test(label)) return null;
-  let longest: string | null = null;
-  for (const tool of Object.keys(CODENINE_MCP_TOOLS)) {
-    if (label.endsWith(`_${tool}`) && tool.length > (longest?.length ?? 0)) longest = tool;
-  }
-  return longest;
+  return candidate !== undefined && Object.hasOwn(CODENINE_MCP_TOOLS, candidate) ? candidate : null;
 }
 
 export function resolveCodenineMcpToolId(toolName: string | null | undefined): string | null {

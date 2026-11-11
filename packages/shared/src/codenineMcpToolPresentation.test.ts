@@ -30,16 +30,6 @@ describe("resolveCodenineMcpToolPresentation", () => {
       expect(resolveCodenineMcpToolPresentation(`mcp__another-server__${tool}`), tool).toBeNull();
     }
   });
-
-  it("matches OpenCode 2's per-thread server names, whose thread ids hold underscores", () => {
-    expect(
-      resolveCodenineMcpToolPresentation("codenine-thread_opencode2-adapter_delegate_task")
-        ?.displayName,
-    ).toBe("Delegate a child task");
-    expect(
-      resolveCodenineMcpToolPresentation("codenine-thread_opencode2-adapter_not_a_tool"),
-    ).toBeNull();
-  });
 });
 
 describe("resolveCodenineMcpToolDefinition", () => {

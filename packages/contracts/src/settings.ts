@@ -1298,7 +1298,6 @@ export const ServerSettingsOperation = Schema.Literals([
   "check-exists",
   "create-provider-instance",
   "read-file",
-  "read-provider-history",
   "read-project-settings",
   "read-secret",
   "remove-secret",
