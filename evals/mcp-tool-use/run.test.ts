@@ -480,6 +480,21 @@ it("replays earlier capability results with the model under test as the caller",
   }
 });
 
+it("refuses a proposed team whose task names an agent that is not on it, as Codenine does", () => {
+  const base = buildBase(template, { model: "claude-sonnet-5-5", keepUserInstructions: false });
+  const propose = (agent: string) =>
+    codenineDefault(makeSample(childCase, base), "propose_team", {
+      goal: "Ship the rate limiter",
+      agents: [{ id: "builder", label: "Builder", role: "implement" }],
+      tasks: [{ id: "build", title: "Build", brief: "Write the token bucket.", agent }],
+    });
+  assert.deepInclude(propose("builder"), { status: "proposed", revision: 1 });
+  assert.deepEqual(propose("reviewer"), {
+    code: "invalid_request",
+    message: 'Task "build" names agent "reviewer", which is not on the team.',
+  });
+});
+
 it("gives each launched thread its own id, and reading it back shows that thread's brief", () => {
   const base = buildBase(template, { model: "claude-sonnet-5-5", keepUserInstructions: false });
   const sample = makeSample(childCase, base);

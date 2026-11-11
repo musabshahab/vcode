@@ -9,6 +9,8 @@ import {
   OrchestratorMcpRequestSecretInput,
   OrchestratorMcpRequestSecretResult,
   OrchestratorMcpFailure,
+  OrchestratorMcpProposeTeamInput,
+  OrchestratorMcpProposeTeamResult,
   OrchestratorMcpTaskCancelInput,
   OrchestratorMcpTaskCancelResult,
   OrchestratorMcpTaskStatusInput,
@@ -27,6 +29,7 @@ import {
   TrimmedNonEmptyString,
 } from "@codenine/contracts";
 import { Tool, Toolkit } from "effect/ai";
+import * as McpSchema from "effect/ai/McpSchema";
 import * as Schema from "effect/Schema";
 
 import * as ThreadManagementService from "../../../orchestration-v2/ThreadManagementService.ts";
@@ -98,6 +101,19 @@ const TaskCancelTool = Tool.make("task_cancel", {
 })
   .annotate(Tool.Title, "Cancel delegated task")
   .annotate(Tool.Destructive, true);
+
+const ProposeTeamTool = Tool.make("propose_team", {
+  description:
+    "Propose a team of agents for the user to edit and approve. Use when the user asks for a team, or for different models on parts of a task. One agent per model or role. Order tasks with `dependsOn`. Agents that edit in parallel: `workspace:'worktree'`, plus a last `integrate` task that depends on them. Models and option ids come from `orchestrator_capabilities` (effort is `effort` on Claude, `reasoningEffort` on Codex). Calling again replaces a team not yet approved.",
+  parameters: OrchestratorMcpProposeTeamInput,
+  success: OrchestratorMcpProposeTeamResult,
+  failure: OrchestratorMcpFailure,
+  failureMode: "return",
+  dependencies,
+})
+  .annotate(Tool.Title, "Propose a team of agents")
+  .annotate(Tool.Destructive, false)
+  .annotate(McpSchema.EnabledWhen, McpInvocationContext.hiddenFromSubagents);
 
 const WorkflowStopTool = Tool.make("codenine_workflow_stop", {
   description:
@@ -245,6 +261,7 @@ export const OrchestratorToolkit = Toolkit.make(
   DelegateTaskTool,
   TaskStatusTool,
   TaskCancelTool,
+  ProposeTeamTool,
   WorkflowStopTool,
   BackgroundWaitTool,
   RequestSecretTool,

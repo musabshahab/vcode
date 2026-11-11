@@ -6,6 +6,7 @@ import {
   type ModelSelection,
   NodeId,
   ORCHESTRATOR_MCP_RUNNING_TASK_NEXT,
+  ORCHESTRATOR_MCP_TEAM_PROPOSED_NEXT,
   TurnItemId,
   type OrchestrationV2Run,
   type OrchestrationV2Subagent,
@@ -22,6 +23,8 @@ import {
   type OrchestratorMcpCreatedThread,
   type OrchestratorMcpDelegateTaskInput,
   type OrchestratorMcpDelegateTaskResult,
+  type OrchestratorMcpProposeTeamInput,
+  type OrchestratorMcpProposeTeamResult,
   type OrchestratorMcpRequestSecretInput,
   type OrchestratorMcpRequestSecretResult,
   type OrchestratorMcpTarget,
@@ -49,6 +52,7 @@ import {
   type RuntimeMode,
   type ServerProvider,
   type ServerProviderModel,
+  type TeamDraft,
   ThreadId,
   isOrchestrationV2WorkActive,
   latestProviderTurnForAttempt,
@@ -57,6 +61,7 @@ import {
 } from "@codenine/contracts";
 import { getProviderOptionCurrentValue, withLegacyUltracodeEffort } from "@codenine/shared/model";
 import { runRanAfter } from "@codenine/shared/orchestrationV2ThreadError";
+import { validateTeamDraft } from "@codenine/shared/team";
 import { formatThreadLink } from "@codenine/shared/threadLinks";
 import {
   normalizeThreadPullRequestKey,
@@ -151,6 +156,10 @@ export interface OrchestratorMcpServiceShape {
     scope: McpInvocationScope,
     input: OrchestratorMcpTaskCancelInput,
   ) => Effect.Effect<OrchestratorMcpTaskCancelResult, OrchestratorMcpFailure>;
+  readonly proposeTeam: (
+    scope: McpInvocationScope,
+    input: OrchestratorMcpProposeTeamInput,
+  ) => Effect.Effect<OrchestratorMcpProposeTeamResult, OrchestratorMcpFailure>;
   readonly createThreads: (
     scope: McpInvocationScope,
     input: OrchestratorMcpCreateThreadsInput,
@@ -2291,6 +2300,87 @@ const make = Effect.gen(function* () {
       return {
         taskId: input.taskId,
         status: "cancel_requested",
+      };
+    }),
+    proposeTeam: Effect.fn("OrchestratorMcpService.proposeTeam")(function* (callerScope, input) {
+      const { scope, parent } = yield* loadThreadCaller(callerScope, "propose_team");
+      if (parent.thread.teamTask !== undefined) {
+        return yield* failure(
+          "invalid_request",
+          "You run one task of a team, so you cannot propose a team. Do the task yourself.",
+        );
+      }
+      const providers = yield* loadProviders;
+      const commandId = stableCommandId({
+        scope,
+        requestKey: yield* requestKey(input.clientRequestId),
+        operation: "propose-team",
+      });
+      const isRetryOfAcceptedProposal = yield* threadManagement.hasReceipt(commandId);
+      const draft: TeamDraft = {
+        agents: yield* Effect.forEach(input.agents, (agent) =>
+          resolveTargetRechecking({
+            parent,
+            target: agent.target,
+            providers,
+            skipProjectEnablementFilter: isRetryOfAcceptedProposal,
+          }).pipe(
+            Effect.map(({ modelSelection }) => ({
+              id: agent.id,
+              label: agent.label,
+              role: agent.role,
+              modelSelection,
+              workspace: agent.workspace ?? "shared",
+            })),
+          ),
+        ),
+        tasks: input.tasks.map((task) => ({
+          id: task.id,
+          title: task.title,
+          brief: task.brief,
+          agentId: task.agent,
+          dependsOn: task.dependsOn ?? [],
+        })),
+      };
+      const issue = validateTeamDraft(draft);
+      if (issue !== null) return yield* failure("invalid_request", issue.message);
+      // ThreadManagementService.dispatch checks every agent's provider is enabled for the project.
+      const result = yield* threadManagement
+        .dispatch({
+          type: "team.propose",
+          commandId,
+          threadId: scope.thread.threadId,
+          goal: input.goal,
+          ...draft,
+        })
+        .pipe(
+          Effect.mapError((error) => {
+            if (error._tag === "ThreadManagementProviderInstanceDisabledError") {
+              return threadManagementFailure(error);
+            }
+            const detail = userFacingDispatchErrorMessage(error);
+            // The plan's own guards, such as team_plan_running, are the caller's to fix.
+            return detail?.startsWith("team_") === true
+              ? failure("invalid_request", detail)
+              : failure(
+                  "orchestration_error",
+                  `Unable to propose the team: ${detail ?? errorMessage(error)}`,
+                );
+          }),
+        );
+      const plan = result.storedEvents.flatMap(({ event }) =>
+        event.type === "thread.metadata-updated" && event.payload.team != null
+          ? [event.payload.team]
+          : [],
+      )[0];
+      if (plan === undefined) {
+        return yield* failure("orchestration_error", "The team proposal was not recorded.");
+      }
+      return {
+        planId: plan.id,
+        revision: plan.revision,
+        status: "proposed",
+        next: ORCHESTRATOR_MCP_TEAM_PROPOSED_NEXT,
       };
     }),
     createThreads: Effect.fn("OrchestratorMcpService.createThreads")(

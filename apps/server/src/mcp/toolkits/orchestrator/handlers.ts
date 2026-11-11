@@ -37,6 +37,13 @@ const handlers = {
       return yield* service.cancelTask(scope, input);
     }),
   ),
+  propose_team: McpToolAccess.actsAsCaller((input) =>
+    Effect.gen(function* () {
+      const scope = yield* McpInvocationContext.McpInvocationContext;
+      const service = yield* OrchestratorMcpService.OrchestratorMcpService;
+      return yield* service.proposeTeam(scope, input);
+    }),
+  ),
   codenine_workflow_stop: McpToolAccess.writesThreads(
     (input) => [input.threadId],
     (input) =>

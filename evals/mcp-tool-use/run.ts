@@ -40,10 +40,13 @@ import * as Contracts from "@codenine/contracts";
 import {
   EnvironmentId,
   ORCHESTRATOR_MCP_RUNNING_TASK_NEXT,
+  ORCHESTRATOR_MCP_TEAM_PROPOSED_NEXT,
+  OrchestratorMcpProposeTeamInput,
   PullRequestState,
   ThreadId,
 } from "@codenine/contracts";
 import { projectComposerContextForProvider } from "@codenine/shared/composerContextReferences";
+import { validateTeamDraft } from "@codenine/shared/team";
 import { formatThreadLink } from "@codenine/shared/threadLinks";
 import { buildCodexAdditionalContext } from "../../apps/server/src/provider/CodexDeveloperInstructions.ts";
 import { makeSideChatContext } from "../../apps/server/src/orchestration-v2/ContextHandoffService.ts";
@@ -945,6 +948,9 @@ const PROVIDERS = [
   { providerInstanceId: "muse", models: ["muse-wonder-full", "muse-wonder"].map(codexModel) },
   { providerInstanceId: "grok", models: ["grok-4.7"].map(codexModel) },
 ];
+const decodeProposeTeam = Schema.decodeUnknownOption(
+  Schema.toCodecJson(OrchestratorMcpProposeTeamInput),
+);
 const uuid = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 const DEFAULT_THREAD = {
   title: "Fix the flaky reconnect test",
@@ -1058,6 +1064,42 @@ export const codenineDefault = (
       };
     case "task_cancel":
       return { taskId: input.taskId, status: "cancel_requested" };
+    case "propose_team": {
+      // Codenine refuses a team whose tasks name unknown agents or depend on each other in a cycle.
+      const proposal = Option.getOrUndefined(decodeProposeTeam(input));
+      const issue =
+        proposal === undefined
+          ? { message: "Invalid propose_team input." }
+          : validateTeamDraft({
+              agents: proposal.agents.map((agent) => ({
+                id: agent.id,
+                label: agent.label,
+                role: agent.role,
+                modelSelection: {
+                  instanceId: ProviderInstanceId.make(
+                    agent.target?.providerInstanceId ?? "claudeAgent",
+                  ),
+                  model: agent.target?.model ?? sample.base.model,
+                },
+                workspace: agent.workspace ?? "shared",
+              })),
+              tasks: proposal.tasks.map((task) => ({
+                id: task.id,
+                title: task.title,
+                brief: task.brief,
+                agentId: task.agent,
+                dependsOn: task.dependsOn ?? [],
+              })),
+            });
+      return issue === null
+        ? {
+            planId: "team-plan-1",
+            revision: 1,
+            status: "proposed",
+            next: ORCHESTRATOR_MCP_TEAM_PROPOSED_NEXT,
+          }
+        : { code: "invalid_request", message: issue.message };
+    }
     case "link_pull_request": {
       const alreadyLinked = sample.linked.has(pr().url);
       sample.linked.add(pr().url);

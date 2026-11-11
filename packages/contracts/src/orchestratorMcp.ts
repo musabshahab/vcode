@@ -36,6 +36,17 @@ import {
 } from "./orchestrationV2.ts";
 import { ProviderOptionSelection, ProviderOptionSelectionValue } from "./model.ts";
 import { ProviderDriverKind, ProviderInstanceId } from "./providerInstance.ts";
+import {
+  TEAM_BRIEF_MAX_CHARS,
+  TEAM_LABEL_MAX_CHARS,
+  TEAM_MAX_AGENTS,
+  TEAM_MAX_TASKS,
+  TeamAgentId,
+  TeamAgentRole,
+  TeamPlanId,
+  TeamTaskId,
+  TeamWorkspace,
+} from "./team.ts";
 
 const OrchestratorMcpPrompt = TrimmedNonEmptyString.check(Schema.isMaxLength(120_000));
 const OrchestratorMcpTitle = TrimmedNonEmptyString.check(Schema.isMaxLength(512));
@@ -207,6 +218,57 @@ export const OrchestratorMcpDelegateTaskResult = Schema.Struct({
   next: Schema.optional(OrchestratorMcpRunningTaskNext),
 });
 export type OrchestratorMcpDelegateTaskResult = typeof OrchestratorMcpDelegateTaskResult.Type;
+
+const OrchestratorMcpTeamLabel = TrimmedNonEmptyString.check(
+  Schema.isMaxLength(TEAM_LABEL_MAX_CHARS),
+);
+const OrchestratorMcpTeamText = TrimmedNonEmptyString.check(
+  Schema.isMaxLength(TEAM_BRIEF_MAX_CHARS),
+);
+
+export const OrchestratorMcpProposeTeamInput = Schema.Struct({
+  goal: OrchestratorMcpTeamText,
+  agents: Schema.Array(
+    Schema.Struct({
+      id: TeamAgentId.annotate({ description: "Short slug. Tasks name it in `agent`." }),
+      label: OrchestratorMcpTeamLabel,
+      role: TeamAgentRole,
+      target: Schema.optional(OrchestratorMcpTarget),
+      workspace: Schema.optional(
+        TeamWorkspace.annotate({
+          description:
+            "'shared' (default): your checkout. 'worktree': its own, from your HEAD, for agents that edit in parallel.",
+        }),
+      ),
+    }),
+  ).check(Schema.isMinLength(1), Schema.isMaxLength(TEAM_MAX_AGENTS)),
+  tasks: Schema.Array(
+    Schema.Struct({
+      id: TeamTaskId,
+      title: OrchestratorMcpTeamLabel,
+      brief: OrchestratorMcpTeamText.annotate({
+        description: "All the agent gets, plus the results of `dependsOn`. No secrets.",
+      }),
+      agent: TeamAgentId,
+      dependsOn: Schema.optional(
+        Schema.Array(TeamTaskId).annotate({ description: "Task ids that must complete first." }),
+      ),
+    }),
+  ).check(Schema.isMinLength(1), Schema.isMaxLength(TEAM_MAX_TASKS)),
+  clientRequestId: Schema.optional(OrchestratorMcpClientRequestId),
+});
+export type OrchestratorMcpProposeTeamInput = typeof OrchestratorMcpProposeTeamInput.Type;
+
+export const ORCHESTRATOR_MCP_TEAM_PROPOSED_NEXT =
+  "Nothing starts until the user approves the team. End your turn. You are woken with the results.";
+
+export const OrchestratorMcpProposeTeamResult = Schema.Struct({
+  planId: TeamPlanId,
+  revision: PositiveInt,
+  status: Schema.Literal("proposed"),
+  next: Schema.Literal(ORCHESTRATOR_MCP_TEAM_PROPOSED_NEXT),
+});
+export type OrchestratorMcpProposeTeamResult = typeof OrchestratorMcpProposeTeamResult.Type;
 
 export const OrchestratorMcpTaskStatusInput = Schema.Struct({
   taskId: NodeId,
