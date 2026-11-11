@@ -1,14 +1,16 @@
 # Diagnostics data
 
-Codenine does not send product usage events. This page lists what can leave your machine for
-diagnostics, and how to turn it off.
+Codenine does not send product usage events, and a build from this repository sends no
+diagnostics by default. This page lists what can leave your machine once you configure it, and
+how to turn it off.
 
 ## Relay connection diagnostics
 
-Codenine sends relay connection traces to Axiom to diagnose Codenine Connect connectivity. Depending on
-the client version, traces can include connection
-timings, environment identifiers and the connected machine's name. Failed spans can include error
-messages and stack traces; error text can quote a value the app was handling.
+This applies only to a build configured for a Codenine Connect relay with relay tracing set up.
+Such a build sends relay connection traces to that deployment's trace store to diagnose
+Codenine Connect connectivity. Traces can include connection timings, environment identifiers and
+the connected machine's name. Failed spans can include error messages and stack traces; error text
+can quote a value the app was handling.
 
 To disable relay tracing from the server, set
 `CODENINE_TELEMETRY_ENABLED=false` in its environment before starting it. Relay tracing also stops
@@ -21,31 +23,14 @@ The web app in a browser, including one the `codenine` CLI opens, does not read 
 variables. When its build has relay tracing configured, it sends its own connection traces even
 if the server has opted out. The browser app has no relay tracing toggle.
 
-## Mobile app diagnostics
+## Agent activity
 
-When the iOS or Android app crashes or hits an error, it sends a report to Codenine: the error
-message, the stack trace, the app version, and the device model and OS version. Each launch also
-sends startup timings, and every report carries a random ID for the install. Reports go through
-the Codenine Connect relay to Axiom. They do not include your threads, prompts, or connection details,
-but an error message can quote a value the app was handling.
-
-To stop sending them, turn off **Send crash reports** in **Settings > About Codenine > Diagnostics**.
-
-The mobile app also sends relay connection traces when its build has tracing configured. These
-carry an identifier for the current app session. **Send crash reports** does not control these
-traces, and the mobile app has no separate relay tracing toggle. Server environment variables do
-not disable mobile tracing.
-
-## Agent activity for mobile notifications
-
-When **Publish agent activity** is enabled on a host, it sends project and thread titles, model
-names, activity status, and environment and thread identifiers to the Codenine Connect relay for
-[mobile notifications and live activities](./mobile-notifications.md). This is separate from
-relay diagnostics. The telemetry opt-out does not disable it.
+When **Publish agent activity** is enabled on a host linked to Codenine Connect, the host sends
+project and thread titles, model names, activity status, and environment and thread identifiers to
+that relay. This is separate from relay diagnostics, and the telemetry opt-out does not disable it.
 
 To stop publishing, turn off **Publish agent activity** under **Settings > Sharing & access** on
-the host. Turning off notifications on a phone controls that phone's alerts, not the host's
-publishing setting.
+the host.
 
 ## Export diagnostics to your own receiver
 

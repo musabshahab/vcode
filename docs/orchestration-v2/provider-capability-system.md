@@ -281,4 +281,4 @@ The UI should receive capability-informed affordances:
 - show plan/todo panels only when structured plan artifacts exist.
 - show rollback only when app checkpoint exists, and annotate provider rollback support.
 
-This keeps the product predictable across Codex, Claude, Cursor, OpenCode, and future providers.
+This keeps the product predictable across Codex, Claude, and future providers.

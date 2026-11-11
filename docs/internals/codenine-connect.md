@@ -1,42 +1,19 @@
 # Codenine Connect
 
+Codenine Connect is off in a build from this repository. It works only against a relay that a
+deployer runs from [`infra/relay`](../../infra/relay/README.md) with their own Clerk instance.
+Nobody operates a shared relay.
+
 Codenine Connect uses Clerk for cloud identity. The relay manages environment links,
 credentials for reaching environments, and managed tunnel allocations. After
 bootstrap, clients send application traffic through the environment's tunnel
 hostname; the relay Worker does not proxy their HTTP or WebSocket sessions.
-The one exception is automation webhooks: the relay forwards
-`/v1/hooks/:endpointKey/:hookId/:token` to the environment's tunnel so
-senders get a stable URL. `endpointKey` is the 16-hex hash suffix of the
-managed tunnel's name, not the environment id. It keeps bodies and tokens out
-of its traces and leaves token and signature verification to the environment
-([forwarder](../../infra/relay/src/hooks/HookForwarder.ts)).
 
-By default the forwarder stores nothing. An environment can opt in to having
-the relay hold requests while it is offline
-(`hold_webhooks_while_offline` on its links). Only then does the relay store the
-raw request, including the hook token in the path, in a Durable Object with
-SQLite storage. There is one object per managed link, keyed by its endpoint
-key: each account that links the environment gets its own held requests,
-order, and caps. The object pushes held requests back through the tunnel from
-its alarm, oldest first within each hook, and backs off while the environment
-stays away. A hook that answers busy is skipped for the rest of that run, so
-other hooks on the link can overtake it. When
-the tunnel reconnects, the environment asks the relay to deliver right away to
-each of its links. Requests are deleted once the environment answers, after 24
-hours, when their link is unlinked, or when the environment turns holding off,
-which clears every link it proved. Both clears are best effort: unlinking logs a
-failed clear and continues, and turning holding off stops at the first link it
-cannot clear, so those requests wait for the 24-hour expiry. The relay still
-never checks the token;
-delivery goes through the same environment route.
-Every forward carries `x-codenine-relay-delivery-id`, so a request that reached the
-environment before a timeout and is delivered again later runs once
-([inbox object](../../infra/relay/src/hooks/HookInboxObject.ts)).
-
-A Durable Object, not Postgres or Queues, because held requests are write-once,
-read-once bodies of up to 1 MiB that need per-link order, caps, and retry
-timing. Queues cap messages at 128 KB and cannot hold one link's requests back
-while its environment is away.
+The relay still carries a webhook forwarder (`/v1/hooks/:endpointKey/:hookId/:token`) and an inbox
+that holds requests for an offline environment
+([forwarder](../../infra/relay/src/hooks/HookForwarder.ts),
+[inbox object](../../infra/relay/src/hooks/HookInboxObject.ts)). The server feature that received
+those webhooks was removed, so no environment answers them today.
 
 Clerk, deployment, and native authentication setup live in the
 [Connect setup runbook](../operations/connect-setup.md).
@@ -125,8 +102,8 @@ A host registers recovery at startup by sending its tunnel ID and loopback
 origin with a short-lived signature from the environment key. Registration
 touches Cloudflare only when the local host or port changed, and once per
 existing allocation on the first registration after the upgrade because the
-stored origin is empty. First registrations are jittered so an auto-update wave
-does not hit the relay at once. The host stores a confirmed-origin marker with
+stored origin is empty. First registrations are jittered so many hosts updating together
+do not hit the relay at once. The host stores a confirmed-origin marker with
 the connector config, and a later boot starts the connector before registration
 only when that marker matches the current config and port. If registration
 cannot reach the relay for ten minutes, the host starts its stored config anyway
@@ -139,20 +116,11 @@ and clients keep their bindings. Every mutation on an allocation bumps its
 `generation`, and deletion locks the row at the generation it claimed, so a
 host that reconnects mid-sweep wins.
 
-## A paid T3 Chat plan raises the tunnel cap
+## Tunnel limits
 
-T3 Chat uses WorkOS, not Clerk, so the two accounts are linked by consent
-rather than by a shared identity. The relay and T3 Chat share one secret
-(`T3CHAT_LINK_SECRET` here, `CODENINE_LINK_SECRET` there). The relay signs a
-short-lived token naming the Clerk user and email; the user confirms it while
-signed in to T3 Chat, and T3 Chat stores the link. T3 Chat owns the link and the
-plan, so the relay keeps no copy. It asks T3 Chat only when an account reaches
-its normal cap for a new environment, and any failure keeps the normal cap.
-An environment that already holds a counted slot restarts without asking, so a
-downgrade or a T3 Chat outage only blocks new environments. A manual override
-row replaces the default for new environments, and a T3 Chat plan does not
-raise it
-([limits](../../infra/relay/src/environments/ManagedTunnelLimits.ts)).
+The relay caps how many environments one account can link. A manual override row replaces the
+default for that account. An environment that already holds a counted slot restarts without a new
+check ([limits](../../infra/relay/src/environments/ManagedTunnelLimits.ts)).
 
 ## The relay client follows the server's pin
 
@@ -186,7 +154,8 @@ different credentials. The relay accepts both session-template JWTs and CLI
 OAuth tokens; requiring a JWT template for the CLI would reject valid logins.
 The CLI is a public OAuth client using PKCE and stores no client secret.
 
-Loopback CLI authorization starts on the hosted `/connect` page so sign-in
+Loopback CLI authorization starts on the hosted app's `/connect` page
+(`CODENINE_HOSTED_APP_URL`) so sign-in
 completes before entering Clerk's authorize endpoint. Sending a signed-out
 browser straight to that endpoint loses the authorize parameters during the
 sign-in redirect. The [shared flow](../../packages/shared/src/connectAuth.ts)

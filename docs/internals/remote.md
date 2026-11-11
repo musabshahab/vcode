@@ -68,7 +68,8 @@ revokes it; reordering does not, because the same addresses remain trusted.
 
 ## Hosted web is a client
 
-The hosted web app stores its connection catalog in the browser and connects
+Nobody hosts the web app for Codenine today. A deployer can host it and name its origin with
+`CODENINE_HOSTED_APP_URL`. A hosted web app stores its connection catalog in the browser and connects
 directly to each environment. It does not proxy traffic or hold server-side
 pairing state. Hosting the UI over HTTPS therefore cannot make a plain HTTP LAN
 backend accessible from that browser context.

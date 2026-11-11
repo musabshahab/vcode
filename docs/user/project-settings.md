@@ -1,11 +1,11 @@
 # Settings and project overrides
 
-On web and desktop, the "Applying settings for …" sentence at the top of Settings pages picks
+The "Applying settings for …" sentence at the top of Settings pages picks
 the project and environment a change applies to. Pages that only hold device preferences, such as
 Appearance, don't show it. They start at **All projects** and **All environments**
 and stay selected as you move between categories or search for a setting.
 
-Preferences saved on this device, such as appearance, confirmations and browser profiles, always
+Preferences saved on this device, such as appearance and confirmations, always
 show and ignore the selection. Everything else is stored on a server. Choose one environment to
 edit its settings, or leave **All environments** to edit every connected environment at once.
 Offline environments keep their current values; this is a bulk edit, not a synced global default.
@@ -35,22 +35,11 @@ follow-ups from delegated tasks. A turn already running when the switch flips fi
 task's result still lands in its parent thread, which sees it on its next turn. Reset returns the project to the
 machine's setting. Every other provider setting stays per machine.
 
-On mobile, open **Settings** and use the filter in its header to choose connected environments
-and a project. The filter stays available in server-setting pages. With **All projects** selected,
-the server-setting pages, such as Threads, Source control and Worktrees, edit the selected
-environments' defaults. Choosing a project edits its overrides on the selected
-environments. Use **Use defaults** in a page to remove that page's project overrides.
-Open **Settings → Projects** to rename the project across its selected
-connected checkouts and see where those checkouts live.
-Settings that are environment-wide stay read-only while a project is selected. When selected
-targets disagree, a control shows **Mixed** until you choose one value. Appearance, keyboard,
-and other phone-only settings ignore the filter.
-
 ## Pin and archive projects
 
 Pinned projects come first in the project pickers: the project picker on a new thread, the
-new-thread list, the command palette, the sidebar project filter, and mobile. In the boring sidebar, pinned projects get the top
-folders, even with no active threads. Pin or unpin a project from its row in any of those lists,
+new-thread list, the command palette, and the sidebar project filter. In the boring sidebar,
+pinned projects get the top folders, even with no active threads. Pin or unpin a project from its row in any of those lists,
 or press the thread pin shortcut (`mod+shift+p` by default) on the highlighted row. **Pin
 project** in the command palette and **Settings → Projects** work too. A list keeps its order
 while it is open, so a new pin moves up the next time you open it.
@@ -58,7 +47,7 @@ while it is open, so a new pin moves up the next time you open it.
 Archive a project you are done with in **Settings → Projects**. It leaves the project pickers.
 Its threads, settings, and files stay as they are, and archived projects still show in the
 Settings project list, marked **Archived**. Choose one there and select **Unarchive** to bring it
-back. On mobile, both are in **Settings → Projects → Organize**.
+back.
 
 A project on several machines must have every machine connected to pin or archive it.
 
@@ -78,9 +67,9 @@ branch name remains.
 
 ## Defaults and inheritance
 
-Threads contains the model and workspace for new threads. Browser controls agent browser
-access. Source control contains automatic pull and text generation. The same rows edit environment defaults or project overrides depending on the
-project crumb.
+Threads contains the model and workspace for new threads. Source control contains automatic pull
+and text generation. The same rows edit environment defaults or project overrides depending on
+the selected project.
 
 The Projects category, under Code, holds the project's name, icon, actions,
 checkouts and removal. Actions belong to a project: editing them creates the project's own list
@@ -90,7 +79,6 @@ on each selected environment, and reset returns to the environment's shared list
 Settings a repository can also declare in `codenine.json`, such as the workspace for new threads,
 resolve in one order: a project override, then the environment setting, then `codenine.json`, then the
 built-in default. Leave a setting on **Inherit** to let the next tier decide.
-Browser access changes apply when an agent session next starts.
 
 New worktrees initialize git submodules recursively. If that step is slow because the repository
 declares many nested submodules, set **Submodules** in **Settings → Worktrees** under Advanced (with the project
@@ -127,8 +115,8 @@ hourly. Offline machines keep their existing policies.
 
 Select a project to set **Automatic worktree cleanup** to **Inherit**, **Off**, or **Custom**.
 Inherit follows each machine's rules; Off keeps that project's worktrees until you remove them
-manually. Custom applies separate worktree rules to the selected project or checkout. Browser
-captures and log retention remain machine-wide.
+manually. Custom applies separate worktree rules to the selected project or checkout. Log retention
+remains machine-wide.
 
 Worktrees can be removed after a chosen number of inactive days, after a thread settles, after
 merging, or when they have no commits beyond the default branch. Set settled retention to 0 days
@@ -153,8 +141,7 @@ Choose **Delete now** to run the enabled rules immediately. The latest results s
 worktrees were removed or kept and why, plus any failures.
 Results also list folders in the worktree folder that no thread uses, with their sizes; cleanup never removes them, so remove them manually if you want.
 
-Browser captures and rotated logs have separate retention periods. Expired capture links stop
-working. Current logs, message attachments, and browser profiles are kept.
+Rotated logs have their own retention period. Current logs and message attachments are kept.
 
 ## Project icons
 
@@ -164,7 +151,7 @@ Codenine detect an icon again.
 
 Choose **Monogram** in the icon picker to set one or two letters or numbers and a color.
 
-When no image is found, web and desktop show a two-character monogram with a color
+When no image is found, Codenine shows a two-character monogram with a color
 from the icon palette, derived from the saved project name. For example, `Nebula` becomes `NA`,
 `Silver Orchard` becomes `SO`, and `M7 Forge` becomes `M7`.
 
@@ -172,7 +159,6 @@ from the icon palette, derived from the saved project name. For example, `Nebula
 
 In Source control, enable **Automatically pull** to keep the default-branch checkout up to date
 with its configured upstream. Choose an environment to set the default or a project to override it.
-On mobile, use **Settings → Source control** to change selected environment defaults or project overrides.
 
 Codenine only pulls when it can fast-forward and the checkout has no changed files, untracked files,
 or local commits. It skips checkouts on another branch or without an upstream. If a checkout has

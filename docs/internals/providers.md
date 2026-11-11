@@ -9,58 +9,11 @@ A driver kind identifies an integration; an instance identifies one configuratio
 lifecycle. Route work by instance, so two accounts using the same driver do not share mutable
 session or catalog state. For a new driver, start with [adding a provider](./adding-a-provider.md).
 
-## Process and account isolation
-
-The `opencode` driver probes the installed version and runs the 1.x or 2.x runtime. OpenCode's MCP
-registrations are directory-scoped, while Codenine's MCP connection is thread-scoped, so threads in one
-directory must not share one Codenine MCP entry.
-
-- **1.x** uses one Codenine-managed chat server per thread, so threads cannot replace each other's
-  connection. Catalog and text-generation work can share the
-  [instance-owned helper](../../packages/provider-opencode/src/server/OpenCodeServerOwner.ts), which closes
-  after an idle period. See the [1.x adapter](../../packages/provider-opencode/src/server/adapter.ts).
-- **2.x** serves every directory from one
-  [server per instance](../../packages/provider-opencode/src/server/v2/OpenCode2Server.ts). Each thread
-  registers its own `codenine-<thread>` MCP entry, and session permission rules deny every other
-  thread's entry. See the [2.x adapter](../../packages/provider-opencode/src/server/v2/adapter.ts).
-
-External OpenCode servers remain externally owned and can require an external restart to pick up
-configuration changes. OpenCode stores "always" approval grants for the whole project. Automatic
-full-access replies use `once` so they cannot widen a supervised thread's permissions on a shared
-server. On 2.x, a session-wide approval also replies `once` and becomes Codenine's own rule on that session.
-
-Pi runs the user's own `pi` install in RPC mode and owns native extension, package, and project
-trust discovery. Codenine injects only its namespaced MCP bridge, so a Pi session behaves as it does in
-the Pi TUI. Pi session files back native resume, rollback, and same-instance thread forks.
-Forks use Pi's CLI in the destination directory because RPC session switching retains the source
-session's cwd. Provider switches still use portable handoff summaries.
-See the [adapter](../../packages/provider-pi/src/server/adapter.ts).
-
-Antigravity separates account profiles per instance while sharing installed executables across the
-environment. It forces file-based credential storage because the native macOS keychain entry would
-otherwise be shared across instances. The launch environment removes ambient Google credentials,
-so an instance cannot silently use another account or billing project. The agent also resolves
-its user-global skill directories under that profile, so the profile links those two directories
-back to the user's real `~/.gemini`; MCP servers, hooks, and rules there stay out of the profile.
-See [profile isolation](../../apps/server/src/provider/antigravityAuthSupport.ts).
-
-The [Antigravity installer](../../apps/server/src/provider/AntigravityInstallation.ts) outlives
-client connections and provider-instance rebuilds. Releases are immutable, with an atomic pointer
-selecting the version for new processes. Running processes hold leases on their version. Updates
-and removal must respect those leases instead of replacing executables under a running agent.
-
 ## Setup must not happen as a health-check side effect
 
-Opening a provider session can start MCP servers, run hooks, or launch a login browser.
-[Grok probes](../../packages/provider-grok/src/server/status.ts) avoid authentication and
-session creation for this reason. Antigravity likewise reserves authenticated catalog sessions for
-explicit setup or model refresh; background checks use initialization only.
-
-[Antigravity sign-in](../../apps/server/src/provider/AntigravityAuth.ts) belongs to the initiating
-Codenine auth session. The client carries the return URL back to the environment because the provider's
-loopback listener may be on another machine. Forward only the callback for the owned pending flow;
-a successful callback HTTP request is not proof that provider authentication finished. The native
-process owns token exchange and storage.
+Opening a provider session can start MCP servers, run hooks, or launch a login browser. Background
+status checks and model refreshes must not open one. Keep heavier probes behind an explicit setup
+or refresh.
 
 Managed ChatGPT sign-in for a remote environment can finish on a local primary. The
 [primary handoff](../../apps/server/src/provider/CodexChatGptHandoff.ts) uses an ephemeral
@@ -68,15 +21,6 @@ credential store and the destination's environment ID. It exchanges and verifies
 transferring the issued client registration and tokens. Only the destination persists and refreshes
 that session; retaining a primary refresh session would race refresh-token rotation. Without a local
 primary, the client uses the remote callback completion flow.
-
-Antigravity sign-out closes admission to new processes and stops existing processes before clearing account
-metadata. Otherwise a helper or resumed session could retain the old account. Cached model lists
-do not establish current access, and an authoritative empty catalog must clear the old list.
-
-Antigravity text-generation helpers deny tool requests, but native hooks and MCP configuration can
-run before the prompt. They reject profiles with such configuration before launch. Prompt
-instructions and tool denial do not create a native sandbox.
-See [helper constraints](../../apps/server/src/textGeneration/AntigravityTextGeneration.ts).
 
 ## Provider updates run only through the owning installer
 
@@ -86,8 +30,8 @@ and npm are proven by the real path (symlinks followed): a versioned keg or cask
 Native installer layouts and the global directories of pnpm, Bun, Yarn, and Vite+ may match on
 either the resolved path or its real target, since those installers place real files or their own
 symlinks there. Volta is proven by its `volta-shim` link plus the package's image directory. When
-nothing is proven, the provider's own updater (`claude update`, `codex update`, `opencode upgrade`,
-`pi update --self`, `grok update`) runs instead, because each one detects its installer itself;
+nothing is proven, the provider's own updater (`claude update` or `codex update`) runs instead,
+because each one detects its installer itself;
 the runner's version check catches an updater that exits 0 without updating. Mise is checked
 first, since a `mise x` wrapper can sit at a native installer's path, and `MISE_DATA_DIR` can put
 installs anywhere, so `mise which` is asked whenever mise is on `PATH`. Each driver names its fixed
@@ -95,10 +39,9 @@ mise tool; mise must resolve the binary and list it in an active install of that
 `latest`, which gets `mise upgrade <tool>`. Codenine keeps launching the configured path, so that
 path must be a shim or under the tool's `latest` link, which the upgrade repoints: a version
 directory (including one `mise activate` put on `PATH`) would keep running the old binary until mise
-prunes it. Everything else mise touches (fixed version paths, pinned tools, wrappers, OpenCode 1.x,
-whose mise tool crosses into 2.x) stays manual-only, so Codenine never edits mise config. `mise latest` supplies the version, because settings such as
-`minimum_release_age` can hold mise behind npm. A Grok cask whose Homebrew prefix
-cannot be verified also stays manual-only: `grok update` would install a second copy. npm updates pin `--prefix` because the
+prunes it. Everything else mise touches (fixed version paths, pinned tools, wrappers) stays
+manual-only, so Codenine never edits mise config. `mise latest` supplies the version, because settings such as
+`minimum_release_age` can hold mise behind npm. npm updates pin `--prefix` because the
 `npm` on `PATH` can belong to a different Node than the one that owns the provider. Homebrew
 compares against `brew info` since casks trail npm by hours; native installs share npm's version
 train, so the registry stays authoritative for them. A Chocolatey install of Claude stays
@@ -118,7 +61,7 @@ Codex async questions arrive as notifications and are answered with a new user m
 no pending RPC response to send. The
 [adapter](../../apps/server/src/orchestration-v2/Adapters/CodexAdapterV2.ts) persists them as
 `user_input_request` turn items and runtime requests with `responseCapability: { type: "message" }`.
-Their execution nodes do not block the run. Web, desktop, and mobile use their normal question
+Their execution nodes do not block the run. Clients use their normal question
 panels, and requests remain pending after a turn finishes, a provider exits, or the server restarts.
 
 `runtime-request.respond` reads the persisted request and question item, validates required
@@ -136,9 +79,10 @@ start no Codex turn settle on a provider turn without a native ref, which native
 not count. Claude's SDK mode emits no goal events; its adapter reads goal state from the
 synthetic command output and Stop hook feedback in the transcript.
 
-Capabilities must describe what the provider can actually do. Antigravity can capture workspace
-checkpoints but cannot roll back its conversation. The [checkpoint boundary](./overview.md#turn-completion-and-checkpoints)
-therefore rejects revert before touching files. Native permission and question option IDs must
+Capabilities must describe what the provider can actually do. For a provider that can capture
+workspace checkpoints but cannot roll back its conversation, the
+[checkpoint boundary](./overview.md#turn-completion-and-checkpoints)
+rejects revert before touching files. Native permission and question option IDs must
 also survive normalization; a display label is not necessarily a valid reply.
 
 ## Attachments and stored history

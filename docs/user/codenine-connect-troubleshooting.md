@@ -1,5 +1,9 @@
 # Codenine Connect troubleshooting
 
+Codenine Connect works only in a build configured for a relay that you or your organization
+deployed. See [Codenine Connect setup](../operations/connect-setup.md). "Codenine Connect" below means
+that relay.
+
 A Codenine Connect connection goes through four parts, in this order:
 
 1. **This device** reaches Codenine Connect over the internet.
@@ -91,9 +95,7 @@ Fix:
    the device can look online but cannot reach anything.
 2. A VPN, firewall, ad blocker, or DNS filter on this device can block Codenine
    Connect. Turn it off for a moment to test.
-3. On iPhone, Connectivity Assist in the Wi-Fi settings can break Codenine Connect.
-   Turn it off to test.
-4. Try another network, or add a direct route to the host, such as its
+3. Try another network, or add a direct route to the host, such as its
    Tailscale address. See
    [Reach one machine several ways](./remote-access.md#reach-one-machine-several-ways).
 
@@ -117,9 +119,7 @@ an active link between your account and the host.
   Codenine retries on its own. If it keeps waiting, reload or restart Codenine on
   this device.
 - **Your account reached its tunnel limit.** Remove an environment you do not
-  use from your Codenine account's Codenine Connect page, or
-  [link a paid T3 Chat account](./remote-access.md#more-machines-with-codenine-chat)
-  for a higher limit. Then restart Codenine on the host.
+  use from your account's Codenine Connect page, then restart Codenine on the host.
 
 ## The clock is off
 
@@ -136,7 +136,7 @@ This app needs a newer Codenine on the host. Update Codenine on the host. See
 
 | Error                                                     | Fix                                                                                                                                                           |
 | --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `environment_link_limit_exceeded` or managed tunnel limit | Remove an unused environment or link a paid T3 Chat account, then restart Codenine on the host.                                                               |
+| `environment_link_limit_exceeded` or managed tunnel limit | Remove an unused environment, then restart Codenine on the host.                                                                                              |
 | `auth_invalid` or `invalid_bearer`                        | Run `codenine connect login`. If credentials were revoked, run `codenine connect logout`, then `codenine connect` again. Restart the server after signing in. |
 | Expired or invalid link proof                             | Check the host's date and time, update Codenine, then restart it.                                                                                             |
 | HTTP 403 without a recognized error                       | Check relay access, proxies, and firewall rules. Keep any Cloudflare Ray ID for a bug report.                                                                 |
@@ -151,7 +151,7 @@ If Codenine on the host disappears when SSH closes, see
 ## Report a problem
 
 If none of this helps, open an issue on
-[GitHub](https://github.com/pingdotgg/t3code/issues). Include:
+[GitHub](https://github.com/musabshahab/vcode/issues). Include:
 
 - The text from **Copy diagnostics** in the environment's **Details**.
 - The output of `codenine connect status` on the host.

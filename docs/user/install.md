@@ -1,143 +1,70 @@
 # Install Codenine
 
-Codenine runs coding agents on your computer and lets you control them from its
-desktop, web, or mobile app. Set up the machine where the agents will work first.
+Codenine runs coding agents on your computer and lets you control them from its desktop app or a
+browser. There is no published release yet, so you run it from source.
 
 ## Requirements
 
-You need an installed, authenticated provider before starting a thread. You can
-launch Codenine and configure providers afterwards.
+- Git
+- [Vite+](https://viteplus.dev/guide/) (`vp`). It provides the Node version Codenine is pinned to,
+  so you do not install Node yourself.
+- An installed, signed-in [provider](#providers) before you start a thread. You can start Codenine
+  first and set up providers afterwards.
 
-## Command line
+Install `vp` on macOS or Linux:
 
 ```bash
-curl -fsSL https://t3.codes/install.sh | sh
+curl -fsSL https://vite.plus | bash
 ```
 
 On Windows, in PowerShell:
 
 ```powershell
-irm https://t3.codes/install.ps1 | iex
+irm https://vite.plus/ps1 | iex
 ```
 
-This installs the `codenine` binary to `~/.local/bin`. If that folder is not on your
-`PATH` yet, the installer says so and, for zsh, bash on Linux, and fish, prints
-a command to add it. On Windows, `codenine` works in the same PowerShell window right
-away; add the folder to your `PATH` for new windows. If a `codenine` that the
-installer or the desktop app did not create is already there, it leaves that
-one alone and stops. Set `CODENINE_CHANNEL=nightly` to install the nightly train, or
-`CODENINE_VERSION` to pin an exact version.
-
-| Task                                             | Command                                                                       |
-| ------------------------------------------------ | ----------------------------------------------------------------------------- |
-| Start the server and open the web app            | `codenine`                                                                    |
-| Start the server without a browser               | `codenine serve`                                                              |
-| Use it from your other devices                   | `codenine up` ([details](./remote-access.md))                                 |
-| Keep it running in the background (macOS, Linux) | `codenine service install` ([details](./background-service.md))               |
-| Move to the newest release                       | `codenine update`                                                             |
-| Reclaim database space                           | `codenine doctor` ([details](./background-service.md#reclaim-database-space)) |
-| Remove it again                                  | `codenine uninstall`                                                          |
-
-Run `codenine help` or `codenine --help` for the full reference. To start in a new working
-directory, use an explicit path such as `codenine ./my-project`. A bare directory name
-is accepted only if it already exists.
-
-If `codenine` or `codenine start` reports an already running server, connect to that server
-instead. Stop it before starting a replacement, or use a different `--base-dir`
-for an independent server.
-
-To try Codenine once without installing it, run `npx codenine@latest` instead (needs
-Node.js for `npx`). It offers to install the `codenine` command first. If you say no,
-it asks again at the next minor release, and `npx codenine install` installs it later.
-`npx codenine` always runs the version npm picked, even when a `codenine` is installed. On
-the nightly train, run your installed `codenine` (for example `codenine connect`), not
-`npx codenine`, which runs the latest stable release.
-
-### Intel Macs
-
-There is no `codenine` executable for Intel Macs (the desktop app is available). To
-run a server there, build it from source with `vp`, which provides the Node version it needs
-([Install vp](https://github.com/pingdotgg/t3code#install-vp)):
+## Run from source
 
 ```bash
-git clone https://github.com/pingdotgg/t3code
-cd codenine && vp i && vp run build:desktop
-node apps/server/dist/bin.mjs
+git clone https://github.com/musabshahab/vcode.git
+cd vcode
+vp i
+vp run dev
 ```
 
-`codenine update` and the background service do not apply to a server run this way;
-update it with `git pull` and a rebuild.
+`vp run dev` starts the server and the web app with live reload. Open the pairing URL it prints.
+The bare address does not sign in a new browser.
+
+To run a built server instead:
+
+```bash
+vp run build
+vp run start
+```
+
+`vp run start` runs the `codenine` command described below with no arguments: it starts the server
+and opens the web app in your browser.
+
+To update, pull the repository and run `vp i` again, then restart. With a built server, rebuild
+first.
 
 ## Desktop app
 
-Download a release from [GitHub Releases](https://github.com/pingdotgg/t3code/releases),
-or use a package manager:
-
-| Platform       | Install                                                        |
-| -------------- | -------------------------------------------------------------- |
-| Windows        | `winget install Codenine.Codenine`                             |
-| macOS          | `brew install --cask codenine`                                 |
-| Debian, Ubuntu | `sudo apt install ./Codenine-*.deb`                            |
-| Nix            | `nix profile add github:NixOS/nixpkgs/nixos-unstable#codenine` |
-
-### Linux
-
-AppImage and `.deb` downloads are available for x86_64 and ARM64. Check your
-architecture with `uname -m`: for `x86_64`, choose a file ending in
-`x86_64.AppImage` or `amd64.deb`; for `aarch64`, choose `arm64.AppImage` or
-`arm64.deb`.
-
-To launch an AppImage, open a terminal in its download folder. Replace
-`Codenine.AppImage` below with the exact filename you downloaded:
+Run the desktop app from the checkout:
 
 ```bash
-chmod +x ./Codenine.AppImage
-./Codenine.AppImage
+vp run dev:desktop
 ```
 
-The `.deb` updates itself like the other desktop builds. It asks for your
-password to install each update. If your desktop has no password prompt, the
-update fails. Download the new `.deb` and install it the same way.
-
-### Nix (nixpkgs)
-
-Codenine is maintained in [nixpkgs](https://github.com/NixOS/nixpkgs/tree/nixos-unstable/pkgs/by-name/codenine/codenine).
-The command above installs from `nixos-unstable` and requires Nix 2.30 or later with
-`nix-command` and `flakes` enabled. Launch the desktop app with `codenine-desktop`;
-the package also includes the `codenine` command.
-
-On NixOS, you can instead add the package to your system configuration, using
-a nixpkgs revision that includes `codenine`:
-
-```nix
-environment.systemPackages = [ pkgs.codenine ];
-```
-
-Apply the change with `sudo nixos-rebuild switch`. For Home Manager, add
-`pkgs.codenine` to `home.packages` and run `home-manager switch`.
-
-Update a profile installation with `nix profile upgrade codenine`. For NixOS or
-Home Manager, update your configuration's nixpkgs input or channel and rebuild.
-Nix manages both the desktop app and the bundled
-`codenine` command; use Nix to update them instead of the in-app updater or `codenine update`.
-
-### The `codenine` command
-
-The desktop app includes the `codenine` command-line tool. A new install sets it up
-on first launch; after an update, or any time, choose **Install** next to
-**codenine command** in **Settings → About**. On macOS and Linux it adds a `codenine` link
-in `~/.local/bin` (or `~/bin`); on Windows it adds the app's command folder to
-your `PATH`. Open a new terminal afterwards. If the folder is not on your
-`PATH`, **Add to PATH** on the Welcome page or in **Settings → About** adds one
-line to your shell's startup file. **Remove** takes it off, and the app does not
-add it again. If you already have another `codenine`, it stays as it is.
+After `vp run build`, `vp run start:desktop` starts the built app without the dev tooling. To
+package an installable, unsigned app for your platform, see
+[desktop artifacts](../operations/development.md#desktop-artifacts).
 
 ### Windows Subsystem for Linux
 
-Choose a WSL distro in **Settings → Sharing & access** to run agents and projects
-there. Install the provider CLIs inside that distro. Codenine installs its own
-server runtime there automatically; the first launch after an app update can
-take longer.
+In a packaged Windows build that bundles the Linux server, choose a WSL distro in
+**Settings → Sharing & access** to run agents and projects there. Install the provider CLIs inside
+that distro.
 
 ### Open a project from a terminal
 
@@ -147,84 +74,77 @@ With the desktop app already running on the same machine:
 codenine app
 ```
 
-This opens a new thread for the current directory, adding the project if needed.
-Pass a path, such as `codenine app ../my-project`, to open another directory. It requires
-the desktop app, so a standalone server or an SSH session is not enough. If the
-command cannot reach the app, start or update the desktop app and try again.
+This opens a new thread for the current directory, adding the project if needed. Pass a path,
+such as `codenine app ../my-project`, to open another directory. It needs the desktop app, so a
+standalone server or an SSH session is not enough.
 
-## Mobile app
+## The `codenine` command
 
-Install Codenine from the
-[App Store](https://apps.apple.com/us/app/codenine-remote-claude-more/id6787819824) or
-[Google Play](https://play.google.com/store/apps/details?id=com.codenine.app).
-The phone connects to a server on another machine. Follow
-[remote access](./remote-access.md) to link it through Codenine Connect or a pairing URL.
+The server is also a command-line tool. In a checkout, after `vp run build`, it is
+`node apps/server/dist/bin.mjs`. A packaged desktop app can put a `codenine` link on your `PATH`:
+choose **Install** next to **codenine command** in **Settings → About**. The guides write
+`codenine` for either form.
 
-Store links and QR codes are also available in **Settings → About → Mobile app**
-on web and desktop. The store apps work with both stable and Nightly servers. Test builds are optional:
+| Task                                             | Command                                                                       |
+| ------------------------------------------------ | ----------------------------------------------------------------------------- |
+| Start the server and open the web app            | `codenine`                                                                    |
+| Start the server without a browser               | `codenine serve`                                                              |
+| Create a pairing link for another device         | `codenine pair` ([details](./remote-access.md))                               |
+| Set up access from your other devices            | `codenine up` ([details](./remote-access.md))                                 |
+| Keep it running in the background (macOS, Linux) | `codenine service install` ([details](./background-service.md))               |
+| Reclaim database space                           | `codenine doctor` ([details](./background-service.md#reclaim-database-space)) |
 
-- **iPhone and iPad:** TestFlight is invite-only.
-- **Android:** download an APK from the
-  [Android beta releases](https://github.com/pingdotgg/t3code/releases?q=android-beta-).
+Run `codenine help` or `codenine --help` for the full reference. To start in a new working
+directory, use an explicit path such as `codenine ./my-project`. A bare directory name is accepted
+only if it already exists.
 
-If the app crashes during launch, open Settings → Diagnostics on the next launch
-that succeeds. It lists startup crashes from the last 7 days with the error and
-component stack that store crash reports leave out. Copy the report and paste it
-into a GitHub issue. Error messages can quote values from the app, so read it over
-before sharing.
+If `codenine` or `codenine start` reports an already running server, connect to that server
+instead. Stop it before starting a replacement, or use a different `--base-dir` for an independent
+server.
+
+`codenine update`, the background service, and SSH environments install Codenine from release
+archives. Until releases are published, they work only when you
+[host release archives yourself](../operations/release.md).
+
+### Intel Macs
+
+The packaged `codenine` executable is not built for Intel Macs. Run the server from source there,
+as described above.
 
 ## Providers
 
-Open **Settings → Providers** in the web or desktop app, select the environment,
-and enable the provider you want. Installation, login, and configuration belong
-to that environment's machine, even when you connect from a phone or another
-computer.
+Codenine works with Codex and Claude Code. Open **Settings → Providers**, select the environment,
+and enable the provider you want. Installation, login, and configuration belong to that
+environment's machine, even when you connect from another computer.
 
-| Provider    | Install and authenticate                                                                                                                                  |
-| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Codex       | [Connect with ChatGPT](./providers-codex.md#connect-with-chatgpt), or install [Codex CLI](https://developers.openai.com/codex/cli) and run `codex login`. |
-| Claude      | Install [Claude Code](https://claude.com/product/claude-code), then run `claude auth login`.                                                              |
-| Cursor      | Install [Cursor CLI](https://cursor.com/cli), then run `agent login`.                                                                                     |
-| Grok Build  | Install [Grok Build CLI](https://x.ai/cli), then run `grok login`.                                                                                        |
-| Kiro        | Install [Kiro CLI](https://kiro.dev/docs/cli/), then run `kiro-cli login`.                                                                                |
-| OpenCode    | Install [OpenCode](https://opencode.ai), then run `opencode auth login`.                                                                                  |
-| Antigravity | Install and sign in with Google from Codenine's provider settings.                                                                                        |
-| Pi          | Install [Pi](./providers-pi.md#set-up-pi) with Node.js 22.19 or newer, then run `pi` and `/login`.                                                        |
-| Muse Code   | Install [Muse Code](https://dev.meta.ai/docs/muse-code) on the server, run `muse login`, then enable it in Settings → Providers.                          |
-| fx          | Install [fx](https://fx.sh) with `curl -fsSL https://fx.sh/setup.sh \| bash`, then run `fx login`.                                                        |
+| Provider | Install and authenticate                                                                                                                                  |
+| -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Codex    | [Connect with ChatGPT](./providers-codex.md#connect-with-chatgpt), or install [Codex CLI](https://developers.openai.com/codex/cli) and run `codex login`. |
+| Claude   | Install [Claude Code](https://claude.com/product/claude-code), then run `claude auth login`.                                                              |
 
-Provider CLIs must be on the server's `PATH`. If Codenine cannot find one, set its
-**Binary path** in provider settings, especially when using a version manager.
-Cursor's executable is `cursor-agent`, although its login command is
-`agent login`. Codex connected through ChatGPT and Antigravity can use their
-managed runtimes without a `PATH` entry.
+Provider CLIs must be on the server's `PATH`. If Codenine cannot find one, set its **Binary path**
+in provider settings, especially when using a version manager. Codex connected through ChatGPT
+uses its managed runtime without a `PATH` entry.
 
-Codenine warns when a provider version has known compatibility problems with your
-release. Check **Settings → Providers** on that environment for the recommended
-version or range. When its package manager supports installing a specific version,
-you can install the recommendation there. Otherwise use the provider's installer
-on the environment's machine. An unlisted version is unverified.
+Codenine warns when a provider version has known compatibility problems. Check
+**Settings → Providers** on that environment for the recommended version or range. An unlisted
+version is unverified.
 
-When a provider CLI is behind its latest release, its provider card shows the
-available version. **Update now** runs the installer that owns the CLI
-(Homebrew, mise, or a global npm, pnpm, Yarn, Bun, Volta, or Vite+ install), or
-the CLI's own update command when Codenine cannot tell. Codenine runs `mise upgrade`
-only for a tool your mise config requests as `latest` when the provider's binary
-path is a mise shim or under the tool's `installs/<tool>/latest` link; update a
-pinned version, or a path into one version's directory, through mise yourself.
-Cursor and Antigravity update with Codenine. Homebrew and Chocolatey installs
-compare against the version their package manager offers, which can trail the
-npm release; update Claude installed with Chocolatey through Chocolatey.
+When a provider CLI is behind its latest release, its provider card shows the available version.
+**Update now** runs the installer that owns the CLI (Homebrew, mise, or a global npm, pnpm, Yarn,
+Bun, Volta, or Vite+ install), or the CLI's own update command when Codenine cannot tell. Codenine
+runs `mise upgrade` only for a tool your mise config requests as `latest` when the provider's
+binary path is a mise shim or under the tool's `installs/<tool>/latest` link; update a pinned
+version, or a path into one version's directory, through mise yourself. Homebrew and Chocolatey
+installs compare against the version their package manager offers, which can trail the npm
+release; update Claude installed with Chocolatey through Chocolatey.
 
-Add another provider instance for a separate account or configuration. Each
-instance can have its own environment variables, such as API keys or a custom
-base URL. Mark secret values as sensitive; after saving, Codenine does not display
-their original values.
+Add another provider instance for a separate account or configuration. Each instance can have its
+own environment variables, such as API keys or a custom base URL. Mark secret values as sensitive;
+after saving, Codenine does not display their original values.
 
-For provider-specific setup and accounts, see [Codex](./providers-codex.md),
-[Claude](./providers-claude.md), [OpenCode](./providers-opencode.md),
-[Antigravity](./providers-antigravity.md), [Kiro](./providers-kiro.md),
-[Pi](./providers-pi.md), [Muse Code](./providers-muse.md), and [fx](./providers-fx.md).
+For provider-specific setup and accounts, see [Codex](./providers-codex.md) and
+[Claude](./providers-claude.md).
 
 ## Next steps
 
@@ -232,4 +152,4 @@ For provider-specific setup and accounts, see [Codex](./providers-codex.md),
 - [Permission modes](./permission-modes.md): choose when agents ask before acting.
 - [Remote access](./remote-access.md): connect from another device.
 - [Running in the background](./background-service.md): keep a Linux or macOS host available.
-- [Updating Codenine](./updating.md): update the app and connected servers.
+- [Updating Codenine](./updating.md): update providers and connected servers.

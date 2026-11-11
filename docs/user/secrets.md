@@ -6,7 +6,7 @@ Agents can ask you for a secret in a private card instead of in the chat.
 
 An agent that needs a token or password shows a secret request card in the thread instead of asking
 you to paste it into the chat. Type or paste the value and select **Save securely**, or select
-**Decline**. You can answer from web, desktop, or mobile.
+**Decline**.
 
 The value never appears in the conversation. Most requests keep it from the agent too: Codenine
 passes it to the tool that needs it. When an agent has to run a command with the value, the card

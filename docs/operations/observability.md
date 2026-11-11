@@ -619,14 +619,12 @@ process, both in `service.namespace` `codenine`. `OTEL_SERVICE_NAME` and a `serv
 resource attributes, such as `OTEL_RESOURCE_ATTRIBUTES=deployment.environment.name=staging`.
 
 Each process reports its own build, not the one it talks to: the server, the desktop main process,
-the UI, and the mobile app each carry `codenine.release.channel` (`dev`, `stable`, `nightly`, or
-`preview`, from their own version; desktop PR builds count as `preview`, and a server not built by a
+and the UI each carry `codenine.release.channel` (`dev`, `stable`, `nightly`, or
+`preview`, from their own version; a server not built by a
 release workflow reports `dev`) and `deployment.environment.name` (`development`, `production`, or
 `staging` for `preview`). On the server and the desktop main process either key in
-`OTEL_RESOURCE_ATTRIBUTES` wins. The UI and mobile app never read that variable: Vercel PR previews
-set `VITE_RELEASE_CHANNEL=preview` because their `APP_VERSION` must stay comparable with the
-server's, and the mobile app maps its build variant (`development`, `preview`, `production`), or
-reports `dev` from a development bundle.
+`OTEL_RESOURCE_ATTRIBUTES` wins. The UI never reads that variable; a web build can set
+`VITE_RELEASE_CHANNEL` instead.
 
 Attributes specific to Codenine use the `codenine.` prefix. The UI runs as `codenine-web` in both a
 browser and the desktop window, since it is the same code, and `codenine.client.surface` is `desktop`
@@ -638,7 +636,7 @@ also report the semantic `process.runtime.name`, `process.runtime.version`, and
 in Chromium, `browser.platform`, `browser.mobile`, and `browser.brands`.
 
 Every resource also carries a `service.instance.id`: random per process for the server and desktop,
-per page load for the UI, and the Expo session on mobile. A `service.instance.id` in
+and per page load for the UI. A `service.instance.id` in
 `OTEL_RESOURCE_ATTRIBUTES` replaces the generated one on the server and desktop.
 
 If the OTLP URLs are unset, local tracing still works, metrics stay in-process only, and logs stay
@@ -685,8 +683,8 @@ Current high-value span and metric boundaries include:
 ## Heap Snapshots
 
 To see what a long-running server holds in memory, send it `SIGUSR2`. The server writes a V8 heap
-snapshot to its logs dir and logs the path. This works for desktop, `npx codenine`, and service installs
-on macOS and Linux. Windows has no `SIGUSR2`.
+snapshot to its logs dir and logs the path. This works for desktop, a server in a terminal, and
+service installs on macOS and Linux. Windows has no `SIGUSR2`.
 
 Send the signal to the server pid in `server-runtime.json`, which sits in the server's state dir
 next to the `logs` dir. For a dev server or a `--home-dir` launch, use that server's state dir from

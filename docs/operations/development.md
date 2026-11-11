@@ -2,7 +2,7 @@
 
 ## First checkout
 
-Install `vp` using the [root README](../../README.md#install-vp). It provides the Node version
+Install `vp` using the [root README](../../README.md#run-from-source). It provides the Node version
 pinned in `package.json` (Node 26), so no separate Node install is needed. From the repository root:
 
 ```sh
@@ -15,44 +15,10 @@ a new browser.
 
 Prefer a container? See [Dev container](../internals/devcontainer.md) for VS Code and Codespaces setup.
 
-## GitCafe mirror (optional)
-
-GitHub is the source of truth. [git.cafe/pingdotgg/t3code](https://git.cafe/pingdotgg/t3code) is a
-two-way synced mirror with much higher API rate limits, which helps when many agents work at once.
-You never need it to contribute.
-
-Pushes, PRs, comments, reviews, labels, and issue edits made on GitCafe sync to GitHub within
-about a minute, and PR and issue numbers match. CI runs on GitHub, and its checks show up on
-GitCafe.
-
-```sh
-git remote set-url origin https://git.cafe/pingdotgg/t3code.git
-git remote add github https://github.com/pingdotgg/t3code.git
-gh repo set-default pingdotgg/t3code   # `gh` is still used for merging
-bun install -g @gitcafe/cli@latest   # `cafe` needs Bun 1.2 or newer
-cafe auth login && cafe auth http setup
-cafe skills install --global  # optional: cafe-* skills for coding agents
-```
-
-With `origin` on git.cafe, work through GitCafe and leave GitHub's API alone:
-
-- Push to `origin`, open PRs with `cafe pr create` (`--head owner/repo:branch` from a fork) or
-  `cafe stack submit`, and use `cafe` for everything after that. Link the git.cafe PR URL, not the
-  github.com one, wherever a tool tracks the PR, so polling stays on GitCafe.
-- Read checks with `cafe pr status <n>`, and GitHub Actions logs with `cafe ci logs <run>` (run ids
-  from `cafe ci list --pr <n>`). `cafe ci rerun <run>` reruns one. These need `cafe` 0.11 or newer.
-- Write closing references as `Fixes pingdotgg/t3code#<n>`. GitCafe turns a bare `#<n>` in text it
-  syncs to GitHub into a git.cafe link, and GitHub does not close issues from those.
-- Merge with `gh pr merge <n> --match-head-commit <sha>`, because `cafe pr merge` cannot pin the
-  commit you reviewed.
-- `cafe` commands differ from `gh`: `cafe issue comments <n>` not `--comments`, `cafe pr status`
-  not `pr checks`.
-
 ## Choosing a dev process
 
 Use `vp run dev` for server and web, or `vp run dev:desktop` for the Electron client.
 `dev:server` and `dev:web` start those processes separately.
-See the [mobile README](../../apps/mobile/README.md) for native builds and Metro.
 
 Flags go directly after the task name, for example `vp run dev --home-dir /tmp/codenine-dev`.
 Add `--browser` to open a browser automatically.
@@ -77,19 +43,6 @@ See [test data](../../AGENTS.md#test-data) for copying a consistent database sna
 Read ports from the `[dev-runner]` output. Worktrees derive stable preferences from their paths,
 but occupied ports can shift them. `CODENINE_PORT_OFFSET` or `CODENINE_DEV_INSTANCE` can select a
 different preference when needed.
-
-### Replay provider
-
-`vp run dev` registers `Replay (dev)`, a local ACP agent at
-[dev-replay-agent.ts](../../apps/server/scripts/dev-replay-agent.ts). It plays recorded
-ACP transcripts with simulated streaming, so the real adapter, orchestration, and UI run
-without a paid model. Each scenario is a model, and each prompt plays the next recorded turn.
-Bundled servers, including desktop dev, skip it because they have no agent script.
-Dev servers add it back on start, so turn it off in Settings instead of removing it.
-To add a scenario, point a `SCENARIOS` entry at a generic ACP replay fixture
-(`registry_transcript.ndjson`) or a file in [dev-replay](../../apps/server/scripts/dev-replay).
-The agent replays session updates, permission requests, and questions. It drops session setup
-and vendor frames, so Grok and fx recordings lose their vendor-only behavior.
 
 ### Profiling dev startup
 
@@ -198,7 +151,7 @@ for the security model.
 changed files, `knip:check` when code or a manifest changes, the generated GraphQL checks, typecheck
 of the affected packages and their dependents, and the test files beside the changed files. It also
 runs the checks that read other files: the agent context budget when the server is affected, and
-React Compiler coverage for only the changed web and mobile files. It maps
+React Compiler coverage for only the changed web files. It maps
 files to packages with [ci-changes.cjs](../../.github/scripts/ci-changes.cjs), as CI does. It
 compares against the closest merge base with any remote's `main`, so a fork whose `main` lags
 upstream still compares against upstream, or with a ref you pass. CI still runs the full
@@ -227,11 +180,11 @@ and runs in headless Chromium with the React Compiler on, like the app. There is
 
 TypeScript workspaces typecheck with `effect-tsgo tsrs --noEmit` from `@effect/tsgo`: the
 [tsrs](https://github.com/oxc-project/tsrs) checker with Effect diagnostics, quick fixes, and
-refactors built in. Only `apps/marketing` installs `typescript`, for Astro. VS Code's TypeScript 7
+refactors built in. No workspace installs `typescript`. VS Code's TypeScript 7
 extension starts the same checker through `.vscode/tsdk/tsgo` (`js/ts.tsdk.path`), a POSIX
 script, so on Windows open the workspace through WSL.
 
-Use `vp run lint:mobile` for native mobile changes. CI owns the full suite; see
+CI owns the full suite; see
 [ci.yml](../../.github/workflows/ci.yml) for its current jobs.
 The [manual Windows lane](../../.github/workflows/windows-tests.yml) is available for focused
 Windows investigation while that suite is not a required gate.
@@ -339,11 +292,11 @@ Include the Windows SDK and the MSVC build tools and Spectre-mitigated libraries
 architecture.
 
 NSIS is downloaded by electron-builder. WSL support additionally needs the Linux CLI archive
-passed as `--wsl-runtime`; see the
-[release runbook](./release.md#windows-payload-topology-and-update-validation).
+passed as `--wsl-runtime`.
 
 ### Signing and passkeys
 
-Add `--signed` after configuring the platform credentials in the
-[release runbook](./release.md). macOS passkeys need a signed, provisioned app; follow the
-[Connect setup](./connect-setup.md#desktop-passkeys) for local signing and renderer HMR.
+Local builds are unsigned. `--signed` signs with the platform credentials in your environment;
+this repository documents no signing setup of its own yet. macOS passkeys need a signed,
+provisioned app; follow the [Connect setup](./connect-setup.md#desktop-passkeys) for local signing
+and renderer HMR.

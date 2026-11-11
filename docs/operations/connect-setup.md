@@ -1,19 +1,20 @@
 # Codenine Connect setup
 
-Deployment and client configuration for Codenine Connect. The [architecture note](../internals/codenine-connect.md)
+Codenine Connect is off in a fresh clone, and nobody runs a shared relay. To use it, deploy your own
+relay and Clerk instance and build Codenine against them. This page covers the deployment and
+client configuration. The [architecture note](../internals/codenine-connect.md)
 explains the trust boundaries; the [relay README](../../infra/relay/README.md#deployment) owns relay
 provisioning instructions.
 
 ## Public application configuration
 
-Codenine Connect is disabled in a fresh clone. To build against the production deployment, copy the
-repository-root example:
+Start from the repository-root example:
 
 ```sh
 cp .env.example .env
 ```
 
-For another deployment, set these values in the repository-root `.env` or `.env.local`:
+Then set these values for your deployment in the repository-root `.env` or `.env.local`:
 
 ```dotenv
 CODENINE_CLERK_PUBLISHABLE_KEY=<publishable key>
@@ -27,7 +28,6 @@ the build loader supplies framework-specific aliases. These values are public id
 `CLERK_SECRET_KEY` belongs only in the relay's secrets, never in client configuration.
 
 Client and bundled-server builds embed the public values, so set them before building.
-EAS preview and production environments need the publishable key, JWT template name, and relay URL.
 Bundled servers also accept runtime overrides for operator-managed deployments.
 
 Copy `infra/relay/.env.example` to `infra/relay/.env` for relay deployment settings.
@@ -75,18 +75,6 @@ Development uses `codenine-dev://app`; production uses `codenine://app`. Update 
 The Clerk Electron integration handles token
 persistence and system-browser callback delivery.
 
-## Android native sign-in redirects
-
-Clerk's native Android SDK uses `clerk://<applicationId>.callback`. In the Clerk instance selected by the app's publishable key, add each supported package to **Native applications > Allowlist for mobile SSO redirect**:
-
-| Variant     | Callback                                    |
-| ----------- | ------------------------------------------- |
-| Development | `clerk://com.codenine.app.dev.callback`     |
-| Preview     | `clerk://com.codenine.app.preview.callback` |
-| Production  | `clerk://com.codenine.app.callback`         |
-
-Preserve existing entries. These callbacks are separate from the `codenine-dev` / `codenine-preview` / `codenine` navigation schemes. A private development build using the production Clerk key still needs its development callback allowed by that instance's administrator; rebuilding the same package does not change the allowlist.
-
 ## Desktop passkeys
 
 For a production macOS app with bundle ID `com.codenine.app`:
@@ -97,7 +85,7 @@ For a production macOS app with bundle ID `com.codenine.app`:
    This setting also configures Electron/macOS passkeys.
 4. Check `https://<frontend-api>/.well-known/apple-app-site-association`. Its
    `webcredentials.apps` must include `<TEAM_ID>.com.codenine.app`.
-5. Configure signing as described in the [release runbook](./release.md#2-apple-signing--notarization-setup-macos).
+5. Sign and notarize the app with that certificate and provisioning profile.
 
 Local signed builds additionally use:
 
@@ -119,15 +107,15 @@ actual web and server ports. For example, with the default ports:
 ```sh
 VITE_DEV_SERVER_URL=http://127.0.0.1:5733 \
 CODENINE_PORT=13773 \
-  "/Applications/Codenine (Alpha).app/Contents/MacOS/Codenine (Alpha)"
+  "/Applications/Codenine (Beta).app/Contents/MacOS/Codenine (Beta)"
 ```
 
 Rebuild the signed app after native dependency, main-process, preload, entitlement, provisioning,
 or signing changes. Renderer edits can reuse it. Verify the installed bundle before testing:
 
 ```sh
-codesign --verify --deep --strict "/Applications/Codenine (Alpha).app"
-codesign -d --entitlements :- "/Applications/Codenine (Alpha).app"
+codesign --verify --deep --strict "/Applications/Codenine (Beta).app"
+codesign -d --entitlements :- "/Applications/Codenine (Beta).app"
 ```
 
 ## Restricting sign-ups

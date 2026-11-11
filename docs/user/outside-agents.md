@@ -3,16 +3,18 @@
 Agents that Codenine did not start can work with an environment through its MCP
 server. They can read projects and threads, start and message threads, and
 check which providers and models are available. This covers Claude Code or
-Codex in your own terminal, ChatGPT, and bots that support MCP. Each agent signs
+Codex in your own terminal, hosted assistants, and bots that support MCP. Each agent signs
 in once, and you choose what it may do.
 
 ## Add Codenine to an assistant app
 
 Open the command palette (`Cmd/Ctrl+K`) and choose **Use Codenine in another
 app (MCP)**, or use the button in **Settings → Sharing & access**. Pick the
-app, choose what it may do, and follow the step for that app. Assistants like
-Poke and Claude run in the cloud, so the wizard first asks you to sign in to Codenine
-Connect and turn it on for the environment.
+app, choose what it may do, and follow the step for that app. Assistants that
+run in the cloud need a public address to reach the environment, so the wizard first
+asks you to sign in to Codenine Connect and turn it on for the environment. That
+needs a [relay you deployed](../operations/connect-setup.md); without one, give the
+environment a public `https` address another way.
 
 When the app opens the sign-in page, choose **Get code** in the wizard and paste
 the code there. A code works once, for 5 minutes, and approves only the level
@@ -44,8 +46,8 @@ device is connected over, so an agent on the same device can reach it.
   `http://100.x.y.z:3773`, lets an agent find the environment but not finish
   signing in.
 - **A hosted agent**, such as ChatGPT or a bot running in the cloud, must reach
-  the environment from the internet. Use the Codenine Connect address. A Tailscale
-  address only works from your own tailnet.
+  the environment from the internet. Use the Codenine Connect address or another
+  public `https` address. A Tailscale address only works from your own tailnet.
 
 ## Approve a sign-in
 
@@ -64,8 +66,7 @@ environment with permission to manage access can approve without a code.
 
 A code from **Use Codenine in another app (MCP)** already carries the level you
 picked there. With another code, choose what the agent may do here: **Auto** is
-selected by default, or the closest lower mode allowed by your organization’s
-policy. Approving without a code starts at **Read only**:
+selected by default. Approving without a code starts at **Read only**:
 
 - **Read only** lets the agent read projects and threads and see
   the available providers and models. It cannot change anything.
@@ -100,8 +101,8 @@ codex mcp login codenine
 Add the environment as a custom MCP app in ChatGPT's apps settings:
 
 1. Create a new app or plugin with a custom MCP server.
-2. Set the server URL to `https://<environment-address>/mcp`, using the Codenine
-   Connect address.
+2. Set the server URL to `https://<environment-address>/mcp`, using an address
+   ChatGPT can reach from the internet.
 3. Choose **OAuth** for authentication. ChatGPT discovers the rest; you do not
    need a client ID or secret.
 4. Create the app, then approve the sign-in page that opens.

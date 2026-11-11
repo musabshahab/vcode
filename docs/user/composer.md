@@ -8,9 +8,8 @@ so you can shorten them or split them into several messages.
 
 Pasting 32 KiB or more of text adds that fragment as a text-file attachment so
 the agent can inspect it without filling the model context. A smaller paste also
-becomes an attachment when inserting it would exceed the message limit. On a
-hardware keyboard, use `Cmd+Shift+V` on Apple devices or `Ctrl+Shift+V` elsewhere
-to keep a large paste editable in the composer instead.
+becomes an attachment when inserting it would exceed the message limit. Use
+`Cmd+Shift+V` on macOS or `Ctrl+Shift+V` elsewhere to keep a large paste editable in the composer instead.
 
 ## Formatting
 
@@ -44,25 +43,20 @@ Attach up to 100 files per message. Each image can be up to 10 MiB, with at most
 50 MiB each, subject to the environment's upload support and limit. The agent
 receives them on the environment's machine. Provider and model limits still
 apply, including images already in the conversation. A video attachment gives
-the agent a file path; only [Antigravity](./providers-antigravity.md#skills-and-attachments)
-sends supported videos to Gemini models as video.
+the agent a file path.
 
 Uploads begin when you add an attachment. All uploads must finish before the
-message can send. Retry or remove a failed upload. On web and desktop, reloading
+message can send. Retry or remove a failed upload. Reloading
 before an upload finishes requires you to attach that file again.
 
-You can drag or paste images into the web or desktop composer. HEIC and HEIF
-photos are converted to JPEG there and when selected from the mobile photo
-library; photos over the image limit are also resized to fit. On mobile, you can
-also send files to Codenine through another app's system share sheet.
-On Android, you can also drag images from another app into the message input
-in split screen.
+You can drag or paste images into the composer. HEIC and HEIF photos are
+converted to JPEG; photos over the image limit are also resized to fit.
 
 See [images and videos](#images-and-videos-in-messages) for previewing and saving media.
 
 ## Send while the agent is working
 
-On web and desktop, choose **Settings → Chat → Follow-up behavior** to queue
+Choose **Settings → Chat → Follow-up behavior** to queue
 new messages for a later turn or steer the running turn immediately. The setting
 applies to this client; already queued messages keep their place. Queued messages
 are saved on the server and can be edited or removed before they send.
@@ -83,25 +77,10 @@ Press `Option+Up` on macOS or `Alt+Up` on Windows and Linux with the cursor at t
 start of the composer to edit the most recently queued message. Change
 `thread.editQueuedMessage` to use another shortcut.
 
-Mobile has the same choice under **Settings → Chat**. While a turn is
-running the send button shows which action it will take. Long-press it to use the
-other action for a single message. From a hardware keyboard, `Cmd+Return`
-(`Ctrl+Return` on Android) uses the other action, or `Cmd+Shift+Return`
-(`Ctrl+Shift+Return`) when Return inserts a new line. The button only offers
-Steer when the running agent supports it.
-
-## Queue messages offline on mobile
-
-Mobile keeps local copies of draft attachments, so you can preview them and queue
-messages while disconnected. Uploads resume when you reconnect. Drafts and queued
-messages survive app restarts. Signing out of Codenine Connect keeps that work on your
-device until you sign back into the same account.
-
 ## Custom models
 
-On web and desktop, use Settings → Providers → **Models** to add an unlisted model with a custom
-name and options. Only options supported by the provider integration affect turns. Antigravity
-uses its account catalog and does not support custom models.
+Use Settings → Providers → **Models** to add an unlisted model with a custom
+name and options. Only options supported by the provider integration affect turns.
 
 To rename a built-in model on every client, edit the server's `settings.json` in its `userdata`
 directory. Add a custom model entry with the built-in model ID and a new name under that provider
@@ -128,8 +107,8 @@ Leaving reasoning level or service tier unset uses the provider's own configurat
 
 ## Quote an assistant response
 
-On web and desktop, select text within one assistant response and choose
-**Cite in composer**. You can add a comment about the quote and write instructions
+Select text within one assistant response and choose
+**Cite**. You can add a comment about the quote and write instructions
 around it.
 
 Select the quote in a draft or sent message to return to its source. If the source
@@ -142,16 +121,13 @@ delete it like other inline context. Copying, reloading, and restoring a
 with its quote, and sending tells the agent which words were quoted and which comment you wrote.
 The quoted text and comment count toward the message limit.
 
-Mobile displays saved quotes and comments, but does not create citations or
-navigate to their sources.
-
 ## Recall a sent prompt
 
 Press `ArrowUp` in an empty composer to bring back the last prompt you sent in this thread. Press
 `ArrowUp` again to go further back, and `ArrowDown` to come forward. Moving forward past the newest
 prompt clears the composer. Recall walks the prompts loaded in the thread. Attachments, terminal
 context, and other extras from the original message are not restored, only the text you typed. A
-composer that holds an attachment or a picked element does not count as empty.
+composer that holds an attachment does not count as empty.
 
 When the composer has text, the arrow keys move the caret as usual. Recall takes over only while
 the text is an unedited recalled prompt, with the caret on the first visual line for `ArrowUp` or
@@ -166,11 +142,11 @@ press `Escape` to dismiss it. Each suggestion is one extra request that reuses t
 cache, so it uses a little of your plan's usage. Claude skips suggestions on the first turn of a
 thread and near usage limits. Codex needs version 0.165 or later; if Codenine manages
 Codex, update it in Settings > Providers. Codex follows a change to the setting at once; open Claude
-threads follow it after they restart. Suggestions show on web and desktop.
+threads follow it after they restart.
 
 ## Edit an earlier prompt
 
-On web and desktop, choose **Edit from here** beneath a sent message to rewind
+Choose **Edit from here** beneath a sent message to rewind
 the conversation to before that message. Choose **Revert and keep changes** to
 leave workspace files as they are, or **Revert files too** to put the workspace back
 to its checkpoint from before that message. That also undoes edits you made yourself.
@@ -187,7 +163,7 @@ memory. The action is available only when the provider supports rewind.
 
 ## Prompt stash
 
-On web and desktop, press `Cmd+S` on macOS or `Ctrl+S` on Windows and Linux to save
+Press `Cmd+S` on macOS or `Ctrl+S` on Windows and Linux to save
 the current prompt and its attachments for later. Wait for uploads to finish first.
 With an empty composer, the same shortcut restores a single stash or opens the
 stash menu when there are several.
@@ -198,15 +174,15 @@ and use **Attach again** or remove the missing file before sending.
 
 ## Queued messages
 
-On web and desktop, the composer shows **Interrupt** while the agent is working and the draft is
+The composer shows **Interrupt** while the agent is working and the draft is
 empty. Adding text or attachments replaces it with a send button that shows your
 [Follow-up behavior](#send-while-the-agent-is-working): a queue icon for Queue or a steer arrow for
 Steer. Click it or press your send shortcut to use that action. Hold `Cmd` on macOS or `Ctrl` on
 Windows and Linux to switch the button to the opposite action, then click, or use the opposite-action
 shortcut described above.
 
-On web and desktop, queued messages appear at the end of the thread as dashed messages that have
-not been sent yet. On mobile they appear above the composer. Each shows its text and any attached
+Queued messages appear at the end of the thread as dashed messages that have
+not been sent yet. Each shows its text and any attached
 images. **Send now** sends a message right away, into the running turn if there is one. You can
 also edit or remove it.
 
@@ -226,14 +202,13 @@ composer when it is empty, and is discarded otherwise.
 ## Commands and skills
 
 Type `/` for commands or `$` to add a skill from the selected environment and
-provider. On mobile, both are also available before starting a thread on
-**New task**.
+provider.
 
 The slash menu also includes skills unless you turn off **Settings → Chat →
 Show skills in slash menu**, under Advanced. Only skills enabled for the provider are listed.
 
 After you add or change skills, plugins, or MCP servers, use **Restart agent
-session** in the command palette on web and desktop. The conversation continues,
+session** in the command palette. The conversation continues,
 and your next message starts the agent again with the new setup.
 
 Provider commands must start the message to run. Codenine commands such as
@@ -248,7 +223,7 @@ earlier messages, and the thread marks where it began with **New session**.
 Earlier messages and diffs stay in the thread. Dismiss the notice above the
 composer to keep the current session instead.
 
-On web and desktop, turn on **Context window** in **Settings → Appearance →
+Turn on **Context window** in **Settings → Appearance →
 Thread details** to see context usage in the thread details card. It appears
 once the provider reports usage.
 
@@ -260,7 +235,7 @@ Claude instances can also compact idle threads for you. See
 With Codex and Claude, send `/goal` followed by what "done" means, for example
 `/goal all tests in packages/api pass`. The agent keeps working across turns
 until it judges the goal met. The thread shows **Goal** while it works, and a
-line at the end of the thread (above the composer on mobile) shows the goal and
+line at the end of the thread shows the goal and
 its progress.
 
 - `/goal` alone shows the current goal. `/goal clear` removes it.
@@ -279,12 +254,12 @@ Context you attach lands where your cursor is, as a chip inside your text: a ter
 a review comment from a diff or file, or a file. You can type before and
 after a chip, move it by cutting and pasting, and delete it like a character. Hover a chip for
 its brief details. Select a terminal excerpt to open its captured output, or select a review
-comment or picked element to open its full details. Chips read as "Terminal
+comment to open its full details. Chips read as "Terminal
 excerpt, Terminal 1 lines 3-4" and similar to screen readers.
 
 A pull request appears as its icon and number. Its color reflects whether it was open, draft,
 merged, or closed when it was attached. Select it to inspect the captured title and branches,
-then choose **Open pull request** to visit the pull request. On web and desktop, type `#` to browse the newest
+then choose **Open pull request** to visit the pull request. Type `#` to browse the newest
 pull requests in the current project's repository. Pull requests linked to the thread are included
 from any repository and listed first, after any exact number match. Continue typing digits to filter the recent list
 by any part of its pull request numbers. A complete number is also resolved directly, even when that
@@ -292,16 +267,15 @@ pull request is older than the recent list. Type a single word after `#` to sear
 the repository by text. Choose a result to insert it as a chip.
 
 Another thread can be context too. Type `@` followed by part of its title to pick one from
-the same server. On web and desktop you can also drag a thread out of the sidebar and
-drop it on the composer; a multi-selection drops together. On any client, **Copy thread** copies a
+the same server. You can also drag a thread out of the sidebar and
+drop it on the composer; a multi-selection drops together. **Copy thread** copies a
 link to the thread that pastes into a composer as its chip. The chip shows the thread's
 current title and opens it when selected. Your prompt only carries a reference: the agent reads the thread's
 history on demand, so attaching a long thread costs nothing until the agent looks. Attaching a
 thread does not change it, and the agent cannot send messages to it unless you ask.
 
-A thread from a linked machine, picked, pasted or dropped, stays a reference that the agent reads
-on that machine. A pasted link to a thread on any other machine stays a link. Dropping a thread
-from any other environment attaches a saved transcript file. The source
+A pasted link to a thread on another machine stays a link. Dropping a thread
+from another environment attaches a saved transcript file. The source
 environment must be connected and up to date. The transcript includes the visible history and
 saved text context at the time of the drop; later messages and the contents of attached files
 are not copied. The agent can read the saved transcript after the source disconnects. Normal
@@ -309,7 +283,7 @@ file attachment limits apply.
 
 Type `@` and part of a model or provider name, such as `@opus`, to name that model for the
 agent, for example when delegating. It does not change the thread's model. Join words with
-`:`, `/` or `-`, as in `@opus:opencode`.
+`:`, `/` or `-`, as in `@opus:claude`.
 
 Images keep their thumbnail shelf above the text and also get a chip at your cursor, so you can
 say exactly which image you mean. Deleting an image chip leaves the image on the shelf; removing
@@ -327,32 +301,22 @@ Markdown with a link in place of each chip. Older messages that were sent before
 show their context. Stashing a prompt keeps its chips and what they point to; restoring brings
 them back.
 
-On mobile, tap a chip to inspect its content. File references open the current file; attached
-files show the copy that was attached to the message.
-
 ## Attached files
 
 Select a file chip in your draft or a sent message to preview it. Code and JSON use syntax
 highlighting; Markdown, HTML, CSV, and TSV offer rendered and raw views. Audio files have
 playback controls. Large text files show a limited preview; save the file to read it in full.
 
-On web and desktop, files open beside the conversation with the same controls as a workspace
-file: a header row with the view toggle, **Copy contents** and **Save file**. On mobile, documents
-open in the same file screen as workspace files; its menu holds **Copy contents**, **Save or
-share** and **Open in file viewer**. Pictures, videos and PDFs keep their native viewers, and
-other document formats such as Word or Pages open in the device's own viewer when it has one.
-If nothing on the device can show a format, save or share it to open it elsewhere. A ZIP up to
-50 MB opens as a folder list on every surface; on mobile, select a file inside it to preview,
-save, or add it to chat.
+Files open beside the conversation with the same controls as a workspace
+file: a header row with the view toggle, **Copy contents** and **Save file**. A ZIP up to
+50 MB opens as a folder list.
 
 ## Images and videos in messages
 
 Select an image or video attachment or link to preview it. Playback support depends
-on your browser or device; save an unsupported video to open it in another app.
+on your browser; save an unsupported video to open it in another app.
 
-On web and desktop, right-click media to save it or copy its path or URL. On mobile,
-touch and hold an image or video thumbnail and choose **Save or share**. On iOS,
-return to the thumbnail to open this menu after watching a full-screen video.
+Right-click media to save it or copy its path or URL.
 
 File links refer to the environment's machine, including when you connect remotely.
 Previews use the original file, even outside the workspace. Moving or deleting it
@@ -366,12 +330,9 @@ styles, or images from neighboring files.
 
 ## HTML and PDF files in the file viewer
 
-On web and desktop, HTML and PDF files open as rendered pages. Switch an HTML
+HTML and PDF files open as rendered pages. Switch an HTML
 file to source view to read its markup; a link to a specific line opens source
 automatically. HTML previews cannot access your Codenine session.
 
 The file viewer recognizes images, HTML, and PDF files by their filename extension,
 including filenames or folders containing `#` or `?`.
-
-On mobile, select a PDF attachment or link to open it. iOS uses the native viewer;
-Android opens a compatible installed file viewer.

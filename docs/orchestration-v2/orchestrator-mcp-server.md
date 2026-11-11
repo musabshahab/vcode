@@ -96,100 +96,12 @@ Claude receives an HTTP MCP server in its query options:
 The adapter logs only whether MCP configuration exists; it does not log the
 server headers or token.
 
-### Cursor Agent SDK V2
-
-Cursor receives the same authenticated HTTP MCP endpoint through the SDK's
-`mcpServers` on `Agent.create` / `Agent.resume` and each `send`. With
-`@cursor/sdk` 1.0.39+, send-level servers replace only the create-time inline
-set; ambient servers from `settingSources` (`project`, `user`, `team`, `mdm`,
-`plugins`) stay available. The adapter passes the authorization header to the
-SDK but projects only redacted option metadata into protocol diagnostics.
-
-### Grok ACP V2
-
-Grok receives the authenticated HTTP MCP endpoint through the ACP
-`session/new`, `session/load`, and `session/fork` `mcpServers` field. The shared
-ACP adapter owns standard protocol behavior; the Grok flavor adds xAI extension
-requests such as structured user questions.
-
-ACP does not define native subagents or active steering. Grok therefore uses
-orchestrator-owned child threads and implements steering through
-cancel-and-restart. Its current driver also lacks `session/fork`, so app forks
-use portable context transfer. These are orchestrator policies, not
-provider-specific MCP tools.
-
-### ACP Registry V2
-
-The `acpRegistry` driver is the generic flavor of the same shared ACP adapter.
-Each provider instance names an agent from the official ACP Registry. Settings
-searches the registry through the connected server, then prepares a compatible
-distribution before persisting the provider instance. Binary distributions use
-a managed, versioned cache; declared checksums are verified when present.
-Version-pinned `npx` packages install globally through `npm`; `uvx` packages use
-`uv tool install`. ACP launches the resulting global command directly, so the
-same command is available for terminal authentication. A local executable may
-override the installed command without changing the registry-declared arguments
-or environment.
-
-Search, preparation, provider status, and session startup share one
-server-scoped catalog service. This keeps platform selection and registry
-validation identical across settings and runtime use. Catalog inspection never
-starts an ACP process, probes models, or performs authentication. The managed
-provider snapshot creates a disposable `session/new` through the normal provider
-refresh lifecycle, using success as the authentication-readiness proof and
-projecting advertised models into the snapshot. Terminal-only login remains a
-manual operation on the connected server.
-
-Capabilities such as session loading, session forking, models, modes, and MCP
-transport are enabled only when the selected agent advertises them. Missing
-features degrade through V2 policy: steering uses interrupt-and-restart,
-forking uses portable context when native `session/fork` is unavailable, and
-subagents use orchestrator-owned child threads. Registry agents do not receive
-provider-specific extensions; those remain in flavors such as Grok.
-
-### Pi V2
-
-Codenine keeps a provider-session HTTP bridge even when Pi supports native MCP.
-`mcp.json` entries override native registrations, and native MCP's default
-60-second request timeout can interrupt long-running Codenine tools. The bridge owns
-the injected endpoint and credential and forwards Pi's cancellation signal.
-
-When a provider session credential exists, the adapter writes a Codenine-owned
-extension into the server cache and spawns
-`pi --mode rpc --extension <cache>/pi-codenine-mcp-extension.ts` with:
-
-```text
-CODENINE_MCP_URL=http://127.0.0.1:<port>/mcp
-CODENINE_MCP_BEARER_TOKEN=<provider-session-token>
-```
-
-The extension preserves public names under `mcp__codenine__` for saved loadouts
-and tool selectors. Modern Pi also receives hidden `mcp__codenine__` aliases,
-which reserve the normalized namespace against configured MCP servers without
-adding declarations or search results. On Pi 0.99+,
-`orchestrator_capabilities`, `delegate_task`, and `task_status` remain directly
-available; optional tools are discovered through Pi's builtin `tool_search`.
-On older Pi or without builtin search, all tools remain directly available.
-The bridge calls the original MCP tool name over HTTP. Follow-up requests send
-`mcp-protocol-version: 2025-06-18`; Effect's MCP transport returns 400
-without it. The first turn of a session also receives the shared Codenine
-orchestration instructions.
-
-Pi keeps ownership of native extension discovery. Codenine does not replace Pi's
-`subagent` tool or reproduce Pi's package and project-trust loader. Durable
-delegation goes through the namespaced Codenine MCP `delegate_task` tool and the
-shared orchestration child-thread lifecycle. When Pi's example `subagent`
-extension is installed, the adapter observes its documented `details.results`
-shape and projects task cards with no child thread id. Unknown result shapes
-remain ordinary dynamic tool output.
-
 ### Provider Support
 
 A provider instance can run child tasks when its live `ProviderInstance`
 exposes a V2 `orchestrationAdapter` — the same registration the orchestrator
-resolves when a `delegated_task.request` executes. That covers Codex, Claude
-Agent SDK, Cursor Agent SDK, Grok, generic registry agents over ACP, OpenCode,
-OpenCode 2, Pi, Antigravity, and any future driver that builds an adapter.
+resolves when a `delegated_task.request` executes. That covers Codex, the Claude
+Agent SDK, and any future driver that builds an adapter.
 Capability discovery still reports other registered provider instances, but
 marks them unavailable for orchestration when no adapter resolves. This keeps
 provider selection model-visible without allowing a request that cannot run.
@@ -216,11 +128,10 @@ Returns:
 Unavailable providers include model-visible constraints such as missing V2
 adapter support, disabled state, missing executable, or missing authentication.
 
-The model list is short on purpose: catalogs such as OpenCode can hold hundreds
-of models, and every call lands in the agent's context. Each provider lists
-custom, favorite, and the caller's own models, plus all current (non-legacy)
-models for Codex, Claude, Muse, and Grok, or the first 8 current models in the
-user's model order for other providers. `omittedModels` counts the rest, and the
+The model list is short on purpose: every call lands in the agent's context.
+Each provider lists custom, favorite, and the caller's own models, plus all
+current (non-legacy) models for Codex and Claude. A driver outside that set
+lists the first 8 current models in the user's model order. `omittedModels` counts the rest, and the
 `search` input finds them, legacy models included. `delegate_task` still accepts
 any catalog model.
 
@@ -409,10 +320,9 @@ environment's thread and show its current title; a link to a thread they do not
 know renders as a label that opens nothing. Older `codenine-thread://v1/<threadId>`
 links name no environment: clients resolve them in the message's environment,
 then by a unique match in another enabled environment. An outside OAuth client
-cannot render `codenine-thread://` links, so it
-gets the link Copy thread copies, `https://app.t3.codes/threads/<environmentId>/<threadId>`
-on the server's `CODENINE_HOSTED_APP_URL`, for threads in this environment. The
-hosted app offers the desktop app, the mobile app, or itself.
+cannot render `codenine-thread://` links, so when the server names a hosted app in
+`CODENINE_HOSTED_APP_URL` it gets an `https://<hosted app>/threads/<environmentId>/<threadId>`
+link for threads in this environment.
 
 List and read results report `snoozed` and `snoozedUntil`, and
 `codenine_thread_list` filters on `snoozed`. The server's `isSnoozed` follows the
@@ -590,6 +500,5 @@ Coverage includes:
 - inheritance and per-thread provider overrides; and
 - idempotent retries.
 
-Provider adapter tests separately verify Codex, Claude, Cursor, Grok, and ACP
-Registry behavior and MCP injection. The provider-session manager test verifies
+Provider adapter tests separately verify Codex and Claude behavior and MCP injection. The provider-session manager test verifies
 that credentials exist before an adapter opens and are revoked when it closes.

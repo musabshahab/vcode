@@ -1,14 +1,15 @@
 ---
 name: test-codenine-app
-description: Test Codenine's web and desktop UI through its built-in Browser panel against isolated development state. Use for browser verification, browser pairing recovery, and test fixtures. Use test-codenine-mobile for native mobile verification.
+description: Test Codenine's web and desktop UI in a browser against isolated development state. Use for browser verification of a UI change, browser pairing recovery, and test fixtures.
 ---
 
 # Test Codenine web and desktop
 
-Use Codenine's built-in Browser panel for verification. Follow the recovery steps
-below before declaring it unavailable. Do not install or switch to another
-automation system. For native mobile testing, use
-[test-codenine-mobile](../test-codenine-mobile/SKILL.md).
+Verify user-visible changes in the running app, not only in tests. Codenine has no
+built-in browser panel, so drive the app with the browser automation your own
+harness provides. Web and desktop share one UI, so the web app covers most
+changes; use `vp run dev:desktop` only for Electron-specific behavior. There is
+no mobile app.
 
 ## Start the app
 
@@ -21,36 +22,31 @@ Test with meaningful project and thread data. Read
 [references/sqlite-fixtures.md](references/sqlite-fixtures.md) only when
 inspecting or seeding SQLite. Stop the test server before direct fixture writes.
 
-## Drive agent turns for free
+## Agent turns cost money
 
-Do not spend a paid model to see a turn render. `vp run dev` registers the
-`Replay (dev)` provider, which replays recorded turns with simulated streaming
-through the real adapter and orchestration. Its models are scenarios:
-`showcase` covers thinking, a plan, tool calls, an approval, and markdown.
-Press `Ctrl+Alt+Shift+R` for a picker (GNOME takes that key for screen
-recording), call `window.codeninedev.replay("showcase")`
-with `preview_evaluate`, or run
-`node apps/server/src/bin.ts thread start --base-dir .codenine --provider devReplay --model showcase <project> "go"`.
-When the test needs real provider behavior, use that provider's cheapest
-model, such as Haiku for Claude or Luna for Codex.
+There is no free provider. To show a state without running a model, seed it:
+copy real data into the worktree (see Test data in `AGENTS.md`) or write a
+projection fixture as the SQLite reference describes. When the test needs a real
+turn, use the provider's cheapest model, such as Haiku for Claude or Luna for
+Codex. You can start one from the terminal against the dev server's state:
 
-## Use the Browser panel
+```sh
+node apps/server/src/bin.ts thread start --base-dir .codenine --provider <instance> --model <model> <project> "go"
+```
 
-Call `preview_status`. If no tab can be automated, call `preview_open`, including
-when status reports `available: false` or `tabId: null`. Status can report
-unavailable simply because no tab exists yet; opening a tab needs no user action.
-Stop verification and explain the blocker only if the tools are absent or
-`preview_open` reports unavailable or fails.
+## Open the app in a browser
 
-Navigate to the complete startup pairing URL once with
-`preview_navigate`, then use `preview_snapshot` and Codenine's interaction tools.
-If the token was consumed or expired, run `node apps/server/src/bin.ts pair`
-for a fresh one. Keep using the same tab.
+Navigate your browser tool to the complete startup pairing URL once. The bare
+origin does not sign in a new browser. If the token was consumed or expired, run
+`node apps/server/src/bin.ts pair` for a fresh one. Keep using the same tab.
+
+If your harness has no browser automation, say so and stop: do not install or
+switch to another automation system without asking.
 
 ## Verify and retain
 
 Exercise the affected flow and capture the state that proves it works. Keep
-the server, state, and panel available while the user inspects or iterates.
+the server and its state available while the user inspects or iterates.
 An assistant turn ending is not teardown. Stop only processes you started,
 using retained terminal sessions or captured PIDs.
 

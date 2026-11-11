@@ -1,12 +1,20 @@
 # Remote access
 
-Connect a phone, browser, or another desktop app to Codenine running on a different
+Connect a browser or another desktop app to Codenine running on a different
 machine. That machine must stay running and reachable while you work.
+
+Pairing over a [LAN or private network](#pair-over-a-lan-or-private-network),
+[Tailscale](#tailscale-https), and [SSH](#desktop-managed-ssh) need no account or relay.
 
 ## Codenine Connect
 
 Codenine Connect makes an environment available to your other devices without setting
-up router forwarding. In the desktop app on the host, open **Settings →
+up router forwarding. It needs a relay, and nobody runs one for you: Codenine Connect is off, and
+`codenine connect` reports that it is unavailable, unless the build was configured for a relay you
+deployed. See [Codenine Connect setup](../operations/connect-setup.md). The rest of this section
+applies to such a build.
+
+In the desktop app on the host, open **Settings →
 Sharing & access**, sign in, and enable **Codenine Connect** for that environment.
 
 For a command-line host, run:
@@ -28,14 +36,13 @@ window stops its local server. Saving your sign-in alone does not start a server
 or make the machine reachable.
 
 On your other device, sign in to the same Codenine Connect account and choose the
-environment. On the app.t3.codes home page with no computer added yet, signing
-in adds compatible computers linked to your account. Over SSH, the CLI prints a
+environment. Over SSH, the CLI prints a
 browser link and a short code. Open the link on any device, confirm the code
 matches, and approve. The CLI continues on its own, so you do not need to forward
 an OAuth callback port.
 
 Codenine Connect renews access credentials when needed without disconnecting a healthy
-connection. Pull request diffs and provider settings keep working after the
+connection. Provider settings keep working after the
 previous credential expires. A failed renewal affects that request; it does not
 disconnect an otherwise healthy conversation.
 
@@ -52,18 +59,6 @@ the defaults. Without a terminal:
 `codenine status --json` prints the settings. `codenine up --help` lists every flag with
 examples.
 
-### More machines with T3 Chat
-
-Each Codenine Connect account can link up to 3 machines. Phones and browsers do not
-count. A paid T3 Chat plan raises the limit to 10 machines with Pro, or 100 with
-Premier.
-
-To link T3 Chat, open your account menu on the web or desktop app, go to
-**T3 Chat**, and select **Link T3 Chat**. Sign in to T3 Chat in the window that
-opens and approve. The new limit applies the next time you add a machine. If you
-cancel or downgrade T3 Chat, machines you already linked stay linked, but you
-cannot add more until you are under the limit again.
-
 ## Pair over a LAN or private network
 
 Use direct pairing when the other device can reach the host's network address.
@@ -78,7 +73,10 @@ For a command-line host, choose the local network in `codenine up`, or run:
 codenine up --lan
 ```
 
-For a server in a terminal, run `codenine serve --lan`. Either way, Codenine then
+For a server in a terminal, run `codenine serve --lan`. Use this from a source
+checkout: on Linux and macOS `codenine up` also installs the
+[background service](./background-service.md), which needs release archives.
+Either way, Codenine then
 accepts connections from your local network and tailnet, so a pairing code is
 all that keeps other devices on them out.
 
@@ -88,18 +86,13 @@ If a server is already running, generate a fresh link without restarting it:
 codenine pair
 ```
 
-Scan the QR code on your phone or paste the pairing URL into **Add environment**
-in the receiving app. Connection settings are under **Settings → Environments**
-on web and desktop and **Settings → Environments** on mobile. A loopback address
+Paste the pairing URL into **Add environment** in the receiving app. Connection
+settings are under **Settings → Environments**. A loopback address
 such as `127.0.0.1` reaches only the device opening the link.
 
 On a computer with the desktop app, you can open the printed `codenine://pair`
 app link instead. The desktop app asks you to confirm the server address, then
 adds it.
-
-If your HTTPS endpoint uses a certificate from your own certificate authority,
-install that CA on Android as a **CA certificate** in its security settings; the
-Android app then trusts it.
 
 Pairing authorizes that device for future connections. Use a fresh one-time link
 for each new device; you do not need the original token to reconnect. Links
@@ -136,14 +129,12 @@ again, after the other routes, if none of them connect. While connected over a
 later route, Codenine checks the earlier ones when your network changes, when you
 return to the app, and every minute, and moves back as soon as one works.
 
-On web and desktop, select the route count under the machine's name in
+Select the route count under the machine's name in
 **Settings → Environments** to see its routes. Drag a route to change the order,
-or remove it. On mobile, open the machine under **Settings → Environments** and
-choose **Edit**. Signing out of Codenine Connect removes only that route; a machine
+or remove it. Signing out of Codenine Connect removes only that route; a machine
 you can still reach another way stays saved.
 
-Open **Permissions** next to **Routes** in web or desktop, or **Your permissions**
-in the mobile route details, to see what your current connection can do on that
+Open **Permissions** next to **Routes** to see what your current connection can do on that
 environment. For a remote environment, this is in its route details. Permissions
 shown there apply only to the route marked **In use**; other routes are not
 checked. Direct pairing and Codenine Connect have separate sessions and may grant
@@ -151,7 +142,7 @@ different permissions.
 
 ### Balance new threads across machines
 
-Auto balance is off by default. On web and desktop, enable it in
+Auto balance is off by default. Enable it in
 **Settings → Environments → Load balancing** to automatically choose a machine for
 new threads in projects grouped across connected environments. The section
 appears once two or more machines are switched on.
@@ -165,7 +156,6 @@ that choice stable. Choose **Auto balance** again to check current resources, or
 a specific machine to override it. Choosing a branch or worktree also keeps the draft
 on that machine. Existing threads stay where they started. If resource checks are
 unavailable or all eligible machines are full, choose a machine manually to continue.
-Mobile keeps its manual environment selection.
 
 ### Tailscale HTTPS
 
@@ -195,16 +185,6 @@ tailscale serve --https=443 --set-path=/ off
 If that port is already in use, choose another with
 `--tailscale-serve-port`. See `codenine pair --help` for other pairing options.
 
-### Hosted web app
-
-[app.t3.codes](https://app.t3.codes) needs an HTTPS endpoint. It connects directly
-to your server; a hosted pairing link does not make an unreachable backend
-reachable or convert HTTP to HTTPS.
-
-For a plain HTTP LAN endpoint, use the direct pairing URL in a browser that can
-open it, or pair from the desktop app. On mobile, an IP address entered without a
-scheme uses HTTP, so include `https://` when your server uses HTTPS.
-
 ## Desktop-managed SSH
 
 In the desktop app, open **Settings → Environments → Add environment**, choose
@@ -214,8 +194,9 @@ credentials, and agent work stay on the remote machine.
 
 The remote host must be Linux or an Apple Silicon Mac with `curl` or `wget`,
 `tar`, `sha256sum` or `shasum`, and [provider setup](./install.md#providers).
-The first launch downloads Codenine's server to `~/.codenine/runtime` on the host, so
-it takes longer than later ones.
+When the host has no `codenine` installed, the first launch downloads Codenine's server to
+`~/.codenine/runtime` on the host from a release archive. No releases are published yet, so this
+works only with [release archives you host](../operations/release.md).
 Provider CLIs must be on the `PATH` of a non-interactive login shell there;
 check with:
 
@@ -233,12 +214,9 @@ Sharing & access** on the host, or on a headless host with `codenine auth sessio
 `codenine auth session revoke <id>`. A desktop that can still sign in over SSH pairs
 again on its next connect.
 
-For Antigravity's Google callback on a remote host, see
-[remote sign-in](./providers-antigravity.md#sign-in-from-a-remote-device).
-
 ## Connect an outside agent
 
-Claude Code, Codex, ChatGPT and other agents Codenine did not start can drive
+Claude Code, Codex and other agents Codenine did not start can drive
 threads on an environment through its MCP server. See
 [outside agents](./outside-agents.md) for setup.
 
@@ -272,8 +250,8 @@ and `orchestration:operate`.
 
 To change an existing client's permissions, create a fresh pairing link with the
 scopes it needs. In a browser opened directly on the environment, open that link
-to replace the browser's current grant. For mobile or a saved remote environment
-in web or desktop, use **Add Environment** with the fresh link or code; pairing
+to replace the browser's current grant. For a saved remote environment,
+use **Add Environment** with the fresh link or code; pairing
 the same environment replaces its saved grant. Reconnecting alone does not change
 permissions.
 
@@ -300,7 +278,7 @@ local changes. Add `filesystem:write` to allow editing files or saving plans to
 the workspace. These scopes control direct file access from the client.
 
 To remove an environment from Codenine Connect, open your account menu's **Codenine Connect**
-page, or **Settings → Codenine Connect** on mobile, and choose **Deregister**. This
+page and choose **Deregister**. This
 revokes its cloud access and frees its host space even when the environment is
 offline or has been wiped. When Codenine Connect rejects a host's link, the host
 shows that it was removed from Codenine Connect. To link it again, turn on

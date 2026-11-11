@@ -10,14 +10,13 @@ rebases, the files Git brought in are left out. A file stays in the list when th
 committed it, or fixed a conflict in it. Use the branch comparison to review everything that changed
 against your base branch. Restore still returns the complete saved workspace.
 
-On web and desktop, open the Diff pane source picker and choose **Commits** to review one local
+Open the Diff pane source picker and choose **Commits** to review one local
 commit at a time. The list shows the newest 100 commits in the branch comparison. A merge commit
 shows its changes against its first parent.
 
-A commit link from a supported code host opens in the Diff pane when the thread's repository has
-that commit locally, on any branch. Other commit links follow your **Open links in** setting; on web,
-when that opens a new tab, Codenine first shows an **Open link** button. Command/Ctrl+Click always
-opens the link in your browser. Pull request links open on the code host.
+A GitHub commit link opens in the Diff pane when the thread's repository has
+that commit locally, on any branch. Command/Ctrl+Click always
+opens the link in your browser. Pull request links open on GitHub.
 
 ## Connect an account
 
@@ -46,16 +45,16 @@ custom server name as GitHub once it has a credential for that host.
 ## Start, clone, or publish a project
 
 To start from nothing, choose **New project** in the command palette (`Cmd/Ctrl+K`), or
-**New project** under **Add Project** on any client, and type a name. Codenine makes a Git
+**New project** under **Add Project**, and type a name. Codenine makes a Git
 repository in `~/.codenine/projects` (the `projects` folder of your Codenine data directory) with a README,
 an icon, and a first commit, then opens a new thread in it. Until the project has a thread, new
 threads work in its folder, even when your default is a new worktree. The folder is named after the project,
-like `pinball-stats` for "Pinball Stats". Turn on **Create private repository on GitHub** to also
-publish it. If Git has no name or email on that machine, the project is created without the
+like `pinball-stats` for "Pinball Stats". Turn on **Create private repository** to also
+publish it on GitHub. If Git has no name or email on that machine, the project is created without the
 first commit.
 
-Use **Add Project** in the command palette (`Cmd/Ctrl+K`) to clone a repository. Choose a hosting
-provider or paste a Git URL, then choose where to save it. The project opens right away while the
+Use **Add Project** in the command palette (`Cmd/Ctrl+K`) to clone a repository. Choose GitHub
+or paste a Git URL, then choose where to save it. The project opens right away while the
 clone runs in the background: you can write your first prompt, and sending waits until the files
 are in place. A toast tracks progress and lets you cancel; if the clone fails, retry it from the
 toast or from the banner above the composer. When the host refuses the machine's SSH key, Codenine
@@ -63,18 +62,18 @@ clones over HTTPS with Git's credentials for that host instead, and the project'
 HTTPS URL.
 
 To lay clones out like [ghq](https://github.com/x-motemen/ghq), turn on **Clone into host folders**
-under **Settings → Threads** (or **Source control** on mobile). Clones then default to
+under **Settings → Threads**. Clones then default to
 `<host>/<owner>/<repo>` under **Add project starts in**, so set that to `~/ghq` to share ghq's
 folders. You can still change the destination before cloning.
 
-For a local Git repository without a remote, **Publish Repository** creates a hosted repository,
+For a local Git repository without a remote, **Publish Repository** creates a GitHub repository,
 adds it as `origin`, and pushes your commits. If there are no commits yet, it creates the remote;
 make your first commit before pushing.
 
 ## Create a pull request
 
 Use a thread's Git actions to commit, push, and create a pull request. Codenine can generate commit
-messages, review titles, and descriptions from your changes. Descriptions also draw on the work in
+messages, pull request titles, and descriptions from your changes. Descriptions also draw on the work in
 the thread, including the checks it ran.
 
 An existing fork PR can appear beside the branch even if you pushed without setting an upstream.
@@ -90,8 +89,8 @@ uses the project's instructions and recent commit subjects.
   control, then rescan.
 - **GitHub sign-in cannot be verified:** update GitHub CLI to at least 2.81.0, or save a token in Settings → Source control.
 - **Push fails despite a connected account:** check the Git remote's credentials. SSH and HTTPS
-  remotes can require separate setup from the hosting provider's API access.
-- **A pull request's status does not update:** open it on the host website while resolving
+  remotes can require separate setup from GitHub API access.
+- **A pull request's status does not update:** open it on GitHub while resolving
   connectivity, permissions, or rate limits.
 
 ## Linked pull requests
@@ -104,8 +103,7 @@ agent creating one with `gh pr create`. Agents can link other pull requests with
 
 The thread header and sidebar row show each linked pull request's state (open, draft, merged or
 closed). Thread badges show a stack's layer count or the current pull request number with a count
-of additional links; hover a badge to see every linked pull request. Linking and unlinking are
-available in the web and desktop clients.
+of additional links; hover a badge to see every linked pull request.
 
 Open linked pull requests refresh on the server; closed ones refresh periodically so reopening one
 on the host is detected. A settled thread's pull requests stop refreshing until you unsettle it.
@@ -115,7 +113,7 @@ terminal. An open or unsynced link keeps it active.
 Ask the agent to watch, monitor, or babysit a pull request and it calls `watch_pull_request`. While
 the thread is active, the server checks the pull request every two minutes and wakes the agent when a
 check fails, the required checks pass, someone else comments or reviews, or the branch starts to
-conflict. Threads in a project that watch the same pull request share one check. On GitHub, a check
+conflict. Threads in a project that watch the same pull request share one check. A check
 first asks whether anything changed and reads the pull request only when it did, which keeps
 watching inside GitHub's rate limit. Comments from your own account do not wake it. Watching ends
 when the pull request merges or closes, after 10 wakes in a row that bring only comments, after 8

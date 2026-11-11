@@ -7,14 +7,9 @@ whether a turn runs. This page lists the decisions and evidence a new driver nee
 
 ## Choose the integration shape
 
-- **ACP agents** start as [ACP Registry](../user/providers-acp.md) entries, which follow the ACP
-  spec with no per-agent handling. An agent gets a dedicated driver only when it needs behavior the
-  spec does not cover, and then it is a small flavor over the
-  [shared ACP adapter](../../packages/provider-acp/src/server/adapter.ts), like Grok
-  and Antigravity. Never add agent-id checks to the generic registry adapter.
-- **Other protocols** get a native adapter that implements
-  [`ProviderAdapterV2`](../../packages/provider-core/src/server/ProviderAdapter.ts), like Codex,
-  Claude, Cursor, OpenCode, Pi, and Muse.
+Codenine ships two providers, Codex and Claude. Each has a native adapter that implements
+[`ProviderAdapterV2`](../../packages/provider-core/src/server/ProviderAdapter.ts) and speaks the
+provider's own protocol. A new provider gets its own adapter in the same way.
 
 Provider-specific behavior stays in the adapter and driver. Orchestration and clients read
 capabilities, never the driver kind.
@@ -26,8 +21,7 @@ capabilities, never the driver kind.
   falls back, for example to portable context handoff for forks. A capability left on that fails
   at runtime is a bug.
 - **Permission modes.** Offer only modes the provider enforces natively, through
-  `supportedRuntimeModes` in the provider presentation ([Grok](../../packages/provider-grok/src/server/status.ts)
-  and [Pi](../../packages/provider-pi/src/server/status.ts) are examples). Do not imitate a missing
+  `supportedRuntimeModes` in the provider presentation. Do not imitate a missing
   mode by answering approvals in Codenine: Codenine's check is weaker than the agent's own enforcement. The
   server runs an unoffered stored mode as Supervised
   ([`RuntimePolicy.ts`](../../apps/server/src/orchestration-v2/RuntimePolicy.ts)).
@@ -103,26 +97,26 @@ produce catches them.
 
 ## Where a driver plugs in
 
-A provider lives in its own `packages/provider-<name>` package, with
-[Pi](../../packages/provider-pi) as the reference. Drivers not moved yet still live in
-[`provider/Drivers`](../../apps/server/src/provider/Drivers).
+Codex and Claude live in the server: their drivers in
+[`provider/Drivers`](../../apps/server/src/provider/Drivers) and their adapters in
+[`orchestration-v2/Adapters`](../../apps/server/src/orchestration-v2/Adapters).
+[`packages/provider-core`](../../packages/provider-core) holds the driver and adapter contracts.
 
-- **Package exports.** `./settings` holds the instance settings schema, built with
-  `makeProviderSettingsSchema` from contracts. `./client` exports a `ProviderClientDefinition`
-  (label, settings schema, plain-data icon, badge) and must stay browser- and React Native-safe.
-  `./server` exports the `ProviderDriver` and its adapter driver. `./testing` exposes internals
-  the server's replay testkits drive; testkits that need the orchestrator stay in the server.
-  Settings live in `providerInstances`; new providers are off by default.
-- **Package boundaries.** Server code imports only `@codenine/provider-core/server/*`, contracts,
-  and shared. It reaches the server through `ProviderHost` (paths, settings, background demand,
-  attachments, stored credentials), never through `apps/server`. Tests use `@codenine/provider-testing`.
+- **Package boundaries.** Code written against provider-core imports only
+  `@codenine/provider-core/server/*`, contracts, and shared. It reaches the server through
+  `ProviderHost` (paths, settings, background demand, attachments, stored credentials), never
+  through `apps/server`. That boundary lets a provider live in its own package; no provider is
+  packaged that way today. Tests use `@codenine/provider-testing`.
+- **Settings.** The instance settings schema is built with `makeProviderSettingsSchema` from
+  contracts. Settings live in `providerInstances`; new providers are off by default.
 - **Server registration:** the driver's entry in
   [`builtInDrivers.ts`](../../apps/server/src/provider/builtInDrivers.ts). The driver carries its
   adapter driver. Also its position in the [status order](../../apps/server/src/provider/providerStatusCache.ts), a
   compatibility policy in [`model-manifest.json`](../../apps/server/src/provider/model-manifest.json)
   (bump `updatedAt`; see [model manifest](./model-manifest.md)), and its default model in contracts.
-- **Client registration:** the client definition in the web and mobile provider registries, and
-  settings search terms. Clients draw the package icon; do not add a per-driver icon branch.
+- **Client registration:** the `ProviderClientDefinition` (label, settings schema, plain-data icon,
+  badge) in the web provider registry, and settings search terms. The client draws the definition's
+  icon; do not add a per-driver icon branch.
 - **Docs:** a `docs/user/providers-<name>.md` guide in the product's voice, a row in the
   [install](../user/install.md#providers) table, and any provider difference that changes the
   [permission modes](../user/permission-modes.md) page.

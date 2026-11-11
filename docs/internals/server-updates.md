@@ -1,5 +1,8 @@
 # Server updates
 
+Updates install releases, and no releases are published: the paths below stay idle until a
+deployer names where releases come from. See [Releases](../operations/release.md).
+
 A [stable launcher](../../apps/server/src/serviceLauncher.ts) owns the runtime
 selected by systemd or launchd. It is the only runtime writer of durable service
 state. Server children request updates over inherited IPC; they never rewrite

@@ -1,6 +1,7 @@
 # Client Runtime
 
-Shared client behavior for web and mobile. Public APIs are organized by package
+Client behavior kept out of the React app: connections, authorization, and shared state. The web
+and desktop clients use it. Public APIs are organized by package
 subpath. The package intentionally has no root export.
 
 ## Public subpaths

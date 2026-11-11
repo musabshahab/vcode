@@ -118,18 +118,6 @@ Codex replay transcript
 Claude replay transcript
   -> Claude Agent SDK query() outbound options and yielded SDKMessage chunks
   -> consumed by ClaudeAdapter
-
-Cursor replay transcript
-  -> Cursor Agent SDK open/send calls and ordered onDelta/run results
-  -> consumed by CursorAdapter
-
-OpenCode replay transcript
-  -> OpenCode SDK requests/responses plus ordered SSE events
-  -> consumed by OpenCodeAdapter
-
-ACP replay transcript
-  -> logical JSON-RPC requests/responses/notifications over a strict NDJSON peer
-  -> consumed by AcpAdapter and a provider flavor (Grok or ACP Registry)
 ```
 
 Fixtures should preserve raw provider evidence as closely as possible. Expected V2 events or projections are assertions, not fixture input.
@@ -139,21 +127,9 @@ call. A transcript should include the `query` prompt/options we sent and then re
 `SDKMessage` chunks in provider order. This intentionally tests the V2 adapter against real Claude
 SDK output; it does not test the SDK's own subprocess or transport parser.
 
-ACP fixtures run against a child-process replay peer that validates every outbound frame and
-serves recorded inbound frames. This replaces only the external ACP driver transport; the shared
-runtime, adapter normalization, orchestration, persistence, and projections remain production code.
-The generic ACP Registry harness retargets protocol-standard ACP transcripts;
-provider-extension transcripts remain scoped to the flavor that owns the extension.
-
-OpenCode fixtures replace the SDK client at its HTTP/SSE boundary. They must preserve races between
-request responses and SSE events, because user messages and terminal `session.status` events can
-arrive before the corresponding `promptAsync` or `abort` response. Subagent fixtures must retain
-both parent and child session ids so root-only terminal behavior remains testable.
-
 Provider transcript recorders live with the server orchestration testkit, not with provider client
 packages. Use `bun run record:codex-replay -- --scenario <name>` for Codex app-server transcripts
-and `bun run record:claude-replay -- --scenario <name>` for Claude Agent SDK transcripts. Use
-`pnpm --filter codenine record:cursor-replay --scenario <name>` for Cursor Agent SDK transcripts.
+and `bun run record:claude-replay -- --scenario <name>` for Claude Agent SDK transcripts.
 
 ## Contract Test Levels
 
@@ -225,7 +201,7 @@ Testing infrastructure should be built before production rewrites:
 2. Effect service definitions.
 3. provider runtime transport abstraction.
 4. generic replay runtime.
-5. Codex, Claude, Cursor, OpenCode, and ACP transcript loaders for app-owned provider replay fixtures.
+5. Codex and Claude transcript loaders for app-owned provider replay fixtures.
 6. projection reducer tests for core invariants.
 7. full command-to-projection integration tests.
 8. production layers.

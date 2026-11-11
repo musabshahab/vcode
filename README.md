@@ -1,137 +1,98 @@
 # Codenine
 
-Codenine is an "agent harness control surface". It enables control of the agents on your machine with a best-in-class mobile app ([iOS](https://apps.apple.com/us/app/codenine-remote-claude-more/id6787819824), [Android](https://play.google.com/store/apps/details?id=com.codenine.app)), [web app](https://app.t3.codes) and [Electron-based desktop app](https://t3.codes).
+Codenine runs a team of coding agents on one codebase. A lead agent receives the task and proposes
+a team of subagents. Each subagent runs on Codex or Claude Code with a recommended model and
+effort. You can add or remove agents and change each one's model or effort before the team starts.
 
-Works with your subscriptions on Claude Code, Codex, Cursor, Grok Build, OpenCode, Google Antigravity, and fx. If they're set up on your computer, Codenine can control them.
+Switching models in the middle of a Claude Code or Codex session makes the provider read the whole
+session again, which burns usage. Codenine gives each task the model that fits it instead.
 
-## "Wait, what are you selling me?"
+## Status
 
-Nothing. We built Codenine because we wanted the best possible development experience with agents. We were inspired by existing solutions like the Codex desktop app, Conductor, Claude Desktop and Cursor Glass, but none met our bar.
+Codenine is early. Expect bugs and breaking changes.
 
-We wanted something performant, remote-ready, and truly open. If we ever go the wrong direction, we want you to have everything you need to fork and build the editor that you want.
+What works today is the base the team feature will be built on:
 
-## Installation
+- Codex and Claude Code threads, using the subscriptions or API keys already set up on your machine
+- Delegation to subagents through the orchestrator MCP tools
+- Checkpoints and diffs for each turn
+- A terminal, Git worktrees, pull request creation and pull request status
+- A desktop app (Electron) and a web app that mirrors it
 
-> [!WARNING]
-> Codenine currently supports Codex, Claude, Cursor, Grok Build, OpenCode, Antigravity, and fx. Install and authenticate at least one provider before use:
->
-> - Codex: install [Codex CLI](https://developers.openai.com/codex/cli) and run `codex login`
-> - Claude: install [Claude Code](https://claude.com/product/claude-code) and run `claude auth login`
-> - Cursor: install [Cursor CLI](https://cursor.com/cli) and run `agent login`
-> - Grok Build: install [Grok Build CLI](https://x.ai/cli) and run `grok login`
-> - OpenCode: install [OpenCode](https://opencode.ai) and run `opencode auth login`
-> - Antigravity: enable it in Settings, then use **Install Antigravity** and **Sign in with Google**. No CLI is required.
-> - fx: install [fx](https://fx.sh) and run `fx login` on the machine running the Codenine server ([setup guide](./docs/user/providers-fx.md))
+What is coming: the team feature itself (the lead proposing a team, the roster you can edit, and
+handoffs between agents) is not built yet. A terminal app is planned next. More providers, such as
+OpenRouter models, may follow.
 
-### Command line
+Codenine is self-hosted. There is no hosted service, no website, and no published release yet, so
+running from source is the supported way to use it. Codenine Connect, the remote-connection
+service, is still in the code but stays off unless you deploy and configure
+[your own relay](./docs/operations/connect-setup.md).
 
-```bash
-curl -fsSL https://t3.codes/install.sh | sh
-```
+## Run from source
 
-On Windows, in PowerShell:
+You need:
 
-```powershell
-irm https://t3.codes/install.ps1 | iex
-```
+- Git
+- [Vite+](https://viteplus.dev/guide/) (`vp`). It provides the Node version pinned in
+  `package.json` (Node 26), so you do not install Node yourself.
+- At least one provider, installed and signed in on the same machine:
+  - Codex: install the [Codex CLI](https://developers.openai.com/codex/cli) and run `codex login`
+  - Claude: install [Claude Code](https://claude.com/product/claude-code) and run
+    `claude auth login`
 
-Then run `codenine` to start the server and open the local web app. `codenine service install` keeps it running in the background, `codenine update` moves to a newer release, and `codenine --help` has the full reference.
-
-To try it once without installing, run `npx codenine@latest`. It offers to install the `codenine` command for you.
-
-### Desktop app
-
-Install the latest version of the desktop app from [GitHub Releases](https://github.com/pingdotgg/t3code/releases), or from your favorite package registry:
-
-#### Windows (`winget`)
-
-```bash
-winget install Codenine.Codenine
-```
-
-#### Windows (`scoop`)
-
-```bash
-scoop install extras/codenine
-```
-
-#### macOS (Homebrew)
-
-```bash
-brew install --cask codenine
-```
-
-#### Debian, Ubuntu (`.deb`)
-
-Download the `.deb` from [GitHub Releases](https://github.com/pingdotgg/t3code/releases), then:
-
-```bash
-sudo apt install ./Codenine-*.deb
-```
-
-#### Nix (nixpkgs)
-
-```bash
-nix profile add github:NixOS/nixpkgs/nixos-unstable#codenine
-```
-
-The package is maintained in [nixpkgs](https://github.com/NixOS/nixpkgs/tree/nixos-unstable/pkgs/by-name/codenine/codenine)
-and includes the desktop app (`codenine-desktop`) and the `codenine` command.
-See [Nix installation](./docs/user/install.md#nix-nixpkgs) for NixOS configuration and updates.
-
-## Some notes
-
-We are very very early in this project. Expect bugs.
-
-We are (mostly) not accepting contributions yet. Small fixes may be considered. Big features will not be.
-
-## Documentation
-
-Full docs live in [docs/](./docs). There's no docs site yet.
-
-- [FAQ](./docs/user/faq.md)
-- [Install and first run](./docs/user/install.md)
-- [Permission modes](./docs/user/permission-modes.md)
-- [Keyboard shortcuts](./docs/user/keybindings.md)
-- [Project settings](./docs/user/project-settings.md)
-- [Appearance preferences](./docs/user/appearance.md)
-- [Remote access from a phone or another machine](./docs/user/remote-access.md)
-- [Connect Claude Code, Codex, ChatGPT and other agents over MCP](./docs/user/outside-agents.md)
-- [Keeping app and server in sync](./docs/user/updating.md)
-- [Source control integrations](./docs/user/source-control.md)
-- Multiple accounts: [Codex](./docs/user/providers-codex.md) · [Claude](./docs/user/providers-claude.md)
-- [Run Codenine as a background service](./docs/user/background-service.md)
-
-Building from source? Start at [docs/internals/overview.md](./docs/internals/overview.md).
-
-## If you REALLY want to contribute still.... read this first
-
-### Install `vp`
-
-Codenine uses Vite+ so you'll need to install the global `vp` command-line tool.
-
-#### macOS / Linux
+Install `vp` on macOS or Linux:
 
 ```bash
 curl -fsSL https://vite.plus | bash
 ```
 
-#### Windows
+On Windows, in PowerShell:
 
-```bash
+```powershell
 irm https://vite.plus/ps1 | iex
 ```
 
-Checkout their getting started guide for more information: https://viteplus.dev/guide/
-
-### Install dependencies
+Then clone and start the server and the web app:
 
 ```bash
+git clone https://github.com/musabshahab/vcode.git
+cd vcode
 vp i
+vp run dev
 ```
 
-Read [CONTRIBUTING.md](./CONTRIBUTING.md) before reporting a bug or opening a PR.
+Open the pairing URL that the dev runner prints. The bare address does not sign in a new browser.
 
-Have a feature request? Start an [Ideas discussion](https://github.com/pingdotgg/t3code/discussions/categories/ideas).
+For the desktop app, run `vp run dev:desktop` instead. To build once and run the built server
+without the dev tooling, run `vp run build` and then `vp run start`.
 
-Need support? Join the [Discord](https://discord.gg/jn4EGJjrvv).
+[Install and first run](./docs/user/install.md) covers providers and the command line in more
+detail. [Development](./docs/operations/development.md) covers ports, state directories, checks
+and desktop builds.
+
+## Documentation
+
+The docs live in [docs/](./docs/README.md). There is no docs site.
+
+- [Install and first run](./docs/user/install.md)
+- [Working with threads](./docs/user/thread-sidebar.md)
+- [Messages and context](./docs/user/composer.md)
+- [Permission modes](./docs/user/permission-modes.md)
+- [Source control](./docs/user/source-control.md)
+- [Remote access](./docs/user/remote-access.md)
+- [Outside agents over MCP](./docs/user/outside-agents.md)
+- Providers: [Codex](./docs/user/providers-codex.md) · [Claude](./docs/user/providers-claude.md)
+- [FAQ](./docs/user/faq.md)
+
+To work on Codenine, start with [CONTRIBUTING.md](./CONTRIBUTING.md) and the
+[architecture overview](./docs/internals/overview.md).
+
+## Contributing and support
+
+Report bugs in [issues](https://github.com/musabshahab/vcode/issues) and propose features in
+[discussions](https://github.com/musabshahab/vcode/discussions). Report security problems
+privately, as [SECURITY.md](./.github/SECURITY.md) describes.
+
+## License
+
+[MIT](./LICENSE). Codenine is a fork of [T3 Code](https://github.com/pingdotgg/t3code).

@@ -1,11 +1,11 @@
 # Codenine Connect Relay
 
-> [!NOTE]
-> Sign in to Codenine Connect from the app under Settings > Sharing & access.
+The relay is the control plane for Codenine Connect. It helps clients discover and connect to
+remote environments and manages the cloud-side records needed for those connections.
 
-The relay is the hosted control plane for Codenine Connect. It helps clients discover and connect to
-remote environments, manages the cloud-side records needed for those connections, and delivers
-optional mobile notifications and Live Activities.
+Nobody runs a shared relay. Codenine Connect is off in a build from this repository until you
+deploy this stack to your own Cloudflare account and build Codenine against it. See
+[Codenine Connect setup](../../docs/operations/connect-setup.md).
 
 The relay is intentionally not in the hot path for normal Codenine traffic. After a client connects,
 regular API and WebSocket traffic goes directly between that client and the selected environment.
@@ -19,10 +19,13 @@ The relay currently owns:
 - Linking Codenine environments to a cloud account.
 - Provisioning and tracking managed environment endpoints.
 - Issuing short-lived credentials used to connect clients to linked environments.
-- Listing linked environments and registered mobile devices for an account.
-- Registering mobile notification preferences and APNs or FCM tokens.
-- Receiving published agent activity and delivering notifications or Live Activity updates.
+- Listing linked environments for an account.
+- Receiving published agent activity.
 - Persisting relay state and exposing relay-specific traces for diagnostics.
+
+The stack also still carries code for a mobile app that this repository no longer has: device
+registration, APNs and FCM push delivery, and mobile telemetry ingestion. No Codenine client
+receives those notifications.
 
 The environment server and relay have separate credentials and trust boundaries. Read
 [Environment Authentication Profile](../../docs/internals/environment-auth.md) before changing token,
@@ -36,8 +39,8 @@ credential, or authorization behavior.
   boundaries.
 - [`src/environments`](./src/environments) contains environment linking, credentials, endpoint
   provisioning, and connection flows.
-- [`src/agentActivity`](./src/agentActivity) contains mobile device registration, activity state,
-  APNs and FCM delivery, and queue processing.
+- [`src/agentActivity`](./src/agentActivity) contains activity state, the unused device
+  registration and push delivery, and queue processing.
 - [`src/auth`](./src/auth) contains relay token and DPoP proof handling.
 - [`src/persistence/schema.ts`](./src/persistence/schema.ts) defines persisted relay state. Keep
   schema and migration changes together.
@@ -64,11 +67,10 @@ To run a smaller test set while iterating:
 vp test run src/environments/EnvironmentLinker.test.ts
 ```
 
-Before considering a change complete, run the repository-wide checks from the root:
+Before considering a change complete, run the checks for your changed files from the root:
 
 ```sh
-vp check
-vp run typecheck
+vp run check:changed
 ```
 
 Backend changes should include tests. Prefer testing the real business logic with external
@@ -86,14 +88,13 @@ vp run --filter codenine-relay deploy
 The stack provisions the Cloudflare Worker and queues, managed endpoint resources, database
 connectivity, and relay tracing resources. Copy [`infra/relay/.env.example`](./.env.example) to
 `infra/relay/.env` and fill in the deployment-specific values before deploying. Alchemy loads that
-file from the relay directory. Runtime secrets include Clerk, APNs, and optional FCM credentials. Set
-`APNS_ENABLED=false` for an Android-only development deployment without Apple credentials. Production adopts
+file from the relay directory. Runtime secrets include Clerk credentials. Set
+`APNS_ENABLED=false` to deploy without Apple push credentials. Production adopts
 the configured API and tunnel DNS zones as retained Cloudflare resources. Personal stages reference
 the production-owned zones.
 
-The `prod` Alchemy stage owns the retained PlanetScale database and is the shared hosted relay for
-stable and nightly clients. Every other stage references that database and provisions an isolated
-PlanetScale branch and runtime role for local development, so deploy `prod` before creating
+The `prod` Alchemy stage owns the retained PlanetScale database. Every other stage references
+that database and provisions an isolated PlanetScale branch and runtime role for local development, so deploy `prod` before creating
 developer stages:
 
 ```sh
@@ -103,8 +104,8 @@ vp run --filter codenine-relay deploy -- --env-file .env.local
 
 Alchemy defaults personal deployments to the `dev_$USER` stage. Relay custom domains apply the same
 DNS-safe sanitization as Alchemy physical resource names, so `prod` uses
-`relay.<RELAY_API_ZONE_NAME>` and `dev_julius` uses
-`relay-dev-julius.<RELAY_API_ZONE_NAME>`. Managed environment endpoints are provisioned below
+`relay.<RELAY_API_ZONE_NAME>` and `dev_sam` uses
+`relay-dev-sam.<RELAY_API_ZONE_NAME>`. Managed environment endpoints are provisioned below
 `RELAY_TUNNEL_ZONE_NAME`, which may be a different Cloudflare zone. Production tunnel hostnames use
 `prod-<digest>.<RELAY_TUNNEL_ZONE_NAME>`; personal stages use
 `<stage>-<digest>.<RELAY_TUNNEL_ZONE_NAME>`. `RELAY_DOMAIN` remains available as an explicit API
@@ -115,11 +116,11 @@ deployed relay URL and tracing configuration into the repository-root `.env`, so
 builds point at the relay that was just deployed without copying values manually. It runs only when
 one of those outputs changed, and `CODENINE_RELAY_CLIENT_CONFIG_ENV` redirects it to another file.
 
-### Deployment CI
+### Deployment settings
 
-The relay is versioned separately from client releases. This fork has no deployment workflow for
-it; the upstream ones deployed to Codenine's accounts. Deploy stages locally with Alchemy, using any
-stage name other than `prod` for personal stages.
+The relay is versioned separately from the clients. This repository has no deployment workflow
+for it. Deploy stages locally with Alchemy, using any stage name other than `prod` for personal
+stages.
 
 A deployment reads these variables from its environment:
 
@@ -146,19 +147,11 @@ A `prod` deployment also reads:
 - `CLERK_PUBLISHABLE_KEY`
 - `CLERK_JWT_AUDIENCE`
 - `CLERK_JWT_TEMPLATE`
-- `APNS_ENVIRONMENT`
-- `APNS_TEAM_ID`
-- `APNS_KEY_ID`
-- `APNS_BUNDLE_ID`
+- `APNS_ENABLED=false`, unless you supply the `APNS_*` values for the unused push delivery
 
-And these secrets:
+And this secret:
 
 - `CLERK_SECRET_KEY`
-- `APNS_PRIVATE_KEY`
-- `FCM_SERVICE_ACCOUNT` when Android push is enabled
-- `T3CHAT_LINK_SECRET`, optional, shared with T3 Chat's `CODENINE_LINK_SECRET`. Without it the
-  T3 Chat account link is off. Local and preview stages can set `T3CHAT_URL` to point
-  at another T3 Chat deployment; production uses `https://t3.chat`.
 
 The account-scoped repository credentials are consumed by Alchemy while provisioning relay stages; they
 are not bound into the relay Worker. The production deployment uses an Axiom personal access token,

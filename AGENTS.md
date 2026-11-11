@@ -1,55 +1,51 @@
 # Codenine
 
-Codenine is a minimal GUI for coding agents. A Node WebSocket server wraps provider CLIs and agents (Codex, Claude Code, Cursor, Grok, OpenCode, Antigravity, Kiro) and serves web, desktop, and mobile clients.
+Codenine runs a team of coding agents on one codebase. A Node WebSocket server wraps the provider CLIs (Codex and Claude Code) and serves the web and desktop clients. It is a fork of an existing agent GUI, cut down to the base the team feature will be built on.
 
-You can think of Codenine as an open source "bring-your-own-subscription" alternative to apps like Claude Desktop, Codex App, Cursor Glass and Conductor.
+The product goal: a lead agent receives the task and proposes a team of subagents, each on Codex or Claude Code with a recommended model and effort, and the user edits that team before it starts. Each task gets the model that fits it, because switching models mid-session makes a provider re-read the whole session. **The team feature is not built yet.** Today the repo has Codex and Claude threads, delegation to subagents through the orchestrator MCP tools, checkpoints and diffs, the terminal, worktrees, and pull request creation and status. Do not write code or docs that assume the roster, the lead's proposal, or handoffs exist.
 
-## What makes Codenine special?
+## What we do not compromise on
 
-We have over 500,000 users who love Codenine. It's important we maintain the things they love as we continue to iterate on the product. Here's a brief list of the things we can never compromise on.
+### 1. Self-hosted first
 
-### 1. Open at the core
+There is no hosted service, no website, and no published release. Running from source is the supported path. Nothing may call a service we do not run by default: release checks, update feeds, and Codenine Connect (the relay and tunnel code in this repo) stay off until a deployer configures their own.
 
-Codenine is truly open. We share our roadmap, we share how we think about things, and of course we share all our code. A large number of our users run forks. We work in the open, and should strive to stay that way.
+### 2. Performance
 
-### 2. Performance without compromise
-
-Lots of apps have gotten bogged down with bad tech decisions and "slop". We have not, and we're proud of the performance of Codenine. We regularly audit for performance regressions, often caused by sending too much data over websockets, css animations causing gpu spikes, lists being hard to render, and more. Make sure all changes are considerate of performance impact.
+Regressions usually come from sending too much data over websockets, CSS animations that spike the GPU, and lists that are hard to render. Consider the performance impact of every change.
 
 ### 3. Remote ready
 
-The architecture of Codenine's websocket layer (`codenine`) enables a lot of awesome remote features. These have become core to the product. Whether users are connecting directly over their local network, using Tailscale, or leaning in fully with Codenine Connect (our tunnel solution, also in this repo), we need to make sure new features are properly supported.
+A client can drive a server on another machine: over the local network, over Tailscale, over SSH, or through a self-deployed Codenine Connect relay. New features must keep working over those connections.
 
-### 4. Multi-surface
+### 4. Surfaces
 
-Codenine has 3 key app surfaces: **web**, **desktop**, and **mobile**.
+- **Web** is the React app the server hosts. Run it with the `codenine` command or `vp run dev`.
+- **Desktop** is an Electron app that wraps the web app and bundles the server. It can also act as the host that other clients connect to.
+- **CLI** is a terminal app, planned next. It does not exist yet.
 
-**Web** is kind of two surfaces, as we have the public facing "app.t3.codes" as well as locally hosting the web app through the `codenine` command. Both need to be supported by all new features where reasonable.
+There is no mobile app.
 
-**Desktop** is the main surface most users install first. It's a full Electron app that bundles the server runner as well. The desktop app can also be used as the host server, allowing remote connections from app.t3.codes or the mobile app.
+## How to work here
 
-**Mobile** is a React Native app for both iOS and Android, available on the App Store and Google Play. The mobile app allows for connecting to any Codenine server to control work remotely.
+Prefer ambitious ideas, simple systems, and software that feels obvious. Do not preserve complexity just because it already exists. Do not introduce machinery because it looks architecturally impressive. Understand the real constraint, then fight for the smallest model that makes the correct behavior unsurprising.
 
-## A note from Theo
+Channel both "measure twice, cut once" and "yagni". Fight scope creep. Honor the developer's intent in a minimal and realistic way.
 
-I like ambitious ideas, simple systems, and software that feels obvious. Do not preserve complexity just because it already exists. Do not introduce machinery because it looks architecturally impressive. Understand the real constraint, then fight for the smallest model that makes the correct behavior unsurprising.
+The rest of this document helps you navigate the codebase and change it. Treat these instructions as good defaults, not hard rules. The developer's preferences override anything here.
 
-Channel both "measure twice, cut once" and "yagni". Fight scope creep. Try to honor the dev's intent in both a minimal and realistic fashion.
-
-The rest of this document is meant to help you navigate the codebase and make changes effectively. Think of these instructions less as "hard rules", more as "good defaults". The developer's preferences should be able to override anything here.
-
-Of note: Most Codenine contributions will come from Codenine itself, often controlled remotely. This means you should be careful about accessing data, killing dev servers, and other things that may damage the Codenine instance that the contributor is using.
+Most Codenine changes are made from Codenine itself, often controlled remotely. Be careful about accessing data, killing dev servers, and anything else that could damage the Codenine instance the developer is using.
 
 ## A small glossary
 
-We need to be on the same page with terminology. When communicating, use this language:
+Use this language when communicating:
 
 - **you** means the agent reading this file and changing Codenine.
-- **we, us, and maintainers** mean Theo, Julius and the people building Codenine. These are who you are talking to now.
+- **we, us, and maintainers** mean the people building Codenine. These are who you are talking to now.
 - **user** means the person using Codenine to direct coding agents.
 - **agent** means the coding agent a user runs inside Codenine. Depending on context, that may also include you.
-- **provider** means the agent runtime or harness Codenine talks to, such as Codex, Claude, Cursor, or OpenCode.
-- **client** means the web, desktop, or mobile UI.
+- **provider** means the agent runtime or harness Codenine talks to: Codex or Claude.
+- **client** means the web or desktop UI.
 - **environment** means one running Codenine server and the machine, filesystem, provider credentials, and state it owns.
 - **project** means an environment-local workspace record rooted at a directory.
 - **thread** means the durable conversation and work history for a project.
@@ -67,10 +63,10 @@ We need to be on the same page with terminology. When communicating, use this la
 The most common defect in this repo is a change that works on the path you tested and is missing everywhere else. Before calling frontend work done, walk this list and say which entries applied:
 
 - **Entry points.** A behavior reachable from the chat view is usually also reachable from Settings, the command palette, and a keybinding. Fixing one is not fixing the feature.
-- **Clients.** Web, desktop (wraps web, adds Electron shell/IPC), and mobile (React Native, separate navigation). Shared logic lives in `packages/client-runtime`
-- **Providers.** Codex, Claude, Cursor, Grok, OpenCode, Antigravity, and Kiro each have an adapter. Provider-shaped features need a decision per adapter, even if the decision is "not supported here".
+- **Clients.** Web and desktop (wraps web, adds Electron shell/IPC). Shared client logic lives in `packages/client-runtime`.
+- **Providers.** Codex and Claude each have an adapter. Provider-shaped features need a decision per adapter, even if the decision is "not supported here".
 - **Agents.** A capability a user can trigger is usually one an agent should reach through MCP tools. That only works when it is a service method, not handler code.
-- **Contracts.** Anything crossing the wire is typed in `packages/contracts`. Change the schema and the server, web, mobile, and desktop all follow.
+- **Contracts.** Anything crossing the wire is typed in `packages/contracts`. Change the schema and the server, web, and desktop all follow.
 - **Reverse states.** If you added a way in, add the way out and the way to see it. Snooze needs unsnooze. Close needs reopen. A one-way door is a bug.
 - **Connection modes.** Local, remote/relay, and tunnel behave differently. Multi-device and multi-environment cases are real.
 - **Docs.** Check whether the change makes existing guidance inaccurate. Apply the [documentation rules](#documentation) before adding anything.
@@ -91,7 +87,7 @@ The most common defect in this repo is a change that works on the path you teste
 An empty database is a bad test. Seed your worktree's `.codenine` with a copy of real data instead of pointing at live state:
 
 - The first `vp run dev` in a worktree does this for you when its database is missing and the source is at most 500 MiB. Larger sources warn and dev starts with an empty database. `--no-seed` or `CODENINE_DEV_SEED=0` skips seeding. Manual migration still accepts larger sources and may use substantial disk space before pruning.
-- Run `vp run migrate-dev-db` with your dev server stopped to refresh. It rebuilds `<worktree>/.codenine/userdata/statev2.sqlite` from a read-only snapshot of `~/.codenine/userdata/statev2.sqlite`, the developer's real data. It keeps recent projects and their stopped threads, and drops scheduled tasks, pending work, auth sessions, and links to other environments, so your dev server never runs the developer's agents or reaches their other machines. Raise `--projects` and `--threads-per-project` for more data.
+- Run `vp run migrate-dev-db` with your dev server stopped to refresh. It rebuilds `<worktree>/.codenine/userdata/statev2.sqlite` from a read-only snapshot of `~/.codenine/userdata/statev2.sqlite`, the developer's real data. It keeps recent projects and their stopped threads, and drops pending work, auth sessions, and links to other environments, so your dev server never runs the developer's agents or reaches their other machines. Raise `--projects` and `--threads-per-project` for more data.
 - Refresh `statev2.sqlite`, not `state.sqlite`. The server copies the V1 `state.sqlite` only when `statev2.sqlite` is missing.
 - Bring `secrets` and `settings.json` only if the flow under test needs them.
 - Copy in, never symlink. Data flows one way: into your sandbox, never back out.
@@ -104,7 +100,7 @@ An empty database is a bad test. Seed your worktree's `.codenine` with a copy of
 - Run `node -e` snippets from `apps/server` or the owning package. `effect` does not resolve from the repo root.
 - Test behavior that can break, such as orchestration and event-sourcing, provider protocol translation, auth and permission guards, persistence and migrations, external-format parsing, race fixes, and the logic a bug fix changed. Leave out tests for what types already guarantee, trivial logic, copy text, smoke runs, mock-call mirrors, callback wiring, and props rendered to static markup.
 - Extend before you add. When an existing test or table covers the behavior, add a row or an assertion there. Write a new `it` only when no case fits.
-- Test at one layer: the lowest one that fails on `main`. Do not repeat the case in a wrapper test, at each call site, or in web and mobile copies of the same logic.
+- Test at one layer: the lowest one that fails on `main`. Do not repeat the case in a wrapper test or at each call site.
 - [Testing](docs/internals/testing.md) carries these same test rules, plus review guidance, for review bots. Change both together.
 - **Do not run repo-wide checks.** No `vp check`, no `vp run -r test`, no `vp run -r typecheck` unless I ask. CI owns the full suite.
 - Backend behavior changes ship with focused tests for that behavior.
@@ -135,25 +131,22 @@ An empty database is a bad test. Seed your worktree's `.codenine` with a copy of
   });
   ```
 
-- User-visible frontend changes should get one integrated pass in a real client: `test-codenine-app` for web, `test-codenine-mobile` for mobile. The primary agent does this once after integrating. Subagents do not launch their own dev servers.
+- User-visible frontend changes should get one integrated pass in a real client; the [test-codenine-app](.agents/skills/test-codenine-app/SKILL.md) skill describes it. The primary agent does this once after integrating. Subagents do not launch their own dev servers.
 
-- Real agent turns cost money. To watch a turn stream through the pipeline and UI, use the free `Replay (dev)` provider that `vp run dev` registers; [test-codenine-app](.agents/skills/test-codenine-app/SKILL.md) shows how to start one. Use a real provider only when the change depends on that provider's behavior, and then pick its cheapest model, such as Haiku for Claude or Luna for Codex.
-
-For mobile verification, a missing or outdated native client is an install step, not a blocker. Run `vp run mobile:install <ios|android> [device-id]` on the device host before starting Metro; it targets the only booted simulator or connected Android device when the id is omitted. It installs the dev client for this checkout's native fingerprint from the shared cache in seconds and builds only when no machine has built it yet, so prefer it over `expo run:*`, `xcodebuild`, or `gradlew`, which rebuild from scratch. Its stdout is one JSON line; build output goes to the log it names. See `test-codenine-mobile` for the full workflow.
+- Real agent turns cost money, and there is no free provider. Cover provider behavior with the recorded replay fixtures in the server tests where you can. Run a real turn only when the change depends on it, and then pick the provider's cheapest model.
 
 ## Evals
 
-`evals/` checks how real models behave with Codenine's model-facing text: agent instructions, MCP tool descriptions and schemas, and generated titles. Before you change that text, read [evals/README.md](evals/README.md) and run the evals it names. When you fix a model behavior bug, add a case that fails before the fix.
+`evals/` checks how real models behave with Codenine's model-facing text: agent instructions and MCP tool descriptions and schemas. Before you change that text, read [evals/README.md](evals/README.md) and run the evals it names. When you fix a model behavior bug, add a case that fails before the fix.
 
 ## Pull requests
 
 - Never make a PR unless the developer explicitly asks you to do so.
-- If `origin` is git.cafe, follow [GitCafe mirror](docs/operations/development.md#gitcafe-mirror-optional): push to `origin`, open and track PRs with `cafe` and their git.cafe URLs, and keep `gh` for merging.
 - Conventional commit titles, plain language: `fix(web): new threads no longer spike CPU`.
 - Body: the problem in a sentence or two, then how you fixed it. End with the model and harness that did the work.
 - UI changes need before/after images. Motion or timing needs a short video.
 - Upload PR evidence to GitHub. Never commit PR-only screenshots or assets such as `.github/pr-assets/`.
-- One request is one PR. Split it only when the maintainer asks. Outside contributions follow the stricter [one problem per PR](CONTRIBUTING.md#one-problem) rule.
+- One request is one PR. Split it only when the maintainer asks. [CONTRIBUTING.md](CONTRIBUTING.md) has the rest of the PR checklist.
 - When babysitting: call `watch_pull_request` and end your turn. Codenine wakes you on checks, comments, or conflicts. Do not poll or sleep. Verify each bot finding against the source, fix real ones, dismiss false positives with a written reason. Stay quiet when nothing is new. Stop when the bots are green on the latest commit.
 
 ## Documentation
@@ -171,7 +164,7 @@ Most code changes do not need an internal documentation change. Agents can read 
 ## Plans and work artifacts
 
 - Do not commit implementation plans, research notes, or agent scratch files. Keep temporary working material outside the worktree. `.plans/` is gitignored only as a safety net for legacy tooling.
-- Track active maintainer work in the GitHub issue or project item that owns it. External proposals follow `CONTRIBUTING.md` and belong in Ideas discussions.
+- Track active maintainer work in the GitHub issue or project item that owns it. External proposals follow `CONTRIBUTING.md` and belong in GitHub Discussions.
 - A merged PR is the implementation record. Close or update its tracking item when the work lands; do not preserve a second checklist in the repository.
 
 ## How it works
@@ -183,11 +176,11 @@ Architecture and its constraints: `docs/internals/overview.md`. Glossary: `docs/
 ## Where code lives
 
 - `apps/server` - WebSocket, orchestration, providers, checkpointing. Effect-heavy: read [Effect services](docs/internals/effect-services.md) before adding server code, and `.repos/effect/LLMS.md` for the Effect library itself.
-- `apps/web` - React/Vite UI. `apps/desktop` wraps it, `apps/mobile` is React Native, `apps/marketing` is the site.
+- `apps/web` - React/Vite UI. `apps/desktop` wraps it in Electron.
 - `packages/contracts` - Effect/Schema contracts plus small derived helpers. No heavy runtime logic.
 - `packages/shared` - shared runtime utils, subpath exports, no barrel.
-- `packages/client-runtime` - client code shared by web and mobile.
-- `.repos/` - vendored read-only references. Prefer their patterns over invented ones. Never edit or import from them. Sync with `vpr sync:repos` when bumping the matching dependency. If it is missing (sparse checkout), read a file with `git show origin/main:.repos/<path>`.
+- `packages/client-runtime` - client connection and state logic, kept out of the React app.
+- `.repos/` - vendored read-only references. Prefer their patterns over invented ones. Never edit or import from them. Sync with `vp run sync:repos` when bumping the matching dependency. If it is missing (sparse checkout), read a file with `git show origin/main:.repos/<path>`.
 
 ## Taste
 
@@ -204,7 +197,7 @@ Architecture and its constraints: `docs/internals/overview.md`. Glossary: `docs/
 - Inferred types over annotations. `any` is the enemy.
 - Default to no comment. Write one only for a constraint, an external quirk, or an invariant the code can't show, in one line where you can and four at most. Don't restate names or signatures, narrate steps, record history, or explain the fix you just made; the PR carries that. `codenine/no-low-value-comments` enforces the length cap and the mechanical cases.
 - React effects are for synchronizing with something outside React. Derive in render and act in handlers instead of syncing state, but don't hide real lifecycle work in refs or stores to dodge one. The `codenine/no-unreasoned-state-sync` lint rule reports every effect; one that stays states its reason with `// oxlint-disable-next-line codenine/no-unreasoned-state-sync -- <why>`.
-- Our users drive agents all day and notice a dropped frame, a lying spinner, and a stale label. No continuously repainting animations; they peg the GPU on high-refresh displays.
+- Users drive agents all day and notice a dropped frame, a lying spinner, and a stale label. No continuously repainting animations; they peg the GPU on high-refresh displays.
 - If a rule here fights the task in front of you, say so loudly and get a human sign-off before breaking it.
 
 ## Additional tips

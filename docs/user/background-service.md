@@ -3,9 +3,14 @@
 On Linux and macOS, Codenine can run as a service for your user so you do not need
 to keep a terminal open.
 
+The service runs a Codenine release that it downloads as an archive. No releases are published
+yet, so installing the service works only with
+[release archives you host](../operations/release.md). Without them, keep `codenine serve`
+running in a terminal instead.
+
 ## Manage the service
 
-Install the `codenine` CLI first ([Install Codenine](./install.md#command-line)), then
+Get the `codenine` command first ([Install Codenine](./install.md#the-codenine-command)), then
 run these commands on the machine that will host Codenine:
 
 | Task                                  | Command                      |
@@ -22,8 +27,9 @@ Uninstalling the service leaves your projects, threads, and settings intact.
 Running `codenine service install` again repairs a service that `codenine service status`
 reports as broken.
 
-`codenine update` downloads the newest release on your channel and switches `codenine`
-and the service to it. Restarting interrupts running agent turns, terminals,
+`codenine update` downloads the newest release and switches `codenine`
+and the service to it. It reports that release checks are off until `CODENINE_RELEASE_REPOSITORY`
+names where releases come from. Restarting interrupts running agent turns, terminals,
 and remote clients, so it asks first; answer no and the service keeps running
 the old version until you run `codenine service restart`. Pass `--yes` from a
 script. A server you started by hand is left running; stop and start it again
@@ -31,11 +37,8 @@ to pick up the new version. Wait for any remote update already in progress
 before updating; to match a remote client's version, follow
 [Updating Codenine](./updating.md).
 
-Pass an exact version (`codenine update 0.0.42`) to pin one, `--channel nightly` to
-switch trains, or `--allow-downgrade` to move backwards. `preview` is a
-maintainers' test train: its builds can be broken and are never offered as
-updates, so the installer and `codenine update` ask for confirmation before
-installing one.
+Pass an exact version (`codenine update 0.0.42`) to pin one, or `--allow-downgrade` to move
+backwards.
 
 `codenine uninstall` removes the background service, the `codenine` launcher, and the
 downloaded versions after showing you the list and asking once. Your projects,
@@ -47,11 +50,10 @@ under Codenine home. Pass `--yes` from a script.
 A new service answers only on this machine. Other devices reach it through
 Codenine Connect, or directly once you choose the local network in `codenine up` (or run
 `codenine up --lan`, which sets `CODENINE_LAN=true` in `service.env`). It then listens on
-your local network and Tailscale addresses, so the desktop and mobile apps on
-the same network connect directly instead of through Codenine Connect. It still does
+your local network and Tailscale addresses, so a desktop app or browser on
+the same network connects directly instead of through Codenine Connect. It still does
 not answer on public addresses. Anyone on the same network can reach the port,
-so a pairing code is all that keeps them out. The hosted web app at app.t3.codes
-stays on Codenine Connect, because browsers block plain HTTP from an HTTPS page.
+so a pairing code is all that keeps them out.
 
 A service installed before `CODENINE_LAN` existed keeps listening on the local
 network. `codenine status` says so, and `codenine up --no-lan` turns it off. Any
@@ -164,12 +166,11 @@ For failures after signing in to Codenine Connect, see
 Codenine removes internal history older than a day on its own while it runs;
 your conversations are kept. Databases created before this shrank automatically
 still hold the freed space on disk until a one-time offline repair returns it
-and turns on automatic shrinking. Settings > Maintenance (web and desktop) or
-Settings > Maintenance (mobile) suggests the repair when at least 1 GiB can be
-reclaimed.
+and turns on automatic shrinking. **Settings → Maintenance** suggests the repair when at
+least 1 GiB can be reclaimed.
 
 When the desktop app or the background service runs Codenine on that machine,
-select **Reclaim** in Settings on web or desktop. Codenine checks for free disk
+select **Reclaim** in Settings. Codenine checks for free disk
 space, then stops, repairs the database, and starts again. It is offline while
 the repair runs, and running agents stop. If the repair fails, Settings shows
 why.

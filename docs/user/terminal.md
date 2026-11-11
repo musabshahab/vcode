@@ -7,7 +7,7 @@ line can be shortened at the start. New terminal output is not truncated.
 These limits apply when you reconnect and when Codenine restores saved terminal
 history. A client can show less scrollback than the server keeps.
 
-On web and desktop, use Shift+PageUp and Shift+PageDown to read scrollback
+Use Shift+PageUp and Shift+PageDown to read scrollback
 without leaving terminal input. Ctrl+Shift+Home and Ctrl+Shift+End jump to the
 start and latest output; use Cmd instead of Ctrl on macOS. Full-screen terminal
 programs keep these navigation keys.
@@ -16,9 +16,6 @@ To copy all retained output, choose Select all in the terminal's context menu,
 then copy. Cmd+A on macOS and Ctrl+Shift+A elsewhere select the same output.
 Ctrl+A still moves to the beginning of shell input on Windows and Linux.
 Jump to latest in the context menu returns to the current output.
-
-On iPhone and iPad, long-press the terminal to paste or to choose Select Text.
-Select Text shows the visible output, where you can copy text or tap a link.
 
 ## fish
 
