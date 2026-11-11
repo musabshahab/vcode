@@ -428,6 +428,33 @@ it.effect(
         assert.include(brief, "Ship the feature");
         assert.include(brief, "### Task a\nWrote src/a.ts on main.");
         assert.notInclude(brief, "Wrote src/b.ts.");
+
+        // Thread lists group a task thread under its lead from the shell alone.
+        const orchestrator = yield* Orchestrator.OrchestratorV2;
+        const listed = (location: "active" | "archive") =>
+          orchestrator
+            .getShellSnapshot({ location })
+            .pipe(
+              Effect.map((snapshot) =>
+                [...snapshot.threads, ...snapshot.archivedThreads].find(
+                  (shell) => shell.id === dThreadId,
+                ),
+              ),
+            );
+        for (const shell of [
+          yield* orchestrator.getThreadShell(dThreadId),
+          yield* listed("active"),
+          ProjectionStore.threadShellFromProjection(d),
+        ]) {
+          assert.deepEqual(shell?.teamTask, d.thread.teamTask);
+        }
+        assert.isUndefined((yield* orchestrator.getThreadShell(leadThreadId))?.teamTask);
+        yield* dispatch({
+          type: "thread.archive",
+          commandId: CommandId.make("archive-d"),
+          threadId: dThreadId,
+        });
+        assert.deepEqual((yield* listed("archive"))?.teamTask, d.thread.teamTask);
       }),
     ),
 );

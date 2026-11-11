@@ -1688,6 +1688,7 @@ export function threadShellFromProjection(
     opens: projection.thread.opens ?? null,
     titleRegeneration: projection.thread.titleRegeneration ?? null,
     limitRecovery: projection.thread.limitRecovery ?? null,
+    ...(projection.thread.teamTask === undefined ? {} : { teamTask: projection.thread.teamTask }),
     deletedAt: projection.thread.deletedAt,
   };
 }
@@ -1947,6 +1948,7 @@ function shellFromState(input: {
     opens: input.state.thread.opens ?? null,
     titleRegeneration: input.state.thread.titleRegeneration ?? null,
     limitRecovery: input.state.thread.limitRecovery ?? null,
+    ...(input.state.thread.teamTask === undefined ? {} : { teamTask: input.state.thread.teamTask }),
     deletedAt: input.state.thread.deletedAt,
   };
 }
