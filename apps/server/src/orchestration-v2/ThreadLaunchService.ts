@@ -16,6 +16,7 @@ import {
   ProjectId,
   type RunId,
   type RuntimeMode,
+  type TeamTaskRef,
   ThreadId,
 } from "@codenine/contracts";
 import * as Cause from "effect/Cause";
@@ -93,6 +94,8 @@ export interface ThreadLaunchInput {
     };
     readonly metadata?: OrchestrationV2ProviderThreadNativeMetadata;
   };
+  /** The team task the new thread runs. Ignored when the launch reuses a thread. */
+  readonly teamTask?: TeamTaskRef;
   readonly createdBy: OrchestrationV2Actor;
   readonly creationSource: OrchestrationV2CreationSource;
 }
@@ -936,6 +939,7 @@ const make = Effect.gen(function* () {
                 ...(input.importedNativeThread === undefined
                   ? {}
                   : { importedNativeThread: input.importedNativeThread }),
+                ...(input.teamTask === undefined ? {} : { teamTask: input.teamTask }),
                 createdBy: input.createdBy,
                 creationSource: input.creationSource,
               });

@@ -10,8 +10,11 @@ import {
   ProviderUserInputAnswers,
   ProviderThreadId,
   ProviderTurnId,
+  PositiveInt,
   RunId,
   RuntimeRequestId,
+  TeamPlanId,
+  TeamTaskId,
   ThreadId,
 } from "@codenine/contracts";
 import * as Context from "effect/Context";
@@ -113,6 +116,21 @@ export const OrchestrationEffectRequestV2 = Schema.Union([
     type: Schema.Literal("delegated-tasks.stop"),
     reason: Schema.optional(Schema.String),
   }),
+  // Team effects belong to the lead thread, so a task's stop never runs before its launch.
+  Schema.Struct({
+    type: Schema.Literal("team-task.launch"),
+    planId: TeamPlanId,
+    taskId: TeamTaskId,
+    attempt: PositiveInt,
+  }),
+  Schema.Struct({
+    type: Schema.Literal("team-task.stop"),
+    taskThreadId: ThreadId,
+  }),
+  Schema.Struct({
+    type: Schema.Literal("team.lead-wake"),
+    planId: TeamPlanId,
+  }),
 ]);
 export type OrchestrationEffectRequestV2 = typeof OrchestrationEffectRequestV2.Type;
 
@@ -125,6 +143,9 @@ export const REPLAY_SAFE_EFFECT_TYPES_AFTER_PROCESS_LOSS = [
   "attachment.cleanup",
   "thread-title.generate",
   "delegated-tasks.stop",
+  "team-task.launch",
+  "team-task.stop",
+  "team.lead-wake",
 ] as const satisfies ReadonlyArray<OrchestrationEffectRequestV2["type"]>;
 
 export const PROCESS_BOUND_EFFECT_TYPES = [

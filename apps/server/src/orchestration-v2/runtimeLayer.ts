@@ -47,6 +47,7 @@ import * as RuntimeRequestService from "./RuntimeRequestService.ts";
 import * as ThreadManagementService from "./ThreadManagementService.ts";
 import * as ThreadLaunchService from "./ThreadLaunchService.ts";
 import * as ThreadForkService from "./ThreadForkService.ts";
+import * as TeamTaskService from "./TeamTaskService.ts";
 import * as TurnItemPositionStore from "./TurnItemPositionStore.ts";
 import * as SecretRequests from "../secrets/SecretRequests.ts";
 
@@ -255,6 +256,17 @@ const layerThreadLaunchProvided = ThreadLaunchService.layer.pipe(
     ),
   ),
 );
+// Team tasks launch threads, which `layer` does not include, so only production wires them.
+const layerTeamTaskProvided = TeamTaskService.layer.pipe(
+  Layer.provide(
+    Layer.mergeAll(
+      layerThreadLaunchProvided,
+      layerThreadManagementProvided,
+      layerProjectService,
+      GitVcsDriver.layer,
+    ),
+  ),
+);
 const layerSecretRequestsProvided = SecretRequests.layer.pipe(
   Layer.provide(layerThreadManagementProvided),
 );
@@ -326,7 +338,7 @@ export const layerProduction = Layer.mergeAll(
   WorktreeBranchSync.layer.pipe(
     Layer.provide(Layer.merge(layerThreadManagementProvided, ProjectionStore.layer)),
   ),
-  layer.pipe(Layer.provide(layerProjectService)),
+  layer.pipe(Layer.provide(layerProjectService), Layer.provide(layerTeamTaskProvided)),
   layerProjectService,
   layerManagedProjectFoldersProvided,
   layerThreadLaunchProvided,

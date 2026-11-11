@@ -46,6 +46,7 @@ import * as EventSink from "./EventSink.ts";
 import * as Orchestrator from "./Orchestrator.ts";
 import { continueRestartedRun } from "./RestartContinuation.ts";
 import * as RuntimeLayer from "./runtimeLayer.ts";
+import * as TeamTaskService from "./TeamTaskService.ts";
 import * as ThreadCommandExecutor from "./ThreadCommandExecutor.ts";
 import { limitRecoveryCommand } from "./UsageLimitRecoveryWorker.ts";
 import * as ProviderTurnStartServiceTestkit from "./ProviderTurnStartService.testkit.ts";
@@ -115,7 +116,8 @@ const layerTestProviderInstanceRegistry = Layer.succeed(
 );
 
 const layerTest = Layer.mergeAll(
-  RuntimeLayer.layer,
+  // Team tasks launch threads, which the runtime layer leaves to its production wiring.
+  RuntimeLayer.layer.pipe(Layer.provide(Layer.mock(TeamTaskService.TeamTaskService)({}))),
   RuntimeLayer.layerEventSink,
   ThreadCommandExecutor.layer,
 ).pipe(

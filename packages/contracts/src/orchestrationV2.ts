@@ -41,7 +41,15 @@ import {
 import { AuthMcpClientAccess } from "./auth.ts";
 import { ChatAttachment } from "./chatAttachment.ts";
 import { StoredThreadTags, ThreadTag } from "./threadTags.ts";
-import { StoredTeamPlan, TeamTaskRef } from "./team.ts";
+import {
+  StoredTeamPlan,
+  TeamAgentId,
+  TeamDraft,
+  TeamPlanId,
+  TeamTaskId,
+  TeamTaskRef,
+  TeamTaskUsage,
+} from "./team.ts";
 import {
   OrchestrationSearchThreadsInput,
   OrchestrationSearchThreadsResult,
@@ -2880,6 +2888,8 @@ export const OrchestrationV2Command = Schema.Union([
         metadata: Schema.optional(OrchestrationV2ProviderThreadNativeMetadata),
       }),
     ),
+    /** Set by the server when it launches a team task; dropped from a client's command. */
+    teamTask: Schema.optional(TeamTaskRef),
   }),
   Schema.Struct({
     type: Schema.Literal("thread.archive"),
@@ -3308,6 +3318,41 @@ export const OrchestrationV2Command = Schema.Union([
     threadId: ThreadId,
     modelSelection: ModelSelection,
   }),
+  /** Replaces a plan that is proposed or finished; a running plan must be cancelled first. */
+  Schema.Struct({
+    type: Schema.Literal("team.propose"),
+    commandId: CommandId,
+    threadId: ThreadId,
+    goal: TrimmedNonEmptyString,
+    ...TeamDraft.fields,
+  }),
+  Schema.Struct({
+    type: Schema.Literal("team.edit"),
+    commandId: CommandId,
+    threadId: ThreadId,
+    expectedRevision: PositiveInt,
+    ...TeamDraft.fields,
+    maxParallelPerProvider: Schema.optional(PositiveInt),
+  }),
+  Schema.Struct({
+    type: Schema.Literal("team.approve"),
+    commandId: CommandId,
+    threadId: ThreadId,
+    expectedRevision: PositiveInt,
+  }),
+  Schema.Struct({
+    type: Schema.Literal("team.cancel"),
+    commandId: CommandId,
+    threadId: ThreadId,
+  }),
+  /** Runs a failed or cancelled task again in a new thread, on `agentId` when given. */
+  Schema.Struct({
+    type: Schema.Literal("team.task.retry"),
+    commandId: CommandId,
+    threadId: ThreadId,
+    taskId: TeamTaskId,
+    agentId: Schema.optional(TeamAgentId),
+  }),
 ]);
 export type OrchestrationV2Command = typeof OrchestrationV2Command.Type;
 
@@ -3396,6 +3441,18 @@ const OrchestrationV2InternalCommand = Schema.Union([
     placeholder: Schema.optional(Schema.String),
     delivery: Schema.optional(OrchestrationV2SecretRequestDelivery),
     secretStatus: OrchestrationV2SecretRequestStatus,
+  }),
+  /** A team task's thread finished. Internal so no client can report a result for an agent. */
+  Schema.Struct({
+    type: Schema.Literal("team.task.settle"),
+    commandId: CommandId,
+    threadId: ThreadId,
+    planId: TeamPlanId,
+    taskId: TeamTaskId,
+    attempt: PositiveInt,
+    status: Schema.Literals(["completed", "failed", "cancelled"]),
+    result: Schema.String,
+    usage: Schema.optional(TeamTaskUsage),
   }),
 ]);
 export type OrchestrationV2InternalCommand = typeof OrchestrationV2InternalCommand.Type;

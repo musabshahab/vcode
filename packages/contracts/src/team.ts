@@ -14,6 +14,8 @@ export const TEAM_MAX_AGENTS = 8;
 export const TEAM_MAX_TASKS = 16;
 export const TEAM_LABEL_MAX_CHARS = 120;
 export const TEAM_BRIEF_MAX_CHARS = 6_000;
+export const TEAM_RESULT_MAX_CHARS = 4_000;
+export const TEAM_DEFAULT_MAX_PARALLEL_PER_PROVIDER = 2;
 
 export const TeamPlanId = TrimmedNonEmptyString.pipe(Schema.brand("TeamPlanId"));
 export type TeamPlanId = typeof TeamPlanId.Type;

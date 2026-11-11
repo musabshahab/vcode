@@ -17,6 +17,7 @@ import * as CheckpointStore from "../../checkpointing/CheckpointStore.ts";
 import * as ServerConfig from "../../config.ts";
 import * as SqlitePersistence from "../../persistence/Sqlite.ts";
 import * as ServerSettings from "../../serverSettings.ts";
+import * as TeamTaskService from "../TeamTaskService.ts";
 import * as ThreadManagementService from "../ThreadManagementService.ts";
 import * as McpProviderSessions from "@codenine/provider-core/server/McpProviderSessions";
 import * as McpSessionRegistryTestkit from "../../mcp/McpSessionRegistry.testkit.ts";
@@ -272,6 +273,12 @@ export function layerWithRegistry<Error>(
     readonly runContinuationWorker?: boolean;
     readonly recoverOnStartup?: boolean;
     readonly continueThreadsAfterServerUpdate?: boolean;
+    /** Runs team effects. Built on this harness's orchestrator; unset, a team effect dies. */
+    readonly teamTasks?: Layer.Layer<
+      TeamTaskService.TeamTaskService,
+      never,
+      Orchestrator.OrchestratorV2 | ProviderSessionManager.ProviderSessionManagerV2
+    >;
   } = {},
 ): Layer.Layer<
   | Orchestrator.OrchestratorV2
@@ -494,9 +501,15 @@ export function layerWithRegistry<Error>(
           ),
         )
       : Layer.empty;
+  const layerTeamTasksProvided = (
+    options.teamTasks ?? Layer.mock(TeamTaskService.TeamTaskService)({})
+  ).pipe(
+    Layer.provide(Layer.merge(layerOrchestratorProvided, layerProviderSessionManagerProvided)),
+  );
   const layerEffectExecutorProvided = EffectWorker.layerExecutor.pipe(
     Layer.provide(
       Layer.mergeAll(
+        layerTeamTasksProvided,
         layerRunFinalizationServiceProvided,
         layerCheckpointRollbackServiceProvided,
         layerProviderSessionManagerProvided,

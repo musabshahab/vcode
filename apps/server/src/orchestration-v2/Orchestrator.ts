@@ -61,6 +61,7 @@ import {
   orchestrationV2WorktreePending,
   ProviderInstanceId,
   ProviderInteractionMode,
+  TeamPlanId,
   resolveProviderInstanceEnabled,
   resolveProjectProviderInstanceEnabled,
   type ProviderSessionId,
@@ -169,6 +170,7 @@ import {
   ThreadForkServiceV2,
 } from "./ThreadForkService.ts";
 import { planThreadDeletion } from "./ThreadDeletion.ts";
+import { decideTeamCommand, type TeamCommand } from "./TeamPlan.ts";
 import type * as ProviderAdapter from "@codenine/provider-core/server/ProviderAdapter";
 import * as ServerSettings from "../serverSettings.ts";
 
@@ -555,6 +557,12 @@ function commandThreadId(command: OrchestrationV2ServerCommand): ThreadId {
     case "thread.interrupt.unresponsive":
     case "thread.stop":
     case "provider.switch":
+    case "team.propose":
+    case "team.edit":
+    case "team.approve":
+    case "team.cancel":
+    case "team.task.retry":
+    case "team.task.settle":
       return command.threadId;
     case "delegated_task.request":
     case "delegated_task.wake-policy":
@@ -2993,6 +3001,7 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
       snoozedUntil: null,
       snoozedAt: null,
       lastVisitedAt: null,
+      ...(command.teamTask === undefined ? {} : { teamTask: command.teamTask }),
       deletedAt: null,
     };
 
@@ -3035,6 +3044,89 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
         },
       });
     }
+  });
+
+  const dispatchTeamCommand = Effect.fn("orchestrationV2.dispatch.team")(function* (
+    command: TeamCommand,
+    events: Ref.Ref<Array<OrchestrationV2DomainEvent>>,
+    effects: Ref.Ref<Array<PendingOrchestrationEffectV2>>,
+  ) {
+    const thread = yield* projectionStore
+      .getThread(command.threadId)
+      .pipe(
+        Effect.mapError(
+          (cause) => new OrchestratorProjectionError({ threadId: command.threadId, cause }),
+        ),
+      );
+    if (thread.deletedAt !== null) {
+      // The agent's result has nowhere to go; its own thread keeps it.
+      if (command.type === "team.task.settle") return;
+      return yield* new OrchestratorDispatchError({
+        commandId: command.commandId,
+        commandType: command.type,
+        cause: `Thread ${command.threadId} is deleted.`,
+      });
+    }
+    const now = yield* DateTime.now;
+    const decision = decideTeamCommand({
+      thread,
+      command,
+      now: DateTime.formatIso(now),
+      newPlanId: TeamPlanId.make(`team-plan:${encodeURIComponent(command.commandId)}`),
+      // One thread per attempt: a retry on another model never continues the earlier session.
+      taskThreadId: (plan, task) =>
+        ThreadId.make(
+          ["thread", "team", plan.id, task.id, task.attempt]
+            .map((part) => encodeURIComponent(String(part)))
+            .join(":"),
+        ),
+    });
+    if (decision.type === "unchanged") return;
+    if (decision.type === "rejected") {
+      return yield* new OrchestratorDispatchError({
+        commandId: command.commandId,
+        commandType: command.type,
+        cause: decision.reason,
+      });
+    }
+    const { plan } = decision;
+    yield* emit(
+      events,
+      command,
+    )({
+      type: "thread.metadata-updated",
+      threadId: command.threadId,
+      providerInstanceId: thread.providerInstanceId,
+      occurredAt: now,
+      payload: { ...thread, team: plan, updatedAt: now },
+    });
+    const effect = (
+      key: string,
+      request: Extract<
+        OrchestrationEffectRequestV2,
+        { readonly type: "team-task.launch" | "team-task.stop" | "team.lead-wake" }
+      >,
+    ): PendingOrchestrationEffectV2 => ({
+      id: `effect:${command.commandId}:${request.type}:${key}`,
+      commandId: command.commandId,
+      threadId: command.threadId,
+      request,
+    });
+    yield* Ref.update(effects, (existing) => [
+      ...existing,
+      ...decision.launch.map((task) =>
+        effect(task.id, {
+          type: "team-task.launch",
+          planId: plan.id,
+          taskId: task.id,
+          attempt: task.attempt,
+        }),
+      ),
+      ...decision.stop.map((taskThreadId) =>
+        effect(taskThreadId, { type: "team-task.stop", taskThreadId }),
+      ),
+      ...(decision.wakeLead ? [effect(plan.id, { type: "team.lead-wake", planId: plan.id })] : []),
+    ]);
   });
 
   const dispatchThreadVisit = Effect.fn("orchestrationV2.dispatch.threadVisit")(function* (
@@ -12989,6 +13081,14 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
       case "secret_request.record":
         yield* dispatchSecretRequestRecord(command, events);
         break;
+      case "team.propose":
+      case "team.edit":
+      case "team.approve":
+      case "team.cancel":
+      case "team.task.retry":
+      case "team.task.settle":
+        yield* dispatchTeamCommand(command, events, effects);
+        break;
       default:
         return yield* dispatchUnsupported(command);
     }
@@ -13096,6 +13196,7 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
           command.type === "thread.interrupt.unresponsive" ||
           command.type === "thread.stop" ||
           command.type === "subagent.stop" ||
+          command.type === "team.task.settle" ||
           (command.type === "thread.delete" && command.onlyIfUnused === true),
         (_planned) =>
           new OrchestratorDispatchError({

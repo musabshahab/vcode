@@ -78,7 +78,11 @@ export function withCreationProvenance(
   provenance: ThreadManagementProvenance,
 ): OrchestrationV2Command {
   switch (command.type) {
-    case "thread.create":
+    case "thread.create": {
+      // Only the server may tie a thread to a team task; its result settles that task.
+      const { teamTask: _teamTask, ...create } = command;
+      return { ...create, ...provenance };
+    }
     case "message.dispatch":
     case "thread.fork":
     case "thread.merge_back":
@@ -720,6 +724,22 @@ const make = Effect.gen(function* () {
               commandId: command.commandId,
               instanceId: command.modelSelection.instanceId,
             }),
+          ),
+        );
+      case "team.propose":
+      case "team.edit":
+        return orchestrator.getThreadRecords(command.threadId, []).pipe(
+          Effect.flatMap((lead) =>
+            Effect.forEach(
+              new Set(command.agents.map((agent) => agent.modelSelection.instanceId)),
+              (instanceId) =>
+                assertProviderInstanceEnabled({
+                  projectId: lead.thread.projectId,
+                  commandId: command.commandId,
+                  instanceId,
+                }),
+              { discard: true },
+            ),
           ),
         );
       case "prepared-run.release":

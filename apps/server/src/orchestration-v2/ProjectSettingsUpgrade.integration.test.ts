@@ -29,6 +29,7 @@ import * as VcsProcess from "../vcs/VcsProcess.ts";
 import * as WorkspacePaths from "../workspace/WorkspacePaths.ts";
 import * as LegacyV1ThreadImporter from "./legacy/LegacyV1ThreadImporter.ts";
 import * as RuntimeLayer from "./runtimeLayer.ts";
+import * as TeamTaskService from "./TeamTaskService.ts";
 
 const projectId = ProjectId.make("project:upgrade");
 const icon = { kind: "emoji", emoji: "🦊" } as const;
@@ -135,7 +136,11 @@ const layerRuntime = (dbPath: string) => {
     ),
   );
   return Layer.mergeAll(
-    RuntimeLayer.layer.pipe(Layer.provide(RuntimeLayer.layerProjectService)),
+    RuntimeLayer.layer.pipe(
+      Layer.provide(RuntimeLayer.layerProjectService),
+      // Team tasks launch threads, which the runtime layer leaves to its production wiring.
+      Layer.provide(Layer.mock(TeamTaskService.TeamTaskService)({})),
+    ),
     RuntimeLayer.layerProjectService,
   ).pipe(
     Layer.provide(

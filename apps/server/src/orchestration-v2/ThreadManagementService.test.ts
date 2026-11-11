@@ -13,6 +13,9 @@ import {
   ProjectId,
   ProviderInstanceId,
   RunId,
+  TeamAgentId,
+  TeamPlanId,
+  TeamTaskId,
   ThreadId,
 } from "@codenine/contracts";
 import * as Deferred from "effect/Deferred";
@@ -54,6 +57,12 @@ it("stamps authoritative provenance on commands that create threads or messages"
     interactionMode: "default",
     branch: null,
     worktreePath: null,
+    teamTask: {
+      rootThreadId: ThreadId.make("thread:thread-management:lead"),
+      planId: TeamPlanId.make("plan"),
+      taskId: TeamTaskId.make("task"),
+      attempt: 1,
+    },
   };
 
   const stamped = ThreadManagementService.withCreationProvenance(command, {
@@ -64,6 +73,8 @@ it("stamps authoritative provenance on commands that create threads or messages"
     createdBy: "user",
     creationSource: "web",
   });
+  // Only the server ties a thread to a team task; a client's thread could report its result.
+  expect(stamped).not.toHaveProperty("teamTask");
 });
 
 const layerReceiptsTest = CommandReceiptStore.layer.pipe(
@@ -99,9 +110,9 @@ const layerDispatchChokepointTest =
       Layer.provideMerge(layerReceiptsTest),
     );
 
-it.effect(
-  "the dispatch chokepoint refuses a continuation message.dispatch on a project-disabled instance before reaching the orchestrator",
-  () => {
+it.effect.each(["a continuation message.dispatch", "a team.propose with an agent"] as const)(
+  "the dispatch chokepoint refuses %s on a project-disabled instance before reaching the orchestrator",
+  (kind) => {
     const projectId = ProjectId.make("project:thread-management:chokepoint");
     const threadId = ThreadId.make("thread:thread-management:chokepoint");
     const instanceId = ProviderInstanceId.make("codex_work");
@@ -119,17 +130,36 @@ it.effect(
     return Effect.gen(function* () {
       const threads = yield* ThreadManagementService.ThreadManagementService;
       const error = yield* Effect.flip(
-        threads.dispatch({
-          type: "message.dispatch",
-          commandId,
-          threadId,
-          messageId: MessageId.make("message:thread-management:chokepoint-disabled"),
-          text: "Background task completed.",
-          attachments: [],
-          dispatchMode: { type: "queue_after_active" },
-          createdBy: "agent",
-          creationSource: "server",
-        }),
+        threads.dispatch(
+          kind === "a continuation message.dispatch"
+            ? {
+                type: "message.dispatch",
+                commandId,
+                threadId,
+                messageId: MessageId.make("message:thread-management:chokepoint-disabled"),
+                text: "Background task completed.",
+                attachments: [],
+                dispatchMode: { type: "queue_after_active" },
+                createdBy: "agent",
+                creationSource: "server",
+              }
+            : {
+                type: "team.propose",
+                commandId,
+                threadId,
+                goal: "Ship it",
+                agents: [
+                  {
+                    id: TeamAgentId.make("builder"),
+                    label: "Builder",
+                    role: "implement",
+                    modelSelection: { instanceId, model: "test" },
+                    workspace: "shared",
+                  },
+                ],
+                tasks: [],
+              },
+        ),
       );
 
       expect(error).toBeInstanceOf(
