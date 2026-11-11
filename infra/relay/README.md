@@ -117,28 +117,24 @@ one of those outputs changed, and `T3CODE_RELAY_CLIENT_CONFIG_ENV` redirects it 
 
 ### Deployment CI
 
-The relay is versioned separately from client releases. `.github/workflows/deploy-relay.yml` deploys
-the shared Alchemy `prod` stage on every push to `main`. Stable and nightly release builds both
-resolve their static public config from the same
-`production` GitHub environment. Labeling a same-repository PR `relay:preview` deploys a `pr-<number>`
-stage, and the cleanup workflow tears it down; see
-[`relay-preview.yml`](../../.github/workflows/relay-preview.yml). Developers can
-deploy personal non-production stages locally with any stage name other than `prod`.
+The relay is versioned separately from client releases. This fork has no deployment workflow for
+it; the upstream ones deployed to T3's accounts. Deploy stages locally with Alchemy, using any
+stage name other than `prod` for personal stages.
 
-The repository must define these Actions variables shared by relay deployments:
+A deployment reads these variables from its environment:
 
 - `CLOUDFLARE_ACCOUNT_ID`
 - `PLANETSCALE_ORGANIZATION`
 - `AXIOM_ORG_ID`
 
-The repository must define these Actions secrets shared by relay deployments:
+It also reads these secrets:
 
 - `CLOUDFLARE_API_TOKEN`
 - `PLANETSCALE_API_TOKEN_ID`
 - `PLANETSCALE_API_TOKEN`
 - `AXIOM_TOKEN`
 
-The `production` GitHub environment must define these Actions variables:
+A `prod` deployment also reads:
 
 - `RELAY_API_ZONE_NAME`
 - `RELAY_TUNNEL_ZONE_NAME`
@@ -155,7 +151,7 @@ The `production` GitHub environment must define these Actions variables:
 - `APNS_KEY_ID`
 - `APNS_BUNDLE_ID`
 
-The `production` GitHub environment must define these Actions secrets:
+And these secrets:
 
 - `CLERK_SECRET_KEY`
 - `APNS_PRIVATE_KEY`
@@ -166,9 +162,8 @@ The `production` GitHub environment must define these Actions secrets:
 
 The account-scoped repository credentials are consumed by Alchemy while provisioning relay stages; they
 are not bound into the relay Worker. The production deployment uses an Axiom personal access token,
-so `AXIOM_ORG_ID` must accompany `AXIOM_TOKEN`. The release workflow reads the production relay's
-derived public URL and Clerk publishable key from the same environment for downstream desktop, CLI,
-and hosted web builds.
+so `AXIOM_ORG_ID` must accompany `AXIOM_TOKEN`. Client builds take the relay URL and Clerk
+publishable key from `T3CODE_RELAY_URL` and `T3CODE_CLERK_PUBLISHABLE_KEY`.
 
 See:
 

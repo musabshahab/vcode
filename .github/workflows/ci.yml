@@ -21,7 +21,7 @@ jobs:
   # open: if the diff cannot be resolved, everything runs.
   changes:
     name: Changes
-    runs-on: blacksmith-2vcpu-ubuntu-2404
+    runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
       typecheck: ${{ steps.detect.outputs.typecheck }}
@@ -61,7 +61,7 @@ jobs:
       contents: read
       id-token: write
     name: Lint
-    runs-on: blacksmith-8vcpu-ubuntu-2404
+    runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - name: Checkout
@@ -111,7 +111,7 @@ jobs:
     name: Build and Typecheck
     needs: changes
     if: ${{ !cancelled() && (needs.changes.outputs.build != 'false' || needs.changes.outputs.typecheck != 'false') }}
-    runs-on: blacksmith-8vcpu-ubuntu-2404
+    runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - name: Checkout
@@ -257,7 +257,7 @@ jobs:
     name: Test
     needs: changes
     if: ${{ !cancelled() && needs.changes.outputs.test != 'false' }}
-    runs-on: blacksmith-8vcpu-ubuntu-2404
+    runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - name: Checkout
@@ -295,12 +295,6 @@ jobs:
       - name: Ensure Electron runtime is installed
         run: vp run --filter @t3tools/desktop ensure:electron
 
-      - name: Test preview artifact validation
-        run: python3 -B .github/scripts/stage-preview-bundle.test.py
-
-      - name: Test release checks
-        run: node --test .github/scripts/check-nightly-release.test.cjs .github/scripts/vercel-deployment-output.test.cjs
-
       - name: Finish installing browser secret helper build libraries
         timeout-minutes: 5
         run: |
@@ -336,7 +330,7 @@ jobs:
     name: Test Web
     needs: changes
     if: ${{ !cancelled() && needs.changes.outputs.test_web != 'false' }}
-    runs-on: blacksmith-8vcpu-ubuntu-2404
+    runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - name: Checkout
@@ -391,7 +385,7 @@ jobs:
       contents: read
       id-token: write
     name: Test Server ${{ matrix.shard }}
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: ubuntu-latest
     timeout-minutes: 20
     strategy:
       fail-fast: false
@@ -466,8 +460,7 @@ jobs:
 
       # integration/transferBudgetV2.integration.test.ts writes the report; exactly one shard
       # produces these files. Gating the upload on their presence keeps a
-      # single `thread-transfer-results` artifact per run, which is the name
-      # thread-transfer-report.yml resolves.
+      # single `thread-transfer-results` artifact per run.
       - name: Detect transfer budget report
         id: transfer_budget
         if: always()
@@ -503,7 +496,7 @@ jobs:
     name: Release Smoke
     needs: changes
     if: ${{ !cancelled() && needs.changes.outputs.release_smoke != 'false' }}
-    runs-on: blacksmith-8vcpu-ubuntu-2404
+    runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - name: Checkout
@@ -529,7 +522,7 @@ jobs:
     name: Check
     if: ${{ always() }}
     needs: [changes, lint, build, test, test_web, test_server, release_smoke]
-    runs-on: blacksmith-2vcpu-ubuntu-2404
+    runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - name: Require every job to pass
@@ -547,8 +540,7 @@ jobs:
                 or (.value.result == "skipped"
                   and (($renamed[.key] // [.key]) | all(.[]; $gates[.] == "false"))))' > /dev/null
 
-      # thread-transfer-report.yml reads this artifact after CI, so a run whose
-      # server tests ran must have produced it.
+      # A run whose server tests ran must have produced the transfer measurements.
       - name: Require transfer measurements
         if: needs.test_server.result == 'success' && needs.changes.outputs.test_server != 'false'
         uses: actions/download-artifact@v8
