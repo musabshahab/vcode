@@ -3073,13 +3073,6 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
       command,
       now: DateTime.formatIso(now),
       newPlanId: TeamPlanId.make(`team-plan:${encodeURIComponent(command.commandId)}`),
-      // One thread per attempt: a retry on another model never continues the earlier session.
-      taskThreadId: (plan, task) =>
-        ThreadId.make(
-          ["thread", "team", plan.id, task.id, task.attempt]
-            .map((part) => encodeURIComponent(String(part)))
-            .join(":"),
-        ),
     });
     if (decision.type === "unchanged") return;
     if (decision.type === "rejected") {
@@ -3104,7 +3097,13 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
       key: string,
       request: Extract<
         OrchestrationEffectRequestV2,
-        { readonly type: "team-task.launch" | "team-task.stop" | "team.lead-wake" }
+        {
+          readonly type:
+            | "team-task.launch"
+            | "team-task.stop"
+            | "team.lead-wake"
+            | "team.task-threads.settle";
+        }
       >,
     ): PendingOrchestrationEffectV2 => ({
       id: `effect:${command.commandId}:${request.type}:${key}`,
@@ -3126,6 +3125,10 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
         effect(taskThreadId, { type: "team-task.stop", taskThreadId }),
       ),
       ...(decision.wakeLead ? [effect(plan.id, { type: "team.lead-wake", planId: plan.id })] : []),
+      // After the stops, so a cancelled team's threads have had their Stop sent.
+      ...(decision.settleTaskThreads
+        ? [effect(plan.id, { type: "team.task-threads.settle", planId: plan.id })]
+        : []),
     ]);
   });
 

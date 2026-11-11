@@ -131,6 +131,10 @@ export const OrchestrationEffectRequestV2 = Schema.Union([
     type: Schema.Literal("team.lead-wake"),
     planId: TeamPlanId,
   }),
+  Schema.Struct({
+    type: Schema.Literal("team.task-threads.settle"),
+    planId: TeamPlanId,
+  }),
 ]);
 export type OrchestrationEffectRequestV2 = typeof OrchestrationEffectRequestV2.Type;
 
@@ -146,6 +150,7 @@ export const REPLAY_SAFE_EFFECT_TYPES_AFTER_PROCESS_LOSS = [
   "team-task.launch",
   "team-task.stop",
   "team.lead-wake",
+  "team.task-threads.settle",
 ] as const satisfies ReadonlyArray<OrchestrationEffectRequestV2["type"]>;
 
 export const PROCESS_BOUND_EFFECT_TYPES = [

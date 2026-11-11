@@ -19,6 +19,12 @@ A retry launches a new thread for the next attempt. Never send a retry into the 
 moving it to another model would switch a provider session mid-conversation, which is the cost the
 team exists to avoid.
 
+Task threads are working threads, not where the user reads the outcome; the lead's final message
+is. So when a plan completes or is cancelled, the server settles the thread of every attempt of
+every task (attempt ids are derived from the plan, task and attempt). A failed plan keeps its
+threads active, because the user reads and retries them there. The lead is never settled, and a
+thread the user explicitly unsettled keeps that choice.
+
 ## The plan lives in the thread payload
 
 Plan changes are `thread.metadata-updated` events, so the thread stream delivers them with no new
@@ -36,10 +42,11 @@ Forks and delegated children reset both fields.
 
 ## Effects run on the lead's lane
 
-`team-task.launch`, `team-task.stop`, and `team.lead-wake` are queued under the lead thread's id,
-whichever task they act on. The outbox runs one thread's effects in order, which is what keeps a
-cancel's stop behind the launch of the same task. Each effect rereads the plan and does nothing
-when the task or plan has moved on, so replaying one after a restart is safe.
+`team-task.launch`, `team-task.stop`, `team.lead-wake`, and `team.task-threads.settle` are queued
+under the lead thread's id, whichever task they act on. The outbox runs one thread's effects in
+order, which is what keeps a cancel's stop behind the launch of the same task, and its settle
+behind the stops. Each effect rereads the plan and does nothing when the task or plan has moved
+on, so replaying one after a restart is safe.
 
 [`TeamTaskReactor`](../../apps/server/src/orchestration-v2/TeamTaskReactor.ts) settles a task when
 its thread's work has ended, by the same rule that decides a delegated task has a result

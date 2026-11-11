@@ -189,10 +189,12 @@ const layerTeam = (
     ProviderAdapterRegistry.layerFromAdapters([adapter]),
     { databaseLayer: layerDatabase, runEffectWorker: false, teamTasks: layerTeamTasks },
   );
-  return TeamTaskReactor.layer.pipe(
-    Layer.provide(ProjectionStore.layer.pipe(Layer.provide(layerDatabase))),
-    Layer.provideMerge(layerHarness),
-  );
+  return Layer.mergeAll(
+    TeamTaskReactor.layer.pipe(
+      Layer.provide(ProjectionStore.layer.pipe(Layer.provide(layerDatabase))),
+    ),
+    layerTeamTasks,
+  ).pipe(Layer.provideMerge(layerHarness));
 };
 
 const dispatch = (command: OrchestrationV2ServerCommand) =>
@@ -212,6 +214,13 @@ const taskStates = team.pipe(
     ),
   ),
 );
+
+const settledOverrides = (threadIds: ReadonlyArray<ThreadId>) =>
+  Effect.flatMap(Orchestrator.OrchestratorV2, (orchestrator) =>
+    Effect.forEach(threadIds, (threadId) =>
+      orchestrator.getThreadShell(threadId).pipe(Effect.map((shell) => shell?.settledOverride)),
+    ),
+  );
 
 const taskThreadId = (id: string) =>
   team.pipe(Effect.map((plan) => plan.tasks.find((candidate) => candidate.id === id)!.threadId!));
@@ -485,6 +494,13 @@ it.effect(
         assert.include(wakes[0]!.text, "Your team is stuck");
         assert.include(wakes[0]!.text, "- Task build: failed. Agent: builder (gpt-fast).");
         assert.include(wakes[0]!.text, "- Task review: pending. Agent: reviewer (gpt-strong).");
+
+        // A failed team keeps its threads for the user to read and retry. A settle the plan
+        // queued would run next on the lead's lane, ahead of the turn the wake started.
+        assert.equal(yield* worker.drain(1), 1);
+        const teamTasks = yield* TeamTaskService.TeamTaskService;
+        yield* teamTasks.settleTaskThreads({ leadThreadId, planId: plan.id });
+        assert.deepEqual(yield* settledOverrides([leadThreadId, buildThreadId!]), [null, null]);
       }),
     ),
 );
@@ -514,6 +530,29 @@ it.effect(
         assert.deepEqual(yield* taskStates, { build: "running#2", docs: "running#1" });
         assert.deepEqual((yield* thread(retryThreadId!)).thread.modelSelection, strong);
         assert.deepEqual((yield* thread(firstThreadId)).thread.modelSelection, fast);
+
+        // Completing the team settles every attempt's thread, and never the lead.
+        const docsThreadId = yield* taskThreadId("docs");
+        yield* endRun(docsThreadId, "completed", "Wrote the docs.");
+        yield* endRun(retryThreadId!, "completed", "Built it.");
+        const worker = yield* EffectWorker.OrchestrationEffectWorkerV2;
+        // The wake, then the settle; the lead turn the wake starts is not under test.
+        assert.equal(yield* worker.drain(2), 2);
+        const plan = yield* team;
+        assert.equal(plan.status, "completed");
+        const taskThreads = [firstThreadId, retryThreadId!, docsThreadId];
+        assert.deepEqual(yield* settledOverrides([leadThreadId, ...taskThreads]), [
+          null,
+          "settled",
+          "settled",
+          "settled",
+        ]);
+        const orchestrator = yield* Orchestrator.OrchestratorV2;
+        const sequences = Effect.forEach(taskThreads, orchestrator.getThreadEventSequence);
+        const before = yield* sequences;
+        const teamTasks = yield* TeamTaskService.TeamTaskService;
+        yield* teamTasks.settleTaskThreads({ leadThreadId, planId: plan.id });
+        assert.deepEqual(yield* sequences, before);
       }),
     ),
 );
@@ -597,6 +636,11 @@ it.effect("cancelling a team stops its running threads and leaves nothing to sta
           (yield* thread(threadId)).runs[0]!.status,
         );
       }
+      assert.deepEqual(yield* settledOverrides([leadThreadId, ...running]), [
+        null,
+        "settled",
+        "settled",
+      ]);
     }),
   ),
 );

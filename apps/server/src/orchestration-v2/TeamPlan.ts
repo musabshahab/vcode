@@ -8,7 +8,8 @@ import {
   type TeamPlan,
   type TeamPlanId,
   type TeamTask,
-  type ThreadId,
+  type TeamTaskId,
+  ThreadId,
 } from "@codenine/contracts";
 import {
   settledTeamPlanStatus,
@@ -33,7 +34,17 @@ export type TeamDecision =
       readonly stop: ReadonlyArray<ThreadId>;
       /** The plan just finished or got stuck, so the lead has results to act on. */
       readonly wakeLead: boolean;
+      /** The plan just completed or was cancelled, so its task threads are done with. */
+      readonly settleTaskThreads: boolean;
     };
+
+/** One thread per attempt: a retry on another model never continues the earlier session. */
+export const teamTaskThreadId = (planId: TeamPlanId, taskId: TeamTaskId, attempt: number) =>
+  ThreadId.make(
+    ["thread", "team", planId, taskId, attempt]
+      .map((part) => encodeURIComponent(String(part)))
+      .join(":"),
+  );
 
 const RESULT_TRUNCATED = "\n\n[Result cut short. Read the task's thread for the rest.]";
 
@@ -72,7 +83,6 @@ export function decideTeamCommand(input: {
   readonly now: string;
   /** The id a plan proposed by this command gets. */
   readonly newPlanId: TeamPlanId;
-  readonly taskThreadId: (plan: TeamPlan, task: TeamTask) => ThreadId;
 }): TeamDecision {
   const { command, now } = input;
   const current = input.thread.team ?? null;
@@ -85,7 +95,7 @@ export function decideTeamCommand(input: {
         ? {
             ...task,
             status: "running",
-            threadId: input.taskThreadId(plan, task),
+            threadId: teamTaskThreadId(plan.id, task.id, task.attempt),
             startedAt: now,
             completedAt: null,
           }
@@ -98,6 +108,7 @@ export function decideTeamCommand(input: {
       launch: tasks.filter((task) => starting.has(task.id)),
       stop: [],
       wakeLead: wakeWhenSettled && status !== "running",
+      settleTaskThreads: status === "completed",
     };
   };
 
@@ -136,6 +147,7 @@ export function decideTeamCommand(input: {
         launch: [],
         stop: [],
         wakeLead: false,
+        settleTaskThreads: false,
       };
     }
     case "team.edit": {
@@ -160,6 +172,7 @@ export function decideTeamCommand(input: {
         launch: [],
         stop: [],
         wakeLead: false,
+        settleTaskThreads: false,
       };
     }
     case "team.approve": {
@@ -189,6 +202,8 @@ export function decideTeamCommand(input: {
         launch: [],
         stop: running.flatMap((task) => (task.threadId === null ? [] : [task.threadId])),
         wakeLead: false,
+        // A proposed team has no threads yet.
+        settleTaskThreads: current.status === "running",
       };
     }
     case "team.task.retry": {

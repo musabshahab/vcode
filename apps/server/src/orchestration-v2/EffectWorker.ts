@@ -601,6 +601,22 @@ export const layerExecutor: Layer.Layer<
                     }),
                 ),
               );
+          case "team.task-threads.settle":
+            return teamTasks
+              .settleTaskThreads({
+                leadThreadId: effect.threadId,
+                planId: effect.request.planId,
+              })
+              .pipe(
+                Effect.mapError(
+                  (cause) =>
+                    new OrchestrationEffectExecutionError({
+                      effectId: effect.id,
+                      effectType: effect.request.type,
+                      cause,
+                    }),
+                ),
+              );
         }
       }),
     });

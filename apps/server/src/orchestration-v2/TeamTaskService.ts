@@ -21,11 +21,12 @@ import * as Schema from "effect/Schema";
 import * as ProjectService from "../project/ProjectService.ts";
 import * as GitVcsDriver from "../vcs/GitVcsDriver.ts";
 import * as ThreadLaunchService from "./ThreadLaunchService.ts";
+import { teamTaskThreadId } from "./TeamPlan.ts";
 import * as ThreadManagementService from "./ThreadManagementService.ts";
 import { userFacingDispatchErrorMessage } from "./UserFacingErrors.ts";
 
 export class TeamTaskError extends Schema.TaggedError<TeamTaskError>()("TeamTaskError", {
-  operation: Schema.Literals(["launch", "stop", "wake-lead"]),
+  operation: Schema.Literals(["launch", "stop", "wake-lead", "settle-threads"]),
   threadId: ThreadId,
   cause: Schema.Defect(),
 }) {
@@ -73,6 +74,11 @@ export class TeamTaskService extends Context.Service<
       readonly leadThreadId: ThreadId;
       readonly planId: TeamPlanId;
       readonly commandId: CommandId;
+    }) => Effect.Effect<void, TeamTaskError>;
+    /** Settles the threads of every attempt of a completed or cancelled plan, never the lead. */
+    readonly settleTaskThreads: (input: {
+      readonly leadThreadId: ThreadId;
+      readonly planId: TeamPlanId;
     }) => Effect.Effect<void, TeamTaskError>;
   }
 >()("codenine/orchestration-v2/TeamTaskService") {}
@@ -152,12 +158,15 @@ function wakeText(plan: TeamPlan): string {
     `Goal: ${plan.goal}`,
     ["Tasks:", ...tasks].join("\n"),
     plan.status === "completed"
-      ? "Integrate the results, or summarise them for the user. Name each thread by its link."
+      ? "Write the user one final summary: what changed and in which main files, how it was verified (the tests or checks the agents ran, and their results), what is still open or untested, and how to run or try it. End with each task thread's link for detail."
       : "Tell the user which task failed and which tasks it blocks. They decide whether to retry it; do not redo the work yourself unless they ask.",
   ].join("\n\n");
 }
 
+const STOP_SETTLE_WAIT_MS = 10 * 60 * 1_000;
+
 const make = Effect.gen(function* () {
+  const scope = yield* Effect.scope;
   const threads = yield* ThreadManagementService.ThreadManagementService;
   const launches = yield* ThreadLaunchService.ThreadLaunchService;
   const projects = yield* ProjectService.ProjectService;
@@ -380,7 +389,70 @@ const make = Effect.gen(function* () {
       ),
   );
 
-  return TeamTaskService.of({ launchTask, stopTask, wakeLead });
+  const settleTaskThread = Effect.fn("TeamTaskService.settleTaskThread")(function* (
+    threadId: ThreadId,
+  ) {
+    const shell = yield* threads.getThreadShell(threadId);
+    // An explicit "active" is the user keeping the thread out of Settled.
+    if (
+      shell === null ||
+      shell.deletedAt !== null ||
+      shell.archivedAt !== null ||
+      shell.settledOverride !== null
+    ) {
+      return;
+    }
+    const settle = (attempt: "first" | "after-stop") =>
+      threads
+        .dispatch({
+          type: "thread.settle",
+          commandId: CommandId.make(`server:team-thread-settle:${attempt}:${threadId}`),
+          threadId,
+        })
+        .pipe(
+          Effect.as(true),
+          // Settling refuses a thread that still runs, has a queued message or awaits an answer.
+          Effect.catchTags({
+            OrchestratorDispatchError: () => Effect.succeed(false),
+            OrchestratorCommandPreviouslyRejectedError: () => Effect.succeed(false),
+          }),
+        );
+    if (yield* settle("first")) return;
+    if ((yield* threads.getThreadShell(threadId))?.activeRunId == null) return;
+    // A cancelled team's thread settles once the Stop it was sent ends its run.
+    yield* threads
+      .waitForThread({ projectId: shell.projectId, threadId, timeoutMs: STOP_SETTLE_WAIT_MS })
+      .pipe(Effect.andThen(settle("after-stop")), Effect.ignore, Effect.forkIn(scope));
+  });
+
+  const settleTaskThreads: TeamTaskService["Service"]["settleTaskThreads"] = Effect.fn(
+    "TeamTaskService.settleTaskThreads",
+  )(
+    function* (input) {
+      const plan = (yield* threads.getThreadRecords(input.leadThreadId, [])).thread.team;
+      if (plan?.id !== input.planId || (plan.status !== "completed" && plan.status !== "cancelled"))
+        return;
+      // A retry replaced earlier attempts' threads; their ids are derived, so each is found here.
+      yield* Effect.forEach(
+        plan.tasks.flatMap((task) =>
+          Array.from({ length: task.attempt }, (_, index) =>
+            teamTaskThreadId(plan.id, task.id, index + 1),
+          ),
+        ),
+        settleTaskThread,
+        { discard: true },
+      );
+    },
+    (effect, input) =>
+      effect.pipe(
+        Effect.mapError(
+          (cause) =>
+            new TeamTaskError({ operation: "settle-threads", threadId: input.leadThreadId, cause }),
+        ),
+      ),
+  );
+
+  return TeamTaskService.of({ launchTask, stopTask, wakeLead, settleTaskThreads });
 });
 
 export const layer = Layer.effect(TeamTaskService, make);
