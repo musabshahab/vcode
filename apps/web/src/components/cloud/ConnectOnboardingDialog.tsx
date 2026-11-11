@@ -13,7 +13,6 @@ import {
   ConnectOnboardingOptOutSchema,
   EMPTY_CONNECT_ONBOARDING_OPT_OUT_STATE,
 } from "~/cloud/connectOnboarding";
-import { useManagedTunnelUsage } from "~/cloud/managedRelayState";
 import { hasCloudPublicConfig } from "~/cloud/publicConfig";
 import { useCloudLinkController } from "~/cloud/useCloudLinkController";
 import { useLocalStorage } from "~/hooks/useLocalStorage";
@@ -357,11 +356,8 @@ function OnboardingTunnelLimitAlert({
 }: {
   readonly onOpenAccountPage: ((page: CodenineConnectAccountPageUrl) => void) | null;
 }) {
-  const { upgrade } = useManagedTunnelUsage();
   return (
     <TunnelLimitAlert
-      upgrade={upgrade}
-      onLinkT3Chat={onOpenAccountPage ? () => onOpenAccountPage("codenine-chat") : null}
       onManageTunnels={onOpenAccountPage ? () => onOpenAccountPage("codenine-connect") : null}
     />
   );

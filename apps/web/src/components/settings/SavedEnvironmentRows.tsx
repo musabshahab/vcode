@@ -463,7 +463,7 @@ function CloudLinkSwitch({
   );
 }
 
-/** Tunnel meter, plus the upgrade prompt after the relay refuses a tunnel at the cap. */
+/** Tunnel meter, plus an alert after the relay refuses a tunnel at the cap. */
 function CodenineConnectTunnelUsage({ tunnelLimit }: { readonly tunnelLimit: number | null }) {
   const usage = useManagedTunnelUsage();
   const accountPage = useCodenineConnectAccountPage();
@@ -487,11 +487,7 @@ function CodenineConnectTunnelUsage({ tunnelLimit }: { readonly tunnelLimit: num
         limit={usage.limit}
         action={
           // At the cap the alert below carries the same actions.
-          !openAccountPage || showLimitAlert ? null : usage.upgrade ? (
-            <InlineButton onClick={() => openAccountPage("codenine-chat")}>
-              Get more tunnels
-            </InlineButton>
-          ) : usage.used >= usage.limit ? (
+          !openAccountPage || showLimitAlert ? null : usage.used >= usage.limit ? (
             <InlineButton onClick={() => openAccountPage("codenine-connect")}>
               Manage tunnels
             </InlineButton>
@@ -506,8 +502,6 @@ function CodenineConnectTunnelUsage({ tunnelLimit }: { readonly tunnelLimit: num
           {meter}
           {showLimitAlert ? (
             <TunnelLimitAlert
-              upgrade={usage.upgrade}
-              onLinkT3Chat={openAccountPage ? () => openAccountPage("codenine-chat") : null}
               onManageTunnels={openAccountPage ? () => openAccountPage("codenine-connect") : null}
             />
           ) : null}

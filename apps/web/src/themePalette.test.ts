@@ -20,13 +20,12 @@ import {
   resolveDesktopTheme,
   resolveThemeAppearance,
   serializeThemeFile,
-  T3_CHAT_THEME,
   GROVE_THEME,
+  OCEAN_THEME,
   updateCustomTheme,
   updateThemeColorFamily,
   CUSTOM_THEMES_STORAGE_KEY,
   createVividThemeColors,
-  getDefaultThemeColors,
   themeColorToHex,
   toCanonicalThemeColor,
   THEME_FILE_VERSION,
@@ -109,7 +108,7 @@ describe("theme files", () => {
       colors: { canvas: "#101010" },
     });
     expect(legacy.colors.searchMatchBackground).toBe(
-      getDefaultThemeColors("dark").searchMatchBackground,
+      getStandardThemeColors("dark").searchMatchBackground,
     );
     const theme = parseThemeFile({
       version: THEME_FILE_VERSION,
@@ -131,7 +130,7 @@ describe("theme files", () => {
   it.each(["searchMatchBackground", "searchMatchActiveBackground"] as const)(
     "editing %s derives readable text without changing the other match or warning colours",
     (role) => {
-      const original = getDefaultThemeColors("dark");
+      const original = getStandardThemeColors("dark");
       const foreground =
         role === "searchMatchBackground" ? "searchMatchForeground" : "searchMatchActiveForeground";
       for (const value of ["#ffffff", "#000000", "#33669980"]) {
@@ -278,11 +277,11 @@ describe("theme files", () => {
       canvas: canonical("#101827"),
       text: canonical("#eef5ff"),
     });
-    expect(getThemeModes(T3_CHAT_THEME)).toEqual(["light", "dark"]);
-    expect(resolveThemeAppearance(T3_CHAT_THEME.id, true, true)).toBe("dark");
-    expect(resolveDesktopTheme(T3_CHAT_THEME.id, true)).toBe("system");
-    expect(resolveThemeAppearance(T3_CHAT_THEME.id, false, false, "dark")).toBe("dark");
-    expect(resolveDesktopTheme(T3_CHAT_THEME.id, false, "dark")).toBe("dark");
+    expect(getThemeModes(OCEAN_THEME)).toEqual(["light", "dark"]);
+    expect(resolveThemeAppearance(OCEAN_THEME.id, true, true)).toBe("dark");
+    expect(resolveDesktopTheme(OCEAN_THEME.id, true)).toBe("system");
+    expect(resolveThemeAppearance(OCEAN_THEME.id, false, false, "dark")).toBe("dark");
+    expect(resolveDesktopTheme(OCEAN_THEME.id, false, "dark")).toBe("dark");
     expect(JSON.parse(serializeThemeFile(theme)).variants.dark).toMatchObject({
       canvas: canonical("#101827"),
       text: canonical("#eef5ff"),
@@ -754,7 +753,7 @@ describe("stored theme preferences", () => {
     expect(themes).toHaveLength(1);
     expect(themes[0]).toMatchObject({
       id: "aurora",
-      colors: { canvas: canonical("#f8fbff"), accent: getDefaultThemeColors("light").accent },
+      colors: { canvas: canonical("#f8fbff"), accent: getStandardThemeColors("light").accent },
     });
     expect(getThemeModes(themes[0]!)).toEqual(["light", "dark"]);
     expect(getThemeColorsForMode(themes[0]!, "dark")?.canvas).toBe(canonical("rgb(16 24 39)"));

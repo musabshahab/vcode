@@ -3,12 +3,11 @@ import { describe, expect, it, vi } from "vite-plus/test";
 import indexHtml from "../index.html?raw";
 import {
   CUSTOM_THEMES_STORAGE_KEY,
-  getDefaultThemeColors,
+  getStandardThemeColors,
   getThemeColorsForMode,
   invalidateCustomThemes,
   isKnownThemePreference,
   resolveThemeAppearance,
-  T3_CHAT_THEME,
   EMBER_THEME,
   GROVE_THEME,
   IRIS_THEME,
@@ -19,7 +18,7 @@ import {
 } from "./themePalette";
 
 const THEME_STORAGE_KEY = "codenine:theme";
-const DEFAULT_DARK_CHROME = getDefaultThemeColors("dark").chrome;
+const DEFAULT_DARK_CHROME = getStandardThemeColors("dark").chrome;
 
 const bootScript = (() => {
   const match = indexHtml.match(/<script>([\s\S]*?)<\/script>/);
@@ -153,14 +152,9 @@ describe("index.html boot script", () => {
   }> = [
     { name: "no stored preference on a dark OS", storage: {}, prefersDark: true },
     {
-      name: "T3 Chat follows a dark OS",
-      storage: { [THEME_STORAGE_KEY]: "codenine-chat", [THEME_FOLLOW_SYSTEM_STORAGE_KEY]: "true" },
-      prefersDark: true,
-    },
-    {
-      name: "an explicit global dark mode applies to T3 Chat",
+      name: "an explicit global dark mode applies to Ocean",
       storage: {
-        [THEME_STORAGE_KEY]: "codenine-chat",
+        [THEME_STORAGE_KEY]: "ocean",
         [THEME_APPEARANCE_MODE_STORAGE_KEY]: "dark",
         [THEME_FOLLOW_SYSTEM_STORAGE_KEY]: "false",
       },
@@ -192,8 +186,8 @@ describe("index.html boot script", () => {
       prefersDark: true,
     },
     {
-      name: "legacy codenine-chat-dark resolves to dark T3 Chat",
-      storage: { [THEME_STORAGE_KEY]: "codenine-chat-dark" },
+      name: "a preference for a theme that no longer ships falls back to the default",
+      storage: { [THEME_STORAGE_KEY]: "codenine-chat", [THEME_FOLLOW_SYSTEM_STORAGE_KEY]: "true" },
       prefersDark: true,
     },
     {
@@ -284,7 +278,7 @@ describe("index.html boot script", () => {
   });
 
   it("keeps every built-in boot splash in sync with the real palettes", () => {
-    for (const theme of [T3_CHAT_THEME, GROVE_THEME, OCEAN_THEME, EMBER_THEME, IRIS_THEME]) {
+    for (const theme of [GROVE_THEME, OCEAN_THEME, EMBER_THEME, IRIS_THEME]) {
       expect(theme.appearance).toBe("light");
       for (const mode of ["light", "dark"] as const) {
         const colors = getThemeColorsForMode(theme, mode);
@@ -309,7 +303,7 @@ describe("index.html boot script", () => {
 
   it("applies the matching half of an automatic mix to the splash", () => {
     const storage = {
-      [THEME_STORAGE_KEY]: "codenine-chat",
+      [THEME_STORAGE_KEY]: OCEAN_THEME.id,
       [THEME_APPEARANCE_MODE_STORAGE_KEY]: "system",
       "codenine:theme-halves:v1": JSON.stringify({ dark: GROVE_THEME.id }),
     };
@@ -323,9 +317,9 @@ describe("index.html boot script", () => {
 
     const light = runBootScript({ storage, prefersDark: false });
     expect(light.isDark).toBe(false);
-    expect(light.themeId).toBe("codenine-chat");
+    expect(light.themeId).toBe(OCEAN_THEME.id);
     expect(light.bootVariables["--boot-background"]).toBe(
-      getThemeColorsForMode(T3_CHAT_THEME, "light")!.canvas,
+      getThemeColorsForMode(OCEAN_THEME, "light")!.canvas,
     );
   });
 
@@ -364,9 +358,9 @@ describe("index.html boot script", () => {
     });
 
     expect(boot.themeId).toBe("partial");
-    expect(boot.bootVariables["--boot-background"]).toBe(getDefaultThemeColors("dark").canvas);
+    expect(boot.bootVariables["--boot-background"]).toBe(getStandardThemeColors("dark").canvas);
     expect(boot.bootVariables["--boot-foreground"]).toBe("#fffaff");
-    expect(boot.bootVariables["--boot-accent"]).toBe(getDefaultThemeColors("dark").accent);
+    expect(boot.bootVariables["--boot-accent"]).toBe(getStandardThemeColors("dark").accent);
     expect(boot.backgroundColor).toBe(DEFAULT_DARK_CHROME);
     expect(boot.metaContent).toBe(DEFAULT_DARK_CHROME);
   });

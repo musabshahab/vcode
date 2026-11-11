@@ -6,7 +6,7 @@ import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Schema from "effect/Schema";
 import * as SqlError from "effect/sql/SqlError";
-import { DEFAULT_MANAGED_TUNNEL_LIMIT, T3CHAT_PLAN_TUNNEL_LIMITS } from "@codenine/contracts/relay";
+import { DEFAULT_MANAGED_TUNNEL_LIMIT } from "@codenine/contracts/relay";
 
 import * as RelayDb from "../db.ts";
 import {
@@ -14,7 +14,6 @@ import {
   relayManagedEndpointAllocations,
   relayManagedTunnelLimits,
 } from "../persistence/schema.ts";
-import * as T3ChatAccounts from "../t3chat/T3ChatAccounts.ts";
 
 // Reserve-to-tunnel takes two Cloudflare calls capped at 8 seconds each; a reservation older than this was abandoned.
 const MANAGED_TUNNEL_PENDING_WINDOW_MINUTES = 15;
@@ -106,38 +105,24 @@ export class ManagedTunnelLimits extends Context.Service<
       input: { readonly userId: string; readonly environmentId: string },
       reserve: Effect.Effect<A, E, R>,
     ) => Effect.Effect<A, E | ManagedTunnelLimitExceeded | ManagedTunnelLimitPersistenceError, R>;
-    /** The user's manual cap, which replaces the default and any T3 Chat plan cap. */
-    readonly getOverride: (input: {
+    /** The user's cap: their manual one when a row holds it, else the default. */
+    readonly getLimit: (input: {
       readonly userId: string;
-    }) => Effect.Effect<number | null, ManagedTunnelLimitPersistenceError>;
+    }) => Effect.Effect<number, ManagedTunnelLimitPersistenceError>;
   }
 >()("codenine-relay/environments/ManagedTunnelLimits") {}
 
 const make = Effect.gen(function* () {
   const db = yield* RelayDb.RelayDb;
-  const t3Chat = yield* T3ChatAccounts.T3ChatAccounts;
 
-  // Asked only at the cap, so most links never call T3 Chat. Any failure keeps the lower cap.
-  const t3ChatTunnelLimit = (userId: string) =>
-    t3Chat.getLink({ userId }).pipe(
-      Effect.map((link) =>
-        link && link.plan !== "free" ? T3CHAT_PLAN_TUNNEL_LIMITS[link.plan] : 0,
-      ),
-      Effect.catch((error) =>
-        Effect.logWarning("T3 Chat plan check failed", { userId, error: error.message }).pipe(
-          Effect.as(0),
-        ),
-      ),
-    );
-
-  const loadOverride = (userId: string) =>
+  const loadLimit = (userId: string) =>
     db
       .select({ maxTunnels: relayManagedTunnelLimits.maxTunnels })
       .from(relayManagedTunnelLimits)
       .where(eq(relayManagedTunnelLimits.userId, userId))
       .limit(1)
       .pipe(
-        Effect.map((rows) => rows[0]?.maxTunnels ?? null),
+        Effect.map((rows) => rows[0]?.maxTunnels ?? DEFAULT_MANAGED_TUNNEL_LIMIT),
         Effect.mapError(
           (cause) =>
             new ManagedTunnelLimitPersistenceError({ operation: "load-limit", userId, cause }),
@@ -145,8 +130,8 @@ const make = Effect.gen(function* () {
       );
 
   return ManagedTunnelLimits.of({
-    getOverride: Effect.fn("relay.managed_tunnel_limits.get_override")(function* (input) {
-      return yield* loadOverride(input.userId);
+    getLimit: Effect.fn("relay.managed_tunnel_limits.get_limit")(function* (input) {
+      return yield* loadLimit(input.userId);
     }),
     withCapacity: Effect.fn("relay.managed_tunnel_limits.with_capacity")(function* <A, E, R>(
       input: { readonly userId: string; readonly environmentId: string },
@@ -169,8 +154,7 @@ const make = Effect.gen(function* () {
             ),
           );
 
-        const override = yield* loadOverride(input.userId);
-        const baseMaxTunnels = override ?? DEFAULT_MANAGED_TUNNEL_LIMIT;
+        const maxTunnels = yield* loadLimit(input.userId);
 
         const pendingCutoff = DateTime.formatIso(
           DateTime.subtract(yield* DateTime.now, {
@@ -194,27 +178,18 @@ const make = Effect.gen(function* () {
               ),
             );
         const activeTunnels = yield* countSlots(ne);
-        if (activeTunnels < baseMaxTunnels) return yield* reserve;
+        if (activeTunnels < maxTunnels) return yield* reserve;
 
-        // An environment that already holds a counted slot relinks without asking T3 Chat,
-        // so a downgrade or a T3 Chat outage only blocks new environments.
+        // An environment that already holds a counted slot relinks, so a lowered cap only
+        // blocks new environments.
         if ((yield* countSlots(eq)) > 0) return yield* reserve;
 
-        // A manual override is the exact cap; a T3 Chat plan raises only the default.
-        // Runs under the user lock, bounded by the T3 Chat request timeout.
-        const maxTunnels =
-          t3Chat.available && override === null
-            ? Math.max(baseMaxTunnels, yield* t3ChatTunnelLimit(input.userId))
-            : baseMaxTunnels;
-        if (activeTunnels >= maxTunnels) {
-          return yield* new ManagedTunnelLimitExceeded({
-            userId: input.userId,
-            environmentId: input.environmentId,
-            maxTunnels,
-            activeTunnels,
-          });
-        }
-        return yield* reserve;
+        return yield* new ManagedTunnelLimitExceeded({
+          userId: input.userId,
+          environmentId: input.environmentId,
+          maxTunnels,
+          activeTunnels,
+        });
       });
 
       // Statements inside map their own SqlErrors, so any left here come from opening or committing the transaction.

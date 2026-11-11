@@ -36,35 +36,21 @@
         // app colors before React mounts.
         const DEFAULT_THEME_PALETTES = {
           light: {
-            background: "oklch(0.982446 0.010114 325.653)",
-            foreground: "oklch(0.325698 0.116116 325.037)",
-            accent: "oklch(0.591646 0.217985 0.584)",
-            chrome: "oklch(0.982446 0.010114 325.653)",
+            background: "oklch(0.991069 0 0)",
+            foreground: "oklch(0.273936 0.005477 286.033)",
+            accent: "oklch(0.487701 0.217531 264.105)",
+            chrome: "oklch(0.991069 0 0)",
           },
           dark: {
-            background: "oklch(0.22813 0.020366 307.469)",
-            foreground: "oklch(0.980735 0.004092 301.426)",
-            accent: "oklch(0.460685 0.185347 4.099)",
-            chrome: "oklch(0.22813 0.020366 307.469)",
+            background: "oklch(0 0 0)",
+            foreground: "oklch(0.970151 0 0)",
+            accent: "oklch(0.570912 0.210134 263.99)",
+            chrome: "oklch(0.144788 0 0)",
           },
         };
         // Keep this small boot-time copy in sync with the built-in palettes so
         // the selected theme is visible before the app has mounted.
         const BUILT_IN_THEME_PALETTES = {
-          "codenine-chat": {
-            light: {
-              background: "oklch(0.982446 0.010114 325.653)",
-              foreground: "oklch(0.325698 0.116116 325.037)",
-              accent: "oklch(0.591646 0.217985 0.584)",
-              chrome: "oklch(0.982446 0.010114 325.653)",
-            },
-            dark: {
-              background: "oklch(0.22813 0.020366 307.469)",
-              foreground: "oklch(0.980735 0.004092 301.426)",
-              accent: "oklch(0.460685 0.185347 4.099)",
-              chrome: "oklch(0.22813 0.020366 307.469)",
-            },
-          },
           grove: {
             light: {
               background: "oklch(0.972369 0.005497 157.15)",
@@ -132,12 +118,10 @@
           "system",
           "light",
           "dark",
-          "codenine-chat",
           "grove",
           "ocean",
           "ember",
           "iris",
-          "codenine-chat-dark",
           "codenine-grove",
           "codenine-ocean",
           "codenine-ember",
@@ -216,16 +200,13 @@
           const storedTheme = window.localStorage.getItem("codenine:theme");
           const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
           const LEGACY_THEME_IDS = {
-            "codenine-chat-dark": "codenine-chat",
             "codenine-grove": "grove",
             "codenine-ocean": "ocean",
             "codenine-ember": "ember",
             "codenine-iris": "iris",
           };
-          const isLegacyChatDark = storedTheme === "codenine-chat-dark";
           const themeId =
             storedTheme === null ? "" : (LEGACY_THEME_IDS[storedTheme] ?? storedTheme);
-          const legacyMode = isLegacyChatDark ? "dark" : null;
           const builtInModes = BUILT_IN_THEME_MODES[themeId] ?? null;
           const customTheme = builtInModes ? null : findCustomTheme(themeId);
           const themeModes =
@@ -248,8 +229,7 @@
             THEME_APPEARANCE_MODE_STORAGE_KEY,
           );
           const storedFollowSystem = window.localStorage.getItem(THEME_FOLLOW_SYSTEM_STORAGE_KEY);
-          const preferenceMode =
-            theme === "light" || theme === "dark" ? theme : (legacyMode ?? baseAppearance);
+          const preferenceMode = theme === "light" || theme === "dark" ? theme : baseAppearance;
           const appearanceMode = isThemePreferenceMode(storedAppearanceMode)
             ? storedAppearanceMode
             : storedFollowSystem === "true"

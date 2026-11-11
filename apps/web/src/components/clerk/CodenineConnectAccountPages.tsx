@@ -1,10 +1,9 @@
 import { useAuth, useClerk } from "@clerk/react";
-import { MessageSquareIcon, ServerIcon, SmartphoneIcon } from "lucide-react";
+import { ServerIcon, SmartphoneIcon } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { MobileClientsUserProfilePage } from "./MobileClientsUserProfilePage";
-import { T3ChatUserProfilePage } from "./T3ChatUserProfilePage";
 import { CodenineConnectUserProfilePage } from "./CodenineConnectUserProfilePage";
 
 export const CODENINE_CONNECT_ACCOUNT_PAGES = [
@@ -19,12 +18,6 @@ export const CODENINE_CONNECT_ACCOUNT_PAGES = [
     url: "codenine-connect",
     icon: <ServerIcon className="size-4" />,
     content: <CodenineConnectUserProfilePage />,
-  },
-  {
-    label: "T3 Chat",
-    url: "codenine-chat",
-    icon: <MessageSquareIcon className="size-4" />,
-    content: <T3ChatUserProfilePage />,
   },
 ] as const;
 

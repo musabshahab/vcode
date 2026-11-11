@@ -78,7 +78,6 @@ import * as ManagedTunnelLimits from "../environments/ManagedTunnelLimits.ts";
 import * as ManagedEndpointAllocations from "../environments/ManagedEndpointAllocations.ts";
 import * as EnvironmentPublishSignatures from "../environments/EnvironmentPublishSignatures.ts";
 import * as MobileRegistrations from "../agentActivity/MobileRegistrations.ts";
-import * as T3ChatAccounts from "../t3chat/T3ChatAccounts.ts";
 import { withSpanAttributes } from "../observability.ts";
 import { isRelayHookPath, redactRelayHookUrl } from "../hooks/HookForwarder.ts";
 import * as RelayDb from "../db.ts";
@@ -812,7 +811,6 @@ export const layerClientApi = HttpApiBuilder.group(
     const links = yield* EnvironmentLinks.EnvironmentLinks;
     const managedEndpointProvider = yield* ManagedEndpointProvider.ManagedEndpointProvider;
     const devices = yield* Devices.Devices;
-    const t3Chat = yield* T3ChatAccounts.T3ChatAccounts;
     const tunnelLimits = yield* ManagedTunnelLimits.ManagedTunnelLimits;
     return handlers
       .handle(
@@ -980,46 +978,14 @@ export const layerClientApi = HttpApiBuilder.group(
         }, mapRelayCommonApiErrors("not_authorized")),
       )
       .handle(
-        "getT3ChatLink",
-        Effect.fn("relay.api.client.getT3ChatLink")(function* () {
+        "getManagedTunnelLimit",
+        Effect.fn("relay.api.client.getManagedTunnelLimit")(function* () {
           yield* appendRelayCredentialResponseHeaders;
           const { userId } = yield* RelayClientPrincipal;
-          const link = t3Chat.available
-            ? yield* t3Chat
-                .getLink({ userId })
-                .pipe(Effect.catch(() => relayInternalErrorResponse("upstream_unavailable")))
-            : null;
-          const maxTunnelsOverride = yield* tunnelLimits
-            .getOverride({ userId })
+          const maxTunnels = yield* tunnelLimits
+            .getLimit({ userId })
             .pipe(Effect.catch(() => relayInternalErrorResponse("internal_error")));
-          return {
-            available: t3Chat.available,
-            link,
-            ...(maxTunnelsOverride === null ? {} : { maxTunnelsOverride }),
-          };
-        }, mapRelayCommonApiErrors("not_authorized")),
-      )
-      .handle(
-        "createT3ChatLinkRequest",
-        Effect.fn("relay.api.client.createT3ChatLinkRequest")(function* () {
-          const { userId } = yield* RelayClientPrincipal;
-          const url = yield* t3Chat.createLinkUrl({ userId }).pipe(
-            Effect.catchTags({
-              T3ChatNotConfigured: () => relayInternalErrorResponse("internal_error"),
-              ClerkUserLookupFailed: () => relayInternalErrorResponse("upstream_unavailable"),
-            }),
-          );
-          return { url };
-        }, mapRelayCommonApiErrors("not_authorized")),
-      )
-      .handle(
-        "unlinkT3Chat",
-        Effect.fn("relay.api.client.unlinkT3Chat")(function* () {
-          const { userId } = yield* RelayClientPrincipal;
-          yield* t3Chat
-            .unlink({ userId })
-            .pipe(Effect.catch(() => relayInternalErrorResponse("upstream_unavailable")));
-          return { ok: true };
+          return { maxTunnels };
         }, mapRelayCommonApiErrors("not_authorized")),
       );
   }),
