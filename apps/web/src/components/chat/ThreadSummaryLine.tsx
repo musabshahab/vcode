@@ -3,6 +3,7 @@ import type { EnvironmentId } from "@codenine/contracts";
 import { useAtomValue } from "@effect/atom-react";
 import * as Equal from "effect/Equal";
 import { AsyncResult, Atom } from "effect/reactivity";
+import type { ReactNode } from "react";
 
 import type { ThreadPanelPresentation } from "../../rightPanelLayout";
 import { vcsEnvironment } from "../../state/vcs";
@@ -25,8 +26,13 @@ const summaryGitStatusAtom = Atom.family((status: ReturnType<typeof vcsEnvironme
 );
 const NO_SUMMARY_GIT_STATUS_ATOM: ReturnType<typeof summaryGitStatusAtom> = Atom.make(null);
 
+const LEADING_ROW_CLASS_NAME =
+  "flex min-w-0 max-w-full items-start gap-1 text-xs leading-4 text-muted-foreground";
+
 /** Branch, changes and machine under the thread title; it opens and closes the details card. */
 export function ThreadSummaryLine(props: {
+  /** Leads the line outside the details button, such as a team agent's place in its team. */
+  leading?: ReactNode;
   environmentId: EnvironmentId;
   gitCwd: string | null;
   fallbackBranch: string | null;
@@ -52,7 +58,11 @@ export function ThreadSummaryLine(props: {
       ? `+${formatDiffCount(git.insertions)} −${formatDiffCount(git.deletions)}`
       : null;
   const parts = [branch, changes, props.machineLabel].filter((part) => part !== null);
-  if (parts.length === 0) return null;
+  if (parts.length === 0) {
+    return props.leading === undefined ? null : (
+      <div className={LEADING_ROW_CLASS_NAME}>{props.leading}</div>
+    );
+  }
 
   const popover = props.detailsPresentation === "popover";
   const line = (
@@ -66,5 +76,20 @@ export function ThreadSummaryLine(props: {
       <span className="truncate">{parts.join(" · ")}</span>
     </button>
   );
-  return popover ? <PopoverTrigger handle={props.detailsPopoverHandle} render={line} /> : line;
+  const details = popover ? (
+    <PopoverTrigger handle={props.detailsPopoverHandle} render={line} />
+  ) : (
+    line
+  );
+  return props.leading === undefined ? (
+    details
+  ) : (
+    <div className={LEADING_ROW_CLASS_NAME}>
+      {props.leading}
+      <span aria-hidden className="shrink-0">
+        ·
+      </span>
+      {details}
+    </div>
+  );
 }

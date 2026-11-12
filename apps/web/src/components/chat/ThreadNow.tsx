@@ -77,15 +77,18 @@ function ThreadSyncLine({ phase }: { readonly phase: ThreadSyncPhase }) {
 }
 
 /**
- * What the thread is doing now, at the end of the timeline: what needs you, background work,
- * the sync status while messages load, then the goal.
+ * What the thread is doing now, at the end of the timeline: where its result went, what needs
+ * you, background work, the sync status while messages load, then the goal.
  */
 export function ThreadNow({
+  handoff,
   attention,
   work,
   syncPhase,
   goal,
 }: {
+  /** On a team agent's thread, the agents its result went to. */
+  readonly handoff: ThreadNowItem | null;
   /** Something that needs you elsewhere, such as a subagent's question. */
   readonly attention: ThreadNowItem | null;
   readonly work: ThreadNowItem | null;
@@ -94,6 +97,7 @@ export function ThreadNow({
 }): ReactNode {
   return (
     <>
+      {handoff ? <ThreadNowLine item={handoff} /> : null}
       {attention ? <ThreadNowLine item={attention} announce /> : null}
       {work ? <ThreadNowLine item={work} /> : null}
       {syncPhase ? <ThreadSyncLine phase={syncPhase} /> : null}

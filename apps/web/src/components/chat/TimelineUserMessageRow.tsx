@@ -67,6 +67,7 @@ import { cn } from "~/lib/utils";
 import { markdownProseDirection } from "~/textDirection";
 import { useMediaQuery } from "~/hooks/useMediaQuery";
 import { formatChatTimestampTooltip, formatDayAwareTimestamp } from "../../timestampFormat";
+import { TeamAssignmentCard } from "./TeamAssignmentCard";
 import { WorkflowOpeningBlock } from "./WorkflowOpeningBlock";
 import { TimelineRowCtx, TimelineRowActivityCtx, type TimelineRow } from "./timelineRowContext";
 import { MESSAGE_HEADING_LEVEL, MessageAuthorHeading } from "./TimelineRowParts";
@@ -245,6 +246,9 @@ export function UserMessageRow({ row }: { row: Extract<TimelineRow, { kind: "mes
 
 function UserMessageContent({ row }: { row: Extract<TimelineRow, { kind: "message" }> }) {
   const ctx = use(TimelineRowCtx);
+  if (ctx.teamAssignment?.messageId === row.message.id) {
+    return <TeamAssignmentCard assignment={ctx.teamAssignment} />;
+  }
   return ctx.workflowOpening?.messageId === row.message.id ? (
     <WorkflowOpeningBlock
       opening={ctx.workflowOpening}

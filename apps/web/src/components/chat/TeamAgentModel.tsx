@@ -102,10 +102,9 @@ export function TeamModelPicker(props: {
   );
 }
 
-/** Provider, model and effort as text, for an agent the user can no longer change. */
-export function TeamModelLabel(props: { catalog: TeamModelCatalog; selection: ModelSelection }) {
-  const { selection } = props;
-  const { entry, name } = modelName(props.catalog, selection);
+/** Provider, model and effort as the composer names them; effort is "" when the model has none. */
+export function teamModelText(catalog: TeamModelCatalog, selection: ModelSelection) {
+  const { entry, name } = modelName(catalog, selection);
   const traits = entry
     ? getTraitsSectionVisibility({
         provider: entry.driverKind,
@@ -123,6 +122,12 @@ export function TeamModelLabel(props: { catalog: TeamModelCatalog; selection: Mo
         modelSelection: selection,
       }).label
     : "";
+  return { entry, name, effort };
+}
+
+/** Provider, model and effort as text, for an agent the user can no longer change. */
+export function TeamModelLabel(props: { catalog: TeamModelCatalog; selection: ModelSelection }) {
+  const { entry, name, effort } = teamModelText(props.catalog, props.selection);
   return (
     <span className="inline-flex min-w-0 items-center gap-1">
       {entry ? (

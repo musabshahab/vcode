@@ -1,9 +1,11 @@
 import {
   type CommandId,
   type ModelSelection,
+  type OrchestrationV2Actor,
   type OrchestrationV2Command,
   type OrchestrationV2Notification,
   type OrchestrationV2ThreadShell,
+  type TeamAgent,
   TeamAgentId,
   type TeamAgentRole,
   type TeamDraft,
@@ -14,6 +16,7 @@ import {
   type TeamTask,
   type TeamTaskId,
   type TeamTaskRef,
+  type TeamTaskStatus,
   type TeamWorkspace,
   type ThreadId,
 } from "@codenine/contracts";
@@ -392,6 +395,14 @@ export function teamStatusText(
   return { label, progress, line: watching ? `${label} · ${progress}` : label };
 }
 
+/** The name of the agent a task runs on, or the task's title when the plan has no such agent. */
+function agentLabelOf(
+  plan: Pick<TeamPlan, "agents">,
+  task: Pick<TeamTask, "agentId" | "title">,
+): string {
+  return plan.agents.find((agent) => agent.id === task.agentId)?.label ?? task.title;
+}
+
 function listLabels(labels: ReadonlyArray<string>): string {
   return labels.length < 2
     ? (labels[0] ?? "")
@@ -405,8 +416,7 @@ function listLabels(labels: ReadonlyArray<string>): string {
 export function teamHandoffs(
   plan: Pick<TeamPlan, "agents" | "tasks">,
 ): ReadonlyMap<TeamTaskId, string> {
-  const labelOf = (task: TeamTask) =>
-    plan.agents.find((agent) => agent.id === task.agentId)?.label ?? task.title;
+  const labelOf = (task: TeamTask) => agentLabelOf(plan, task);
   const indexById = new Map(plan.tasks.map((task, index) => [task.id, index]));
   const handoffs = new Map<TeamTaskId, string>();
   for (const [index, task] of plan.tasks.entries()) {
@@ -436,15 +446,158 @@ export function teamHandoffs(
   return handoffs;
 }
 
+export interface TeamTaskOfThread {
+  readonly task: TeamTask;
+  /** Null when the plan has no agent with the task's `agentId`. */
+  readonly agent: TeamAgent | null;
+  /** The task's place in the plan, counted from 1, as the Task panel numbers it. */
+  readonly position: number;
+  readonly total: number;
+  /** A retry runs the next attempt in a new thread, so this one's usage is no longer the task's. */
+  readonly superseded: boolean;
+}
+
 /** The task an agent's thread runs in its lead's plan; null once the lead holds another plan. */
 export function teamTaskOfThread(
-  plan: Pick<TeamPlan, "id" | "tasks">,
+  plan: Pick<TeamPlan, "id" | "agents" | "tasks">,
   ref: Pick<TeamTaskRef, "planId" | "taskId" | "attempt">,
-): { readonly task: TeamTask; readonly superseded: boolean } | null {
+): TeamTaskOfThread | null {
   if (plan.id !== ref.planId) return null;
-  const task = plan.tasks.find((candidate) => candidate.id === ref.taskId);
-  // A retry runs the next attempt in a new thread, so this one's usage is no longer the task's.
-  return task === undefined ? null : { task, superseded: ref.attempt < task.attempt };
+  const index = plan.tasks.findIndex((candidate) => candidate.id === ref.taskId);
+  const task = plan.tasks[index];
+  if (task === undefined) return null;
+  return {
+    task,
+    agent: plan.agents.find((candidate) => candidate.id === task.agentId) ?? null,
+    position: index + 1,
+    total: plan.tasks.length,
+    superseded: ref.attempt < task.attempt,
+  };
+}
+
+/** How a task shows; a plan that stopped leaves its pending tasks unstarted, not waiting. */
+export type TeamTaskDisplayStatus = TeamTaskStatus | "not_started";
+
+const TEAM_TASK_STATUS_LABELS: Record<TeamTaskDisplayStatus, string> = {
+  pending: "Waiting",
+  running: "Running",
+  completed: "Done",
+  failed: "Failed",
+  cancelled: "Cancelled",
+  not_started: "Not started",
+};
+
+export function teamTaskStatus(
+  plan: Pick<TeamPlan, "status">,
+  task: Pick<TeamTask, "status">,
+): { readonly status: TeamTaskDisplayStatus; readonly label: string } {
+  const status =
+    task.status === "pending" && plan.status !== "running" ? "not_started" : task.status;
+  return { status, label: TEAM_TASK_STATUS_LABELS[status] };
+}
+
+/** The quiet line under an agent thread's title: "Agent 2 of 3", its model, and its status. */
+export interface TeamAgentHeader {
+  /** The agent's name, or the task's title when the plan has no such agent. */
+  readonly label: string;
+  readonly position: string;
+  readonly modelSelection: ModelSelection | null;
+  /** The task's status, or "Retried" once a retry replaced this thread's attempt. */
+  readonly status: string;
+}
+
+export function teamAgentHeader(
+  plan: Pick<TeamPlan, "id" | "status" | "agents" | "tasks">,
+  ref: Pick<TeamTaskRef, "planId" | "taskId" | "attempt">,
+): TeamAgentHeader | null {
+  const found = teamTaskOfThread(plan, ref);
+  if (found === null) return null;
+  return {
+    label: agentLabelOf(plan, found.task),
+    position: `Agent ${found.position} of ${found.total}`,
+    modelSelection: found.agent?.modelSelection ?? null,
+    status: found.superseded ? "Retried" : teamTaskStatus(plan, found.task).label,
+  };
+}
+
+/** A result an agent's task started from, for its assignment card. */
+export interface TeamReceivedResult {
+  readonly taskId: TeamTaskId;
+  /** The sending agent's name, or its task's title when the plan has no such agent. */
+  readonly from: string;
+  readonly result: string | null;
+  /** The sender's latest thread, which holds this result. */
+  readonly threadId: ThreadId | null;
+}
+
+export interface TeamAssignment {
+  readonly messageId: string;
+  /** The task's own brief; null while the plan is unknown, which leaves only `fullText`. */
+  readonly brief: string | null;
+  readonly received: ReadonlyArray<TeamReceivedResult>;
+  /** The whole message the agent received: role, team goal, brief and the results above. */
+  readonly fullText: string;
+}
+
+/**
+ * An agent thread opens with the brief the server composed for it, a user message the system
+ * sent. Null when the thread is not an agent's, or when history windowing hides that message.
+ */
+export function teamAssignment(input: {
+  readonly teamTask: Pick<TeamTaskRef, "planId" | "taskId" | "attempt"> | undefined;
+  /** The first user message the thread holds; passed alone so a new message keeps the result. */
+  readonly firstUserMessage:
+    | {
+        readonly id: string;
+        readonly text: string;
+        readonly createdBy?: OrchestrationV2Actor | undefined;
+      }
+    | undefined;
+  /** The lead's plan, or null while it is not loaded. */
+  readonly plan: Pick<TeamPlan, "id" | "agents" | "tasks"> | null;
+}): TeamAssignment | null {
+  const { teamTask, firstUserMessage: first, plan } = input;
+  if (teamTask === undefined || first === undefined || first.createdBy !== "system") return null;
+  const found = plan === null ? null : teamTaskOfThread(plan, teamTask);
+  if (plan === null || found === null) {
+    return { messageId: first.id, brief: null, received: [], fullText: first.text };
+  }
+  const received = found.task.dependsOn.flatMap((dependencyId): TeamReceivedResult[] => {
+    const sender = plan.tasks.find((candidate) => candidate.id === dependencyId);
+    if (sender === undefined) return [];
+    return [
+      {
+        taskId: sender.id,
+        from: agentLabelOf(plan, sender),
+        result: sender.result,
+        threadId: sender.threadId,
+      },
+    ];
+  });
+  return { messageId: first.id, brief: found.task.brief, received, fullText: first.text };
+}
+
+/**
+ * Where an agent's completed result went: the agents whose tasks depend on it. Tasks still
+ * waiting for other results get it later; once the plan stopped, they never will.
+ */
+export function teamResultHandoff(
+  plan: Pick<TeamPlan, "id" | "status" | "agents" | "tasks">,
+  ref: Pick<TeamTaskRef, "planId" | "taskId" | "attempt">,
+): string | null {
+  const found = teamTaskOfThread(plan, ref);
+  if (found === null || found.superseded || found.task.status !== "completed") return null;
+  const labelOf = (task: TeamTask) => agentLabelOf(plan, task);
+  const receivers = plan.tasks.filter((task) => task.dependsOn.includes(found.task.id));
+  const passed = [...new Set(receivers.filter((task) => task.status !== "pending").map(labelOf))];
+  const next =
+    plan.status === "running"
+      ? [...new Set(receivers.filter((task) => task.status === "pending").map(labelOf))]
+      : [];
+  if (passed.length === 0 && next.length === 0) return null;
+  if (next.length === 0) return `This result was passed to ${listLabels(passed)}`;
+  if (passed.length === 0) return `This result goes to ${listLabels(next)}`;
+  return `This result was passed to ${listLabels(passed)} and goes to ${listLabels(next)}`;
 }
 
 /**

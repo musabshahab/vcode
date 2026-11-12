@@ -50,6 +50,11 @@ import { useWorktreeSetup } from "./chat/useWorktreeSetup";
 import { useChatShortcuts } from "./chat/useChatShortcuts";
 import { ChatBannerLane } from "./chat/ChatBannerLane";
 import { taskStripBannerItem, useThreadTeam } from "./chat/TaskStrip";
+import {
+  teamAgentHintBannerItem,
+  teamHandoffNowItem,
+  useTeamAgentThread,
+} from "./chat/TeamAgentThread";
 import * as Schema from "effect/Schema";
 import {
   AuthOrchestrationOperateScope,
@@ -86,6 +91,7 @@ import {
   resolveWorkflowOpening,
   workflowOpeningParentThreadId,
 } from "@codenine/client-runtime/state/subagentRuntime";
+import { teamAssignment } from "@codenine/client-runtime/team";
 import {
   getUserQueuedThreadRuns,
   threadSupportsProviderHandoff,
@@ -822,6 +828,15 @@ export default function ChatView(props: ChatViewProps) {
       ? scopeThreadRef(activeThread.environmentId, activeThread.lineage.parentThreadId)
       : null;
   const sideChatParent = useQuietThreadShell(sideChatParentRef);
+  const teamAgentThread = useTeamAgentThread(embedded ? null : serverThreadShell);
+  const teamAssignmentOpening =
+    teamAgentThread === null
+      ? null
+      : teamAssignment({
+          teamTask: teamAgentThread.teamTask,
+          firstUserMessage: serverProjection?.messages.find((message) => message.role === "user"),
+          plan: teamAgentThread.plan,
+        });
   const parentThreadLink = (() => {
     if (sideChatParentRef !== null) {
       const title = sideChatParent?.title ?? "Parent thread";
@@ -851,14 +866,21 @@ export default function ChatView(props: ChatViewProps) {
     }
     return null;
   })();
-  // The header's breadcrumb opens a parent in this environment only.
+  // The header's breadcrumb opens a parent in this environment only, and a lead it knows.
   const headerParentThreadLink =
-    parentSubagentThreadRef === null
-      ? null
-      : {
+    parentSubagentThreadRef !== null
+      ? {
           threadId: parentSubagentThreadRef.threadId,
           title: parentSubagentThread?.title ?? "Parent thread",
-        };
+          task: false,
+        }
+      : teamAgentThread?.leadTitle != null
+        ? {
+            threadId: teamAgentThread.leadRef.threadId,
+            title: teamAgentThread.leadTitle,
+            task: true,
+          }
+        : null;
   const threadError = isServerThread
     ? (localServerError ?? serverRuntime?.lastError ?? null)
     : localDraftError;
@@ -2387,10 +2409,14 @@ export default function ChatView(props: ChatViewProps) {
   // The strip is the way back to the Task tab, and the way in where the panel is a sheet.
   const taskTabInView =
     rightPanelOpen && !shouldUsePlanSidebarSheet && activeRightPanelSurface?.kind === "task";
-  const taskStripItems =
-    threadTeamInfo === null || taskTabInView
+  const teamBannerItems = [
+    ...(threadTeamInfo === null || taskTabInView
       ? []
-      : [taskStripBannerItem(threadTeamInfo, openTaskSurfaceStable)];
+      : [taskStripBannerItem(threadTeamInfo, openTaskSurfaceStable)]),
+    ...(teamAgentThread === null
+      ? []
+      : [teamAgentHintBannerItem(teamAgentThread.header?.label ?? null)]),
+  ];
   const composerBannerItems = (() => {
     const fallbackSelection = draftFallback?.selection;
     const defaultSelection =
@@ -2451,7 +2477,7 @@ export default function ChatView(props: ChatViewProps) {
         : [];
     if (!localCheckoutBranchMismatch || !showBranchMismatchBanner || !activeBranchMismatchKey) {
       return [
-        ...taskStripItems,
+        ...teamBannerItems,
         ...feedbackBannerItems,
         ...fallbackItems,
         ...limitRecoveryItems,
@@ -2463,7 +2489,7 @@ export default function ChatView(props: ChatViewProps) {
       ];
     }
     return [
-      ...taskStripItems,
+      ...teamBannerItems,
       ...feedbackBannerItems,
       ...fallbackItems,
       ...limitRecoveryItems,
@@ -2874,8 +2900,14 @@ export default function ChatView(props: ChatViewProps) {
   };
   const onExpandTimelineImageStable = useStableCallback(onExpandTimelineImage);
   const shownThreadSyncPhase = activeEnvironmentUnavailable ? null : delayedThreadSyncPhase;
+  const handoffNow =
+    teamAgentThread?.handoff == null ? null : teamHandoffNowItem(threadId, teamAgentThread.handoff);
   const hasThreadNow =
-    attentionNow !== null || workNow !== null || goalNow !== null || shownThreadSyncPhase !== null;
+    handoffNow !== null ||
+    attentionNow !== null ||
+    workNow !== null ||
+    goalNow !== null ||
+    shownThreadSyncPhase !== null;
   const queuedRunCount = serverProjection ? getUserQueuedThreadRuns(serverProjection).length : 0;
   // The queue control is mounted for every server thread but joins the footer only while it shows
   // something, by its own rule: an optimistic message stops counting once the server has it.
@@ -2910,6 +2942,7 @@ export default function ChatView(props: ChatViewProps) {
         )}
         <ThreadNow
           key={routeThreadKey}
+          handoff={handoffNow}
           attention={attentionNow}
           work={workNow}
           syncPhase={shownThreadSyncPhase}
@@ -3094,6 +3127,7 @@ export default function ChatView(props: ChatViewProps) {
               activeThreadTitle={activeThread.title}
               activeProject={activeProject ?? null}
               parentThreadLink={headerParentThreadLink}
+              teamAgent={teamAgentThread?.header ?? null}
               onOpenThread={onOpenRelatedThreadStable}
               rightPanelOpen={inlineRightPanelOwnsTitleBar}
               onNewThreadInProject={handleNewThreadInActiveProjectStable}
@@ -3222,6 +3256,7 @@ export default function ChatView(props: ChatViewProps) {
                   onOpenThread={onOpenRelatedThreadStable}
                   parentThreadLink={parentThreadLink}
                   workflowOpening={workflowOpening}
+                  teamAssignment={teamAssignmentOpening}
                   supportsConversationRollback={supportsConversationRollback}
                   threadStartCheckpointReady={threadStartCheckpointReady}
                   availableRevertTurnCounts={availableRevertTurnCounts}

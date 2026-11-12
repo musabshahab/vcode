@@ -22,6 +22,7 @@ import {
 import { parseScopedThreadKey } from "@codenine/client-runtime/environment";
 import { resolveWorkGroupScrollAnchor } from "@codenine/client-runtime/work-log/scroll-anchor";
 import type { WorkflowOpening } from "@codenine/client-runtime/state/subagentRuntime";
+import type { TeamAssignment } from "@codenine/client-runtime/team";
 import { observeResize } from "~/lib/observeResize";
 import { useStableCallback } from "~/hooks/useStableCallback";
 
@@ -267,6 +268,7 @@ interface MessagesTimelineProps {
     readonly open?: () => void;
   } | null;
   workflowOpening?: WorkflowOpening | null;
+  teamAssignment?: TeamAssignment | null;
   onForkFromRun?: (input: {
     readonly sourceThreadId: ThreadId;
     readonly runId: RunId;
@@ -367,6 +369,7 @@ const ConversationTimeline = memo(function ConversationTimeline({
   turnItemSource,
   parentThreadLink = null,
   workflowOpening = null,
+  teamAssignment = null,
   onForkFromRun,
   supportsConversationRollback,
   threadStartCheckpointReady = false,
@@ -997,6 +1000,7 @@ const ConversationTimeline = memo(function ConversationTimeline({
     onOpenThread,
     turnItemSource,
     workflowOpening,
+    teamAssignment,
     onForkFromRun,
     onToggleTurnFold,
     onToggleAttemptFold,

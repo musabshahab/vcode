@@ -34,6 +34,7 @@ function header(title: string) {
         isServerThread
         activeProject={null}
         parentThreadLink={null}
+        teamAgent={null}
         onOpenThread={() => {}}
         rightPanelOpen={false}
         onNewThreadInProject={() => {}}

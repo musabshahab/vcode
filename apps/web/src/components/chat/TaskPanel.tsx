@@ -20,8 +20,10 @@ import {
   teamSaveCommand,
   teamStatusText,
   teamTaskOfThread,
+  teamTaskStatus,
   type TeamDraftChange,
   type TeamDraftEdit,
+  type TeamTaskDisplayStatus,
 } from "@codenine/client-runtime/team";
 import {
   AuthOrchestrationOperateScope,
@@ -34,7 +36,6 @@ import {
   type TeamPlanStatus,
   type TeamTask,
   type TeamTaskRef,
-  type TeamTaskStatus,
 } from "@codenine/contracts";
 import { formatDuration } from "@codenine/shared/orchestrationTiming";
 import { teamPlanSummary } from "@codenine/shared/team";
@@ -58,6 +59,7 @@ import { Menu, MenuGroup, MenuGroupLabel, MenuItem, MenuPopup, MenuTrigger } fro
 import { ScrollArea } from "../ui/scroll-area";
 import { TeamModelLabel, useTeamModelCatalog, type TeamModelCatalog } from "./TeamAgentModel";
 import { TEAM_ROLE_LABELS, TeamDraftEditor } from "./TeamDraftEditor";
+import { TeamResultText } from "./TeamResultText";
 
 type BadgeVariant = "info" | "success" | "error" | "warning" | "secondary" | "outline";
 
@@ -69,15 +71,14 @@ const PLAN_BADGE: Record<TeamPlanStatus, BadgeVariant> = {
   cancelled: "secondary",
 };
 
-const TASK_STATUS: Record<TeamTaskStatus, { label: string; variant: BadgeVariant }> = {
-  pending: { label: "Waiting", variant: "outline" },
-  running: { label: "Running", variant: "info" },
-  completed: { label: "Done", variant: "success" },
-  failed: { label: "Failed", variant: "error" },
-  cancelled: { label: "Cancelled", variant: "secondary" },
+const TASK_STATUS_BADGE: Record<TeamTaskDisplayStatus, BadgeVariant> = {
+  pending: "outline",
+  running: "info",
+  completed: "success",
+  failed: "error",
+  cancelled: "secondary",
+  not_started: "outline",
 };
-
-const NOT_STARTED = { label: "Not started", variant: "outline" } as const;
 
 const CONFLICT_NOTICE =
   "The team changed before your changes reached it, so they were not applied. This is the new plan; review it and approve again.";
@@ -493,9 +494,7 @@ function TeamTaskRow(props: {
   onRetry: (task: TeamTask, agentId?: TeamAgentId) => void;
 }) {
   const { task, plan, agent, thisThread } = props;
-  // A plan that stopped leaves its pending tasks unstarted, not waiting.
-  const status =
-    task.status === "pending" && plan.status !== "running" ? NOT_STARTED : TASK_STATUS[task.status];
+  const shown = teamTaskStatus(plan, task);
   const usage = task.usage;
   const openThreadId =
     task.threadId !== null && (thisThread === null || thisThread.superseded) ? task.threadId : null;
@@ -519,8 +518,8 @@ function TeamTaskRow(props: {
             {TEAM_ROLE_LABELS[agent.role]}
           </Badge>
         ) : null}
-        <Badge variant={status.variant} size="sm" className="ms-auto">
-          {status.label}
+        <Badge variant={TASK_STATUS_BADGE[shown.status]} size="sm" className="ms-auto">
+          {shown.label}
         </Badge>
       </div>
       <p className="break-words">{task.title}</p>
@@ -533,7 +532,7 @@ function TeamTaskRow(props: {
         ) : null}
         {task.attempt > 1 ? <span>Attempt {task.attempt}</span> : null}
       </div>
-      {task.result !== null ? <TaskResultText text={task.result} /> : null}
+      {task.result !== null ? <TeamResultText text={task.result} /> : null}
       {openThreadId !== null || canRetryTeamTask(plan, task) ? (
         <div className="flex flex-wrap items-center gap-2 text-xs">
           {openThreadId !== null ? (
@@ -564,31 +563,6 @@ function TeamTaskRow(props: {
         </div>
       ) : null}
     </li>
-  );
-}
-
-const LONG_RESULT_CHARS = 280;
-const LONG_RESULT_LINES = 4;
-
-function TaskResultText({ text }: { text: string }) {
-  const [expanded, setExpanded] = useState(false);
-  const long = text.length > LONG_RESULT_CHARS || text.split("\n").length > LONG_RESULT_LINES;
-  return (
-    <div className="flex flex-col items-start gap-0.5">
-      <p
-        className={cn(
-          "whitespace-pre-wrap break-words text-muted-foreground",
-          long && !expanded && "line-clamp-3",
-        )}
-      >
-        {text}
-      </p>
-      {long ? (
-        <InlineButton tone="muted" onClick={() => setExpanded(!expanded)}>
-          {expanded ? "Show less" : "Show more"}
-        </InlineButton>
-      ) : null}
-    </div>
   );
 }
 

@@ -19,11 +19,14 @@ import {
   isTeamFinishedNotification,
   resolveTeamDraft,
   savedTeamDraftEdit,
+  teamAgentHeader,
   teamApproveCommands,
+  teamAssignment,
   teamCommandFailure,
   teamDraftIssue,
   teamDraftOf,
   teamHandoffs,
+  teamResultHandoff,
   teamRetryCommand,
   teamStatusText,
   teamTaskOfThread,
@@ -389,13 +392,134 @@ describe("threadTeam", () => {
 });
 
 it("finds an agent thread's task, and whether a retry replaced its attempt", () => {
-  const current = plan({ tasks: [{ ...task("a", "builder"), attempt: 2 }] });
+  const current = plan({ tasks: [task("z", "builder"), { ...task("a", "reviewer"), attempt: 2 }] });
   const ref = { planId: current.id, taskId: TeamTaskId.make("a") };
-  expect(teamTaskOfThread(current, { ...ref, attempt: 2 })?.superseded).toBe(false);
+  expect(teamTaskOfThread(current, { ...ref, attempt: 2 })).toMatchObject({
+    agent: { id: "reviewer" },
+    position: 2,
+    total: 2,
+    superseded: false,
+  });
   expect(teamTaskOfThread(current, { ...ref, attempt: 1 })?.superseded).toBe(true);
   expect(
     teamTaskOfThread(current, { ...ref, planId: TeamPlanId.make("plan-2"), attempt: 2 }),
   ).toBeNull();
+});
+
+describe("teamAgentHeader", () => {
+  const ref = { planId: TeamPlanId.make("plan-1"), taskId: TeamTaskId.make("b"), attempt: 1 };
+
+  it.each([
+    ["running", "pending", 1, "Waiting"],
+    ["failed", "pending", 1, "Not started"],
+    ["running", "completed", 1, "Done"],
+    ["running", "pending", 2, "Retried"],
+  ] as const)(
+    "in a %s plan, a %s task on attempt %i reads %s",
+    (planStatus, status, attempt, label) => {
+      const current = plan({
+        status: planStatus,
+        tasks: [task("a", "builder"), { ...task("b", "reviewer", ["a"]), status, attempt }],
+      });
+      expect(teamAgentHeader(current, ref)).toEqual({
+        label: "reviewer",
+        position: "Agent 2 of 2",
+        modelSelection: { instanceId: codex, model: "gpt-strong" },
+        status: label,
+      });
+    },
+  );
+
+  it("falls back to the task's title for an agent the plan does not have", () => {
+    const current = plan({ tasks: [task("a", "builder"), task("b", "ghost")] });
+    expect(teamAgentHeader(current, ref)).toMatchObject({
+      label: "Task b",
+      modelSelection: null,
+    });
+  });
+});
+
+describe("teamAssignment", () => {
+  const teamTask = { planId: TeamPlanId.make("plan-1"), taskId: TeamTaskId.make("c"), attempt: 1 };
+  const brief = { id: "message-1", text: "Act as reviewer.", createdBy: "system" } as const;
+  const current = plan({
+    tasks: [
+      { ...task("a", "builder"), status: "completed", result: "Built it.", threadId },
+      { ...task("b", "ghost"), status: "completed", result: "Tested it." },
+      task("c", "reviewer", ["b", "a"]),
+    ],
+  });
+
+  it("shows the task's brief and the results it started from, in its order", () => {
+    expect(teamAssignment({ teamTask, firstUserMessage: brief, plan: current })).toEqual({
+      messageId: "message-1",
+      brief: "Do c.",
+      received: [
+        { taskId: "b", from: "Task b", result: "Tested it.", threadId: null },
+        { taskId: "a", from: "builder", result: "Built it.", threadId },
+      ],
+      fullText: "Act as reviewer.",
+    });
+  });
+
+  it("falls back to the message the agent received while the plan is unknown", () => {
+    const other = plan({ id: TeamPlanId.make("plan-2") });
+    for (const unknown of [null, other]) {
+      expect(teamAssignment({ teamTask, firstUserMessage: brief, plan: unknown })).toEqual({
+        messageId: "message-1",
+        brief: null,
+        received: [],
+        fullText: "Act as reviewer.",
+      });
+    }
+  });
+
+  it("finds nothing when the first user message is not the system's brief", () => {
+    // History windowing can leave out the brief, so a later message comes first.
+    const user = { id: "message-3", text: "Also check docs.", createdBy: "user" } as const;
+    expect(teamAssignment({ teamTask, firstUserMessage: user, plan: current })).toBeNull();
+    expect(teamAssignment({ teamTask, firstUserMessage: undefined, plan: current })).toBeNull();
+    expect(
+      teamAssignment({ teamTask: undefined, firstUserMessage: brief, plan: current }),
+    ).toBeNull();
+  });
+});
+
+describe("teamResultHandoff", () => {
+  const ref = { planId: TeamPlanId.make("plan-1"), taskId: TeamTaskId.make("a"), attempt: 1 };
+  const agents = [agent("builder"), agent("tester"), agent("reviewer")];
+  const done = { ...task("a", "builder"), status: "completed" } as const;
+
+  it.each([
+    [
+      "running",
+      [done, { ...task("b", "tester", ["a"]), status: "running" }, task("c", "reviewer", ["a"])],
+      "This result was passed to tester and goes to reviewer",
+    ],
+    [
+      "completed",
+      [
+        done,
+        { ...task("b", "reviewer", ["a"]), status: "completed" },
+        { ...task("c", "reviewer", ["a"]), status: "completed" },
+      ],
+      "This result was passed to reviewer",
+    ],
+    ["running", [done, task("b", "tester", ["a"])], "This result goes to tester"],
+    ["failed", [done, task("b", "tester", ["a"])], null],
+    ["running", [done, task("b", "tester")], null],
+    ["running", [task("a", "builder"), task("b", "tester", ["a"])], null],
+  ] as const)("in a %s plan reads %s", (status, tasks, line) => {
+    expect(teamResultHandoff(plan({ status, agents, tasks }), ref)).toBe(line);
+  });
+
+  it("says nothing on an attempt a retry replaced", () => {
+    const tasks: ReadonlyArray<TeamTask> = [
+      { ...done, attempt: 2 },
+      { ...task("b", "tester", ["a"]), status: "running" },
+    ];
+    expect(teamResultHandoff(plan({ status: "running", agents, tasks }), ref)).toBeNull();
+  });
 });
 
 it("tells the team-finished wake from other system notifications", () => {

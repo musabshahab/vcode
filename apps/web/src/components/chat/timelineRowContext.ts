@@ -18,6 +18,7 @@ import {
 import type { AsyncResult, Atom } from "effect/reactivity";
 import type { CommandOutputView } from "@codenine/client-runtime/state/command-output";
 import type { WorkflowOpening } from "@codenine/client-runtime/state/subagentRuntime";
+import type { TeamAssignment } from "@codenine/client-runtime/team";
 import { createContext, type MouseEvent } from "react";
 import { type LegendListRef } from "@legendapp/list/react";
 import type { CodexArtifactTemplate } from "@codenine/shared/codexArtifactTemplates";
@@ -73,6 +74,8 @@ export interface TimelineRowSharedState {
   turnItemSource: TurnItemSource | undefined;
   onOpenThread: (threadId: OrchestrationV2TurnItem["threadId"]) => void;
   workflowOpening: WorkflowOpening | null;
+  /** On a team agent's thread, its opening brief, which shows as an assignment card. */
+  teamAssignment: TeamAssignment | null;
   /** Absent hides "Fork from this response". */
   onForkFromRun:
     | ((input: { readonly sourceThreadId: ThreadId; readonly runId: RunId }) => Promise<void>)

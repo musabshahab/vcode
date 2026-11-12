@@ -6,6 +6,7 @@ import {
 } from "@codenine/contracts";
 import { scopeThreadRef } from "@codenine/client-runtime/environment";
 import type { EnvironmentProject } from "@codenine/client-runtime/state/shell";
+import type { TeamAgentHeader } from "@codenine/client-runtime/team";
 import {
   isAtomCommandInterrupted,
   squashAtomCommandFailure,
@@ -40,6 +41,7 @@ import { textDirection } from "~/textDirection";
 import { useClientSettings } from "../../hooks/useSettings";
 import type { ThreadPanelPresentation } from "../../rightPanelLayout";
 import type { PopoverCreateHandle } from "../ui/popover";
+import { TeamAgentHeaderLine } from "./TeamAgentThread";
 import { ThreadSummaryLine } from "./ThreadSummaryLine";
 
 interface ChatHeaderProps {
@@ -48,7 +50,10 @@ interface ChatHeaderProps {
   activeThreadTitle: string;
   isServerThread: boolean;
   activeProject: EnvironmentProject | null;
-  parentThreadLink: { threadId: ThreadId; title: string } | null;
+  /** A subagent's parent, or the task (lead thread) a team agent works for. */
+  parentThreadLink: { threadId: ThreadId; title: string; task: boolean } | null;
+  /** On a team agent's thread: its name, which the last crumb shows, and its place in the team. */
+  teamAgent: TeamAgentHeader | null;
   onOpenThread: (threadId: ThreadId) => void;
   rightPanelOpen: boolean;
   onNewThreadInProject: () => void;
@@ -82,6 +87,7 @@ export const ChatHeader = memo(function ChatHeader({
   isServerThread,
   activeProject,
   parentThreadLink,
+  teamAgent,
   onOpenThread,
   rightPanelOpen,
   onNewThreadInProject,
@@ -96,6 +102,8 @@ export const ChatHeader = memo(function ChatHeader({
   onToggleThreadPanel,
 }: ChatHeaderProps) {
   const activeProjectName = activeProject?.isScratch ? "No project" : activeProject?.title;
+  // A team agent's crumb names the agent; its title, the task it runs, stays in the tooltip.
+  const crumbTitle = teamAgent?.label ?? activeThreadTitle;
   const activeProjectCwd = activeProject?.workspaceRoot ?? null;
   const interfaceFont = useClientSettings((settings) => settings.fontFamilySans);
   const breadcrumbContainerRef = useRef<HTMLDivElement>(null);
@@ -163,7 +171,7 @@ export const ChatHeader = memo(function ChatHeader({
   }, [
     // oxlint-disable-next-line react/exhaustive-effect-dependencies -- Title, font and rename changes resize the breadcrumb text without resizing the list, so it re-measures.
     activeProjectName,
-    activeThreadTitle,
+    crumbTitle,
     parentThreadLink,
     interfaceFont,
     isRenamingTitle,
@@ -336,7 +344,7 @@ export const ChatHeader = memo(function ChatHeader({
                   render={
                     <button
                       type="button"
-                      aria-label={`Open parent thread: ${parentThreadLink.title}`}
+                      aria-label={`${parentThreadLink.task ? "Open task" : "Open parent thread"}: ${parentThreadLink.title}`}
                       onClick={() => onOpenThread(parentThreadLink.threadId)}
                       className="inline-flex min-w-0 max-w-full cursor-pointer items-center rounded-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
                     />
@@ -391,7 +399,7 @@ export const ChatHeader = memo(function ChatHeader({
                   <button
                     ref={titleButtonRef}
                     type="button"
-                    aria-label={`Thread actions for ${activeThreadTitle}`}
+                    aria-label={`Thread actions for ${crumbTitle}`}
                     aria-haspopup="menu"
                     onClick={openMenuFromTitle}
                     onDoubleClick={canOperateThread ? handleTitleDoubleClick : undefined}
@@ -400,8 +408,8 @@ export const ChatHeader = memo(function ChatHeader({
                   />
                 }
               >
-                <h2 className="min-w-0" dir={textDirection(activeThreadTitle)}>
-                  <WorkspaceBreadcrumbText>{activeThreadTitle}</WorkspaceBreadcrumbText>
+                <h2 className="min-w-0" dir={textDirection(crumbTitle)}>
+                  <WorkspaceBreadcrumbText>{crumbTitle}</WorkspaceBreadcrumbText>
                 </h2>
                 <ChevronDownIcon
                   aria-hidden
@@ -431,6 +439,17 @@ export const ChatHeader = memo(function ChatHeader({
       </WorkspaceBreadcrumb>
       {isServerThread ? (
         <ThreadSummaryLine
+          {...(teamAgent === null
+            ? {}
+            : {
+                leading: (
+                  <TeamAgentHeaderLine
+                    environmentId={activeThreadEnvironmentId}
+                    projectId={activeProject?.id ?? null}
+                    header={teamAgent}
+                  />
+                ),
+              })}
           environmentId={activeThreadEnvironmentId}
           gitCwd={gitCwd}
           fallbackBranch={threadBranch}
