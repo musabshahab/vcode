@@ -48,6 +48,25 @@ interface FirstRunDecisionInput {
   readonly threadCount: number;
 }
 
+/**
+ * Setup counts as done only for the server it was finished against, so a new data directory shows
+ * it again. Completion saved for another server, or before the id was kept, leaves the decision to
+ * the workspace evidence.
+ */
+export function isOnboardingCompleteFor(
+  settings: {
+    readonly onboardingCompletedAt: string | null;
+    readonly onboardingCompletedEnvironmentId: string | null;
+  },
+  primaryEnvironmentId: string | null,
+): boolean {
+  return (
+    settings.onboardingCompletedAt !== null &&
+    primaryEnvironmentId !== null &&
+    settings.onboardingCompletedEnvironmentId === primaryEnvironmentId
+  );
+}
+
 export function isFirstRunWorkspaceProvenanceAuthoritative(input: {
   readonly welcomeReceived: boolean;
   readonly bootstrapStatus: "pending" | "complete" | null;

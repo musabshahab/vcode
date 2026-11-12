@@ -10,6 +10,7 @@ import * as Duration from "effect/Duration";
 import * as Schema from "effect/Schema";
 import * as SchemaTransformation from "effect/SchemaTransformation";
 import {
+  EnvironmentId,
   ForwardCompatibleNullable,
   ForwardCompatibleOptional,
   OmittedWhenNull,
@@ -299,6 +300,10 @@ export const ClientSettingsSchema = Schema.Struct({
   fontSmoothing: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(true))),
   // Older installs also decode to null; onboarding must additionally require an empty workspace.
   onboardingCompletedAt: Schema.NullOr(Schema.String).pipe(
+    Schema.withDecodingDefault(Effect.succeed(null)),
+  ),
+  // The primary environment setup was finished against. A new data directory gets a new id.
+  onboardingCompletedEnvironmentId: Schema.NullOr(EnvironmentId).pipe(
     Schema.withDecodingDefault(Effect.succeed(null)),
   ),
   persistComposerContextStrip: Schema.Boolean.pipe(
@@ -1556,6 +1561,7 @@ export const ClientSettingsPatch = Schema.Struct({
   environmentIdentificationMode: Schema.optionalKey(EnvironmentIdentificationMode),
   glassOpacity: Schema.optionalKey(GlassOpacity),
   onboardingCompletedAt: Schema.optionalKey(Schema.NullOr(Schema.String)),
+  onboardingCompletedEnvironmentId: Schema.optionalKey(Schema.NullOr(EnvironmentId)),
   fontSizeInterface: Schema.optionalKey(InterfaceFontSize),
   fontSizePrompt: Schema.optionalKey(PromptFontSize),
   fontSizeCode: Schema.optionalKey(CodeFontSize),

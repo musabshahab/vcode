@@ -87,8 +87,9 @@ export function WelcomePage({
   const handleNewThread = useNewThreadHandler();
   const { scratchEnvironmentId, openScratchProject } = useScratchProject();
   const scratchTargetEnvironmentId = scratchEnvironmentId(environmentId);
+  const primaryEnvironmentId = usePrimaryEnvironmentId();
   // `codenine` on PATH belongs to the primary computer, so only it offers that.
-  const isPrimary = usePrimaryEnvironmentId() === environmentId;
+  const isPrimary = primaryEnvironmentId === environmentId;
   // True while setup is saved before a landing; leaving earlier would drop the landing.
   const holdPageRef = useRef(false);
   useBlocker({
@@ -116,7 +117,7 @@ export function WelcomePage({
     }
 
     holdPageRef.current = true;
-    const completion = completeOnboarding()
+    const completion = completeOnboarding(primaryEnvironmentId)
       .then(async () => {
         if (completionErrorToastIdRef.current !== null) {
           toastManager.close(completionErrorToastIdRef.current);

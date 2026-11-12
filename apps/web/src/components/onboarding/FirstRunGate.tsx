@@ -13,13 +13,14 @@ import { completeOnboarding } from "../../onboarding/firstRun";
 import {
   isFirstRunWorkspaceProvenanceAuthoritative,
   isFreshFirstRunWorkspace,
+  isOnboardingCompleteFor,
   resolveFirstRunDecision,
   resolveHostedFirstRunDecision,
   transitionFirstRunGateState,
   type FirstRunGateState,
 } from "../../onboarding/firstRun.logic";
 import { useAllEnvironmentShellsBootstrapped, useProjects } from "../../state/entities";
-import { useEnvironments } from "../../state/environments";
+import { useEnvironments, usePrimaryEnvironmentId } from "../../state/environments";
 import { environmentProjects } from "../../state/projects";
 import { primaryServerConfigAtom, primaryServerWelcomeAtom } from "../../state/server";
 import { environmentShell } from "../../state/shell";
@@ -78,6 +79,15 @@ export function FirstRunGate({
   const hydrationStatus = useClientSettingsHydrationStatus();
   const hydrated = hydrationStatus === "ready";
   const onboardingCompletedAt = useClientSettings((settings) => settings.onboardingCompletedAt);
+  const onboardingCompletedEnvironmentId = useClientSettings(
+    (settings) => settings.onboardingCompletedEnvironmentId,
+  );
+  // The catalog learns the primary id before its server config arrives.
+  const primaryEnvironmentId = usePrimaryEnvironmentId();
+  const completed = isOnboardingCompleteFor(
+    { onboardingCompletedAt, onboardingCompletedEnvironmentId },
+    primaryEnvironmentId,
+  );
   const bootstrapped = useAllEnvironmentShellsBootstrapped();
   const { isReady: environmentCatalogReady } = useEnvironments();
   const projects = useProjects();
@@ -88,17 +98,13 @@ export function FirstRunGate({
   const primaryShellLive = useAtomValue(primaryShellLiveAtom);
   const workspaceEvidenceLive = useAtomValue(workspaceEvidenceLiveAtom);
   const [gateState, setGateState] = useState<FirstRunGateState>(() => ({
-    decision:
-      (!enabled && !hostedStatic) || (hydrated && onboardingCompletedAt !== null)
-        ? "app"
-        : "pending",
+    decision: (!enabled && !hostedStatic) || (hydrated && completed) ? "app" : "pending",
     stalled: false,
   }));
   const { decision, stalled } = gateState;
   const settingsReadFailed = hydrationStatus === "failed" || hydrationStatus === "retrying";
   // The server's sole cwd-bootstrap project/thread still counts as fresh so npx codenine users see onboarding.
   const serverCwd = serverConfig?.cwd ?? null;
-  const primaryEnvironmentId = serverConfig?.environment.environmentId ?? null;
   const workspaceFresh =
     threadCount <= 1 &&
     isFreshFirstRunWorkspace({
@@ -117,7 +123,7 @@ export function FirstRunGate({
     : resolveFirstRunDecision({
         enabled,
         hydrated,
-        completed: onboardingCompletedAt !== null,
+        completed,
         bootstrapped,
         authoritative: primaryShellLive,
         workspaceAuthoritative: workspaceEvidenceLive,
@@ -143,10 +149,10 @@ export function FirstRunGate({
   // oxlint-disable-next-line codenine/no-unreasoned-state-sync -- persists onboarding completion to settings once the gate settles on skipping the wizard
   useEffect(() => {
     if (decision === "wizard" || !hydrated) return;
-    if (persistCompletion && onboardingCompletedAt === null) {
-      void completeOnboarding().catch(() => undefined);
+    if (persistCompletion && !completed) {
+      void completeOnboarding(primaryEnvironmentId).catch(() => undefined);
     }
-  }, [decision, hydrated, onboardingCompletedAt, persistCompletion]);
+  }, [completed, decision, hydrated, persistCompletion, primaryEnvironmentId]);
 
   // oxlint-disable-next-line codenine/no-unreasoned-state-sync -- timer gives up on a pending first-run decision after the timeout
   useEffect(() => {

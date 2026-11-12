@@ -3,6 +3,7 @@ import { describe, expect, it } from "vite-plus/test";
 import {
   isFirstRunWorkspaceProvenanceAuthoritative,
   isFreshFirstRunWorkspace,
+  isOnboardingCompleteFor,
   resolveFirstRunDecision,
   transitionFirstRunGateState,
 } from "./firstRun.logic";
@@ -22,13 +23,41 @@ const freshWorkspace = {
   threadCount: 1,
 } as const;
 
+const savedCompletion = {
+  onboardingCompletedAt: "2026-09-01T12:00:00.000Z",
+  onboardingCompletedEnvironmentId: "server-a",
+};
+// Each leaves the decision to the workspace evidence of server-b.
+const notCompletedOnThisServer = [
+  {
+    setup: "never finished",
+    completed: isOnboardingCompleteFor(
+      { onboardingCompletedAt: null, onboardingCompletedEnvironmentId: null },
+      "server-b",
+    ),
+  },
+  {
+    setup: "finished on another server",
+    completed: isOnboardingCompleteFor(savedCompletion, "server-b"),
+  },
+  {
+    setup: "finished before servers were recorded",
+    completed: isOnboardingCompleteFor(
+      { ...savedCompletion, onboardingCompletedEnvironmentId: null },
+      "server-b",
+    ),
+  },
+];
+
 describe("resolveFirstRunDecision", () => {
-  it("opens the wizard for an authoritative fresh workspace", () => {
-    expect(resolveFirstRunDecision(freshWorkspace)).toEqual({
-      decision: "wizard",
-      persistCompletion: false,
-    });
-  });
+  it.each(notCompletedOnThisServer)(
+    "opens the wizard for an authoritative empty workspace when setup was $setup",
+    ({ completed }) => {
+      expect(
+        resolveFirstRunDecision({ ...freshWorkspace, completed, projectCount: 0, threadCount: 0 }),
+      ).toEqual({ decision: "wizard", persistCompletion: false });
+    },
+  );
 
   it("does not permanently complete onboarding from cached project counts", () => {
     expect(
@@ -44,18 +73,22 @@ describe("resolveFirstRunDecision", () => {
     });
   });
 
-  it("backfills completion once existing projects are confirmed by the server", () => {
-    expect(
-      resolveFirstRunDecision({
-        ...freshWorkspace,
-        projectCount: 3,
-        workspaceFresh: false,
-      }),
-    ).toEqual({
-      decision: "app",
-      persistCompletion: true,
-    });
-  });
+  it.each(notCompletedOnThisServer)(
+    "backfills completion once existing projects are confirmed by the server when setup was $setup",
+    ({ completed }) => {
+      expect(
+        resolveFirstRunDecision({
+          ...freshWorkspace,
+          completed,
+          projectCount: 3,
+          workspaceFresh: false,
+        }),
+      ).toEqual({
+        decision: "app",
+        persistCompletion: true,
+      });
+    },
+  );
 
   it("waits when the initial welcome is pending and opens the wizard after completion", () => {
     const pendingProvenance = isFirstRunWorkspaceProvenanceAuthoritative({
@@ -82,16 +115,29 @@ describe("resolveFirstRunDecision", () => {
   });
 
   it("does not wait for server data after onboarding is already complete", () => {
+    const serverDataMissing = {
+      ...freshWorkspace,
+      authoritative: false,
+      bootstrapped: false,
+      serverConfigAvailable: false,
+    };
     expect(
       resolveFirstRunDecision({
-        ...freshWorkspace,
-        authoritative: false,
-        bootstrapped: false,
-        completed: true,
-        serverConfigAvailable: false,
+        ...serverDataMissing,
+        completed: isOnboardingCompleteFor(savedCompletion, "server-a"),
       }),
     ).toEqual({
       decision: "app",
+      persistCompletion: false,
+    });
+    // Until the catalog names the primary, the saved completion may belong to another server.
+    expect(
+      resolveFirstRunDecision({
+        ...serverDataMissing,
+        completed: isOnboardingCompleteFor(savedCompletion, null),
+      }),
+    ).toEqual({
+      decision: "pending",
       persistCompletion: false,
     });
   });

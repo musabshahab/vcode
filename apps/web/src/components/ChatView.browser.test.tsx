@@ -42,6 +42,7 @@ it("a new draft does not load its reserved thread before the server lists it", a
   __setClientSettingsForTests({
     ...DEFAULT_CLIENT_SETTINGS,
     onboardingCompletedAt: "2026-01-01T00:00:00.000Z",
+    onboardingCompletedEnvironmentId: ENVIRONMENT_ID,
   });
   const draftId = DraftId.make("draft-27443");
   const threadId = ThreadId.make("thread-27443");
