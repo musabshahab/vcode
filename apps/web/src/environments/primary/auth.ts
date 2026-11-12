@@ -74,7 +74,7 @@ export class PrimaryEnvironmentPairingCredentialRejectedError extends Schema.Tag
   },
 ) {
   override get message(): string {
-    return "Invalid pairing token. Check the token and try again.";
+    return "This pairing code didn't work. Each code works once and expires, and a restart prints a new link. Open the newest pairing link from the machine running Codenine, or run codenine pair there.";
   }
 }
 
