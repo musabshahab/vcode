@@ -115,14 +115,16 @@ export const ProviderStatusBanner = memo(function ProviderStatusBanner({
   const providerName = status.displayName?.trim() || formatProviderDriverKindLabel(status.driver);
   const isUnauthenticated = status.status === "error" && status.auth.status === "unauthenticated";
   const incompatible = getIncompatibleVersion(status);
+  const message = incompatible?.message ?? getProviderStatusMessage(status);
+  const isWarning =
+    incompatible?.status !== "broken" && (status.status === "warning" || incompatible !== null);
   const title = isUnauthenticated
     ? `${providerName} is unauthenticated`
     : incompatible
       ? `${providerName} ${status.version ?? ""} is ${incompatible.status === "broken" ? "known to be broken" : "unsupported"}`
-      : `${providerName} provider status`;
-  const message = incompatible?.message ?? getProviderStatusMessage(status);
-  const isWarning =
-    incompatible?.status !== "broken" && (status.status === "warning" || incompatible !== null);
+      : isWarning
+        ? `${providerName} provider status`
+        : `${providerName} isn't ready`;
 
   return (
     <div className="pointer-events-auto mx-auto w-fit max-w-[calc(100%-2rem)] pt-3">
