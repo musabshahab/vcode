@@ -530,6 +530,7 @@ const withFolderService = <A, E, R>(
     readonly tmp: string;
     readonly baseDir: string;
     readonly home: string;
+    readonly serverCwd: string;
   }) => Effect.Effect<A, E, R>,
 ) =>
   Effect.gen(function* () {
@@ -540,7 +541,9 @@ const withFolderService = <A, E, R>(
     );
     const baseDir = path.join(tmp, "apps", "codenine");
     const home = path.join(tmp, "users", "me");
+    const serverCwd = path.join(tmp, "codenine-source", "apps", "server");
     yield* fileSystem.makeDirectory(home, { recursive: true });
+    yield* fileSystem.makeDirectory(serverCwd, { recursive: true });
     const guarded: FileSystem.FileSystem = {
       ...fileSystem,
       remove: (target, options) => {
@@ -551,10 +554,10 @@ const withFolderService = <A, E, R>(
       },
     };
     const service = yield* ProjectService.make.pipe(
-      Effect.provide(ServerConfig.layerTest(process.cwd(), baseDir)),
+      Effect.provide(ServerConfig.layerTest(serverCwd, baseDir)),
       Effect.provideService(FileSystem.FileSystem, guarded),
     );
-    return yield* body({ service, tmp, baseDir, home }).pipe(
+    return yield* body({ service, tmp, baseDir, home, serverCwd }).pipe(
       Effect.provideService(HostProcess.HomeDirectory, home),
     );
   }).pipe(Effect.scoped);
@@ -622,7 +625,7 @@ it.effect("deletes a project's folder and Codenine worktrees only when asked", (
 );
 
 it.effect("refuses to delete a protected folder before touching the project", () =>
-  withFolderService(({ service, tmp, baseDir, home }) =>
+  withFolderService(({ service, tmp, baseDir, home, serverCwd }) =>
     Effect.gen(function* () {
       const fileSystem = yield* FileSystem.FileSystem;
       const path = yield* Path.Path;
@@ -641,6 +644,10 @@ it.effect("refuses to delete a protected folder before touching the project", ()
         [path.dirname(home), "it contains the home folder"],
         [baseDir, "it is Codenine's data folder"],
         [path.dirname(baseDir), "it contains Codenine's data folder"],
+        [serverCwd, "Codenine itself is running from it"],
+        [path.dirname(path.dirname(serverCwd)), "Codenine itself is running from it"],
+        // The guarded file system dies before it could remove this real source folder.
+        [import.meta.dirname, "Codenine itself is running from it"],
         [path.join(baseDir, "worktrees"), "it holds Codenine's worktrees"],
         [path.join(baseDir, "scratch"), "is not a project folder Codenine created"],
         [path.join(baseDir, "userdata"), "is not a project folder Codenine created"],

@@ -566,6 +566,10 @@ export const make = Effect.gen(function* () {
     const home = yield* HostProcess.HomeDirectory;
     const homes = yield* pathForms(home);
     const baseDirs = yield* pathForms(config.baseDir);
+    const serverDirs = [
+      ...(yield* pathForms(config.cwd)),
+      ...(yield* pathForms(import.meta.dirname)),
+    ];
     // ManagedProjectFolders creates new projects' folders directly inside these.
     const managedParents = baseDirs.flatMap((baseDir) =>
       ["projects", "scratch"].map((name) => key(path.join(baseDir, name))),
@@ -593,6 +597,7 @@ export const make = Effect.gen(function* () {
       if (holds(homes)) return "it contains the home folder";
       if (same(baseDirs)) return "it is Codenine's data folder";
       if (holds(baseDirs)) return "it contains Codenine's data folder";
+      if (holds(serverDirs)) return "Codenine itself is running from it";
       if (holds(worktreeDirs)) return "it holds Codenine's worktrees";
       if (inside(worktreeDirs)) return "it is inside Codenine's worktrees folder";
       if (inside(baseDirs) && !managedParents.includes(key(path.dirname(candidate)))) {
