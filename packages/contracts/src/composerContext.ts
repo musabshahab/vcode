@@ -23,11 +23,15 @@ export const COMPOSER_CONTEXT_KINDS = [
   "environment",
 ] as const;
 export type KnownComposerContextKind = (typeof COMPOSER_CONTEXT_KINDS)[number];
+/** Kinds about the whole message, which its text never links. */
+const MESSAGE_CONTEXT_KINDS = ["team-request"] as const;
 
 const CONTEXT_ID_MAX_CHARS = 128;
 const CONTEXT_ID_PATTERN = /^[a-z0-9_-]+$/i;
 const CONTEXT_KIND_PATTERN = /^[a-z][a-z0-9-]{0,39}$/;
-const KNOWN_KIND_PATTERN = new RegExp(`^(?!(?:${COMPOSER_CONTEXT_KINDS.join("|")})$)`);
+const KNOWN_KIND_PATTERN = new RegExp(
+  `^(?!(?:${[...COMPOSER_CONTEXT_KINDS, ...MESSAGE_CONTEXT_KINDS].join("|")})$)`,
+);
 
 export const COMPOSER_CONTEXT_LABEL_MAX_CHARS = 200;
 export const COMPOSER_CONTEXT_TERMINAL_TEXT_MAX_CHARS = 64_000;
@@ -190,6 +194,13 @@ export const EnvironmentContextRecord = Schema.Struct({
 });
 export type EnvironmentContextRecord = typeof EnvironmentContextRecord.Type;
 
+/** The user turned on Team for this message, so the agent plans a team before any work. */
+export const TeamRequestContextRecord = Schema.Struct({
+  ...recordBase,
+  kind: Schema.Literal("team-request"),
+});
+export type TeamRequestContextRecord = typeof TeamRequestContextRecord.Type;
+
 const isJson = Schema.is(Schema.Json);
 
 /** Excludes known discriminators so malformed known records fail their own schema. */
@@ -225,6 +236,7 @@ export type KnownComposerContextRecord = typeof KnownComposerContextRecord.Type;
 
 export const ComposerContextRecord = Schema.Union([
   ...KnownComposerContextRecord.members,
+  TeamRequestContextRecord,
   UnknownContextRecord,
 ]);
 export type ComposerContextRecord = typeof ComposerContextRecord.Type;

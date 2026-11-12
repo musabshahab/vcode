@@ -7,6 +7,7 @@ import {
   type EnvironmentId,
   type KnownComposerContextRecord,
   type ScopedThreadRef,
+  type TeamRequestContextRecord,
   type ThreadContextRecord,
 } from "@codenine/contracts";
 
@@ -93,6 +94,23 @@ export function threadContextRecord(ref: ScopedThreadRef, title: string): Thread
     threadId: ref.threadId,
     title: label,
   };
+}
+
+/** Codenine appends this to a message the user sent with Team on. */
+export const TEAM_REQUEST_INSTRUCTION =
+  "The user turned on Team for this message: plan a team with propose_team and end your turn; do not start the work yourself.";
+
+export function teamRequestContextRecord(): TeamRequestContextRecord {
+  return {
+    version: 1,
+    kind: "team-request",
+    contextId: toKindScopedComposerContextId("team-request", "message"),
+    label: "Team",
+  };
+}
+
+export function hasTeamRequest(records: ReadonlyArray<ComposerContextRecord>): boolean {
+  return records.some((record) => record.kind === "team-request");
 }
 
 /**
@@ -358,11 +376,21 @@ function formatEnvelopeEntry(
   const body =
     "payload" in record
       ? JSON.stringify(record.payload)
-      : formatComposerContextProviderPayload(record);
+      : record.kind === "team-request"
+        ? ""
+        : formatComposerContextProviderPayload(record);
   return `${open}>\n${escapeComposerContextPayloadText(body)}\n</${CONTEXT_ENTRY_TAG}>`;
 }
 
 export function projectComposerContextForProvider(input: {
+  text: string;
+  records: ReadonlyArray<ComposerContextRecord>;
+}): string {
+  const projected = projectInlineComposerContext(input);
+  return hasTeamRequest(input.records) ? `${projected}\n\n${TEAM_REQUEST_INSTRUCTION}` : projected;
+}
+
+function projectInlineComposerContext(input: {
   text: string;
   records: ReadonlyArray<ComposerContextRecord>;
 }): string {

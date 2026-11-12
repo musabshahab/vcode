@@ -266,6 +266,7 @@ export function restoreComposerDraft(
   store.setReviewComments(draftTarget, snapshot.reviewComments);
   store.setThreadContexts(draftTarget, snapshot.threadContexts);
   store.setEnvironmentContexts(draftTarget, snapshot.environmentContexts);
+  if (snapshot.teamRequested) store.setTeamRequested(draftTarget, true);
   return images;
 }
 

@@ -358,6 +358,27 @@ describe("composerDraftStore unsent draft marker", () => {
   });
 });
 
+describe("composerDraftStore team request", () => {
+  const threadRef = scopeThreadRef(TEST_ENVIRONMENT_ID, ThreadId.make("thread-team-request"));
+
+  beforeEach(() => {
+    resetComposerDraftStore();
+  });
+
+  it("keeps Team on in an empty draft for this session only, and a send turns it off", () => {
+    const store = useComposerDraftStore.getState();
+    store.setTeamRequested(threadRef, true);
+    expect(draftFor(threadRef.threadId, TEST_ENVIRONMENT_ID)?.teamRequested).toBe(true);
+    expect(
+      partializeComposerDraftStoreState(useComposerDraftStore.getState()).draftsByThreadKey,
+    ).toEqual({});
+
+    store.setPrompt(threadRef, "Add sign-in");
+    store.clearComposerContent(threadRef);
+    expect(draftFor(threadRef.threadId, TEST_ENVIRONMENT_ID)).toBeUndefined();
+  });
+});
+
 describe("composerDraftStore file attachments", () => {
   const threadId = ThreadId.make("thread-files");
   const threadRef = scopeThreadRef(TEST_ENVIRONMENT_ID, threadId);

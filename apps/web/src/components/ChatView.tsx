@@ -55,6 +55,8 @@ import {
   teamHandoffNowItem,
   useTeamAgentThread,
 } from "./chat/TeamAgentThread";
+import { teamToggleAvailable } from "./chat/composerTeam.logic";
+import { ComposerTeamNote, DraftHeroExamples } from "./chat/DraftHeroExamples";
 import * as Schema from "effect/Schema";
 import {
   AuthOrchestrationOperateScope,
@@ -2628,6 +2630,10 @@ export default function ChatView(props: ChatViewProps) {
   usePasteToFocusComposer(embedded ? null : activeThreadId, composerRef);
   // A delegated task is a remote thread's subagent.
   const isSubagentThread = activeThread?.lineage.relationshipToParent === "subagent";
+  const teamOffered =
+    canOperateThread &&
+    activeThread !== undefined &&
+    teamToggleAvailable({ lineage: activeThread.lineage, inTeam: threadTeamInfo !== null });
   // Side chats do not nest or start from subagents, and older servers would fork a listed thread.
   const sideChatsOffered =
     !embedded &&
@@ -2777,6 +2783,7 @@ export default function ChatView(props: ChatViewProps) {
     isSendBusy,
     sendQueuesBehindSetup,
     isDraftHeroState,
+    teamToggleAvailable: teamOffered,
     panelAnimationsActive,
     panelAnimationDurationMs,
     keepFullHistory,
@@ -3434,6 +3441,7 @@ export default function ChatView(props: ChatViewProps) {
                                 onToggleKeepFullHistory={toggleKeepFullHistoryStable}
                                 sideChatAvailable={sideChat.available}
                                 sideChatDisabledReason={sideChatDisabledReason}
+                                teamOffered={teamOffered}
                                 onFreshSession={
                                   freshSessionCommandAvailable ? armFreshSessionStable : undefined
                                 }
@@ -3591,14 +3599,29 @@ export default function ChatView(props: ChatViewProps) {
                           </div>
                         </div>
                       </ComposerSurface.Shell>
-                      {isDraftHeroState && composerBannerItems.length > 0 ? (
+                      {isDraftHeroState ? (
                         // Out of flow, like the headline, so a notice never moves the centered composer.
                         // Short windows pin the composer to the bottom, where an out-of-flow notice
                         // would fall off-screen, so there it takes space and lifts the composer.
-                        <div className="absolute inset-x-0 top-full flex flex-col gap-1 pt-4 [@media(max-height:34rem)]:static">
-                          <ComposerBannerStack items={composerBannerItems} detached />
+                        <div className="absolute inset-x-0 top-full flex flex-col gap-3 pt-4 empty:hidden [@media(max-height:34rem)]:static">
+                          {composerBannerItems.length > 0 ? (
+                            <ComposerBannerStack items={composerBannerItems} detached />
+                          ) : null}
+                          <ComposerTeamNote target={composerDraftTarget} offered={teamOffered} />
+                          <DraftHeroExamples
+                            target={composerDraftTarget}
+                            hasProject={activeProject !== null && !activeProjectIsScratch}
+                            teamOffered={teamOffered}
+                            composerRef={composerRef}
+                          />
                         </div>
-                      ) : null}
+                      ) : (
+                        <ComposerTeamNote
+                          target={composerDraftTarget}
+                          offered={teamOffered}
+                          className="pt-1.5"
+                        />
+                      )}
                     </div>
                     <div
                       aria-hidden

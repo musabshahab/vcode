@@ -186,7 +186,7 @@ import {
   ComposerRestingImagePreviews,
 } from "./ComposerAttachmentStrip";
 import { ComposerPrimaryActions } from "./ComposerPrimaryActions";
-import { ComposerFooterPrimaryActions } from "./ComposerFooterControls";
+import { ComposerFooterPrimaryActions, ComposerTeamToggle } from "./ComposerFooterControls";
 import { ComposerPendingUserInputPanel } from "./ComposerPendingUserInputPanel";
 import { resolveComposerMenuActiveItemId } from "./composerMenuHighlight";
 import { buildPullRequestReferenceContext } from "../pullRequest/pullRequestDetail.logic";
@@ -351,6 +351,8 @@ export interface ChatComposerProps {
   onUsageLimitsCommand?: (() => void) | undefined;
   sideChatAvailable?: boolean;
   sideChatDisabledReason?: string | null;
+  /** Shows the Team toggle: a draft or top-level thread without a team. */
+  teamOffered: boolean;
   /** Arms a fresh session for the next message; absent where `/clear` is unavailable. */
   onFreshSession?: (() => void) | undefined;
   environmentUnavailable: {
@@ -726,6 +728,10 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     (store) => store.syncPersistedAttachments,
   );
   const getComposerDraft = useComposerDraftStore((store) => store.getComposerDraft);
+  const setComposerDraftTeamRequested = useComposerDraftStore((store) => store.setTeamRequested);
+  const setTeamRequestedStable = useStableCallback((requested: boolean) =>
+    setComposerDraftTeamRequested(composerDraftTarget, requested),
+  );
 
   // oxlint-disable-next-line codenine/no-unreasoned-state-sync -- starts or releases server attachment uploads as upload capability, limits and draft attachments change
   useEffect(() => {
@@ -2929,6 +2935,13 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
       focusComposer={focusComposer}
     />
   ) : null;
+  const composerTeamToggle = props.teamOffered ? (
+    <ComposerTeamToggle
+      pressed={composerDraft.teamRequested === true}
+      shortcutLabel={shortcutLabelForCommand(keybindings, "composer.toggleTeam")}
+      onPressedChange={setTeamRequestedStable}
+    />
+  ) : null;
   return (
     <form
       ref={composerFormRef}
@@ -3272,7 +3285,12 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                   showMobilePendingAnswerActions && "hidden sm:flex",
                 )}
               >
-                {composerAttachButton ? <div className="me-2">{composerAttachButton}</div> : null}
+                {composerAttachButton || composerTeamToggle ? (
+                  <div className="me-2 flex shrink-0 items-center gap-1">
+                    {composerAttachButton}
+                    {composerTeamToggle}
+                  </div>
+                ) : null}
                 <div
                   data-chat-composer-actions="right"
                   data-chat-composer-transition-actions="true"

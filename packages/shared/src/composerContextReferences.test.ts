@@ -15,6 +15,8 @@ import {
   projectComposerContextForProvider,
   restoreAttachmentOnlyBootstrapPrompt,
   stripAttachmentOnlyBootstrapPrompt,
+  TEAM_REQUEST_INSTRUCTION,
+  teamRequestContextRecord,
   threadContextRecord,
   threadContextsOutsideEnvironment,
   threadLinkContextReferences,
@@ -326,6 +328,19 @@ describe("provider projection", () => {
     expect(projected).toContain('<context kind="terminal" id="ctx_t" unavailable="true"/>');
     expect(projected).not.toContain("another payload");
     expect(projected).not.toContain("boom");
+  });
+
+  it("ends a message sent with Team on with the team instruction, after its context", () => {
+    const team = teamRequestContextRecord();
+    expect(
+      projectComposerContextForProvider({ text: "Add sign-in with tests", records: [team] }),
+    ).toBe(`Add sign-in with tests\n\n${TEAM_REQUEST_INSTRUCTION}`);
+    const projected = projectComposerContextForProvider({
+      text: "Use $pinchtab [$pinchtab](codenine-context://v1/skill/ctx_s)",
+      records: [skill, team],
+    });
+    expect(projected.endsWith(`</codenine_context>\n\n${TEAM_REQUEST_INSTRUCTION}`)).toBe(true);
+    expect(projected).not.toContain('kind="team-request"');
   });
 });
 

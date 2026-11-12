@@ -3,6 +3,7 @@ import { createModelSelection } from "@codenine/shared/model";
 import { type ComponentProps, memo, useId, useRef, useState } from "react";
 
 import { Menu as MenuPrimitive } from "@base-ui/react/menu";
+import { UsersIcon } from "lucide-react";
 import { Menu, MenuPopup, MenuTrigger } from "../ui/menu";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { ComposerControl, ComposerControlIcon } from "./ComposerControl";
@@ -95,6 +96,40 @@ export const ComposerFooterModeControls = memo(function ComposerFooterModeContro
 
   return accessDisplay === "hidden" ? null : permissionsChip;
 });
+
+/** Asks the lead agent to plan a team for the next message instead of starting the work. */
+export function ComposerTeamToggle(props: {
+  pressed: boolean;
+  shortcutLabel: string | null;
+  onPressedChange: (pressed: boolean) => void;
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <ComposerControl
+            data-composer-shortcut="composer.toggleTeam"
+            aria-pressed={props.pressed}
+            aria-label="Team"
+            className="rounded-full border-border/80 aria-pressed:border-primary/40 aria-pressed:bg-primary/10 aria-pressed:text-foreground aria-pressed:hover:bg-primary/15"
+            onClick={() => props.onPressedChange(!props.pressed)}
+          />
+        }
+      >
+        <ComposerControlIcon icon={UsersIcon} />
+        <span data-composer-control-label className="@max-[480px]/composer-surface:sr-only">
+          Team
+        </span>
+      </TooltipTrigger>
+      <TooltipPopup side="top">
+        {props.pressed
+          ? "The lead agent plans a team first"
+          : "Have the lead agent plan a team of agents"}
+        {props.shortcutLabel ? ` (${props.shortcutLabel})` : ""}
+      </TooltipPopup>
+    </Tooltip>
+  );
+}
 
 /**
  * Permission modes as one horizontal toggle, with the shown mode named below.

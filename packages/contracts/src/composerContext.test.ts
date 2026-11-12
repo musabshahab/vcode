@@ -181,10 +181,15 @@ describe("OrchestrationMessageContext", () => {
       records: [
         knownRecords.skill,
         { version: 1, kind: "image" },
+        { ...base, contextId: "ctx_team", kind: "team-request", label: "Team" },
         { ...knownRecords.terminal, contextId: "ctx_2" },
       ],
     });
-    expect(context.records.map((record) => record.kind)).toEqual(["skill", "terminal"]);
+    expect(context.records.map((record) => record.kind)).toEqual([
+      "skill",
+      "team-request",
+      "terminal",
+    ]);
   });
 
   it("rejects duplicate normalized context identities", () => {

@@ -366,6 +366,8 @@ export interface ComposerThreadDraftState {
   modelSelectionExplicit?: boolean;
   runtimeMode: RuntimeMode | null;
   interactionMode: ProviderInteractionMode | null;
+  /** Team is on for the next message. Not persisted: a reload turns it off. */
+  teamRequested?: boolean;
 }
 
 export function composerDraftHasUserContent(
@@ -528,6 +530,7 @@ interface ComposerDraftStoreState {
     threadRef: ComposerThreadTarget,
     interactionMode: ProviderInteractionMode | null | undefined,
   ) => void;
+  setTeamRequested: (threadRef: ComposerThreadTarget, requested: boolean) => void;
   addImage: (threadRef: ComposerThreadTarget, image: ComposerImageAttachment) => boolean;
   addImages: (
     threadRef: ComposerThreadTarget,
@@ -857,7 +860,8 @@ function shouldRemoveDraft(draft: ComposerThreadDraftState): boolean {
     Object.keys(draft.modelSelectionByProvider).length === 0 &&
     draft.activeProvider === null &&
     draft.runtimeMode === null &&
-    draft.interactionMode === null
+    draft.interactionMode === null &&
+    draft.teamRequested !== true
   );
 }
 
@@ -3148,6 +3152,29 @@ const composerDraftStore = create<ComposerDraftStoreState>()(
             return { draftsByThreadKey: nextDraftsByThreadKey };
           });
         },
+        setTeamRequested: (threadRef, requested) => {
+          const threadKey = resolveComposerDraftKey(get(), threadRef) ?? "";
+          if (threadKey.length === 0) {
+            return;
+          }
+          set((state) => {
+            const existing = state.draftsByThreadKey[threadKey];
+            if ((existing?.teamRequested === true) === requested) {
+              return state;
+            }
+            const { teamRequested: _teamRequested, ...base } = existing ?? createEmptyThreadDraft();
+            const nextDraft: ComposerThreadDraftState = requested
+              ? { ...base, teamRequested: true }
+              : base;
+            const nextDraftsByThreadKey = { ...state.draftsByThreadKey };
+            if (shouldRemoveDraft(nextDraft)) {
+              delete nextDraftsByThreadKey[threadKey];
+            } else {
+              nextDraftsByThreadKey[threadKey] = nextDraft;
+            }
+            return { draftsByThreadKey: nextDraftsByThreadKey };
+          });
+        },
         addImage: (threadRef, image) => {
           const threadKey = resolveComposerDraftKey(get(), threadRef);
           const threadId = resolveComposerThreadId(get(), threadRef);
@@ -3874,8 +3901,9 @@ const composerDraftStore = create<ComposerDraftStoreState>()(
             if (!current) {
               return state;
             }
+            const { teamRequested: _teamRequested, ...retained } = current;
             const nextDraft: ComposerThreadDraftState = {
-              ...current,
+              ...retained,
               prompt: "",
               images: [],
               files: [],
@@ -4234,6 +4262,18 @@ export function useComposerThreadDraft(threadRef: ComposerThreadTarget): Compose
   return useComposerDraftStore((state) => {
     return getComposerDraftState(state, threadRef) ?? EMPTY_THREAD_DRAFT;
   });
+}
+
+export function useComposerDraftHasUserContent(threadRef: ComposerThreadTarget): boolean {
+  return useComposerDraftStore((state) =>
+    composerDraftHasUserContent(getComposerDraftState(state, threadRef)),
+  );
+}
+
+export function useComposerTeamRequested(threadRef: ComposerThreadTarget): boolean {
+  return useComposerDraftStore(
+    (state) => getComposerDraftState(state, threadRef)?.teamRequested === true,
+  );
 }
 
 export function useThreadHasUnsentDraft(threadRef: ScopedThreadRef): boolean {

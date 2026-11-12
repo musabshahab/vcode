@@ -77,6 +77,7 @@ import {
   type TerminalContextDraft,
 } from "../../lib/terminalContext";
 import { buildMessageContext } from "../../lib/composerContextRecords";
+import { sendsTeamRequest } from "./composerTeam.logic";
 import { environmentServerConfigsAtom } from "../../state/server";
 import { threadEnvironment } from "../../state/threads";
 import { runMobileComposerTransition } from "./draftHeroTransition";
@@ -188,6 +189,8 @@ interface ComposerSendInput {
   readonly isSendBusy: boolean;
   readonly sendQueuesBehindSetup: boolean;
   readonly isDraftHeroState: boolean;
+  /** The composer offers Team here; a Team left on elsewhere is not sent. */
+  readonly teamToggleAvailable: boolean;
   readonly panelAnimationsActive: boolean;
   readonly panelAnimationDurationMs: number;
   readonly keepFullHistory: boolean;
@@ -282,6 +285,7 @@ export function useComposerSend(input: ComposerSendInput) {
     isSendBusy,
     sendQueuesBehindSetup,
     isDraftHeroState,
+    teamToggleAvailable,
     panelAnimationsActive,
     panelAnimationDurationMs,
     keepFullHistory,
@@ -675,6 +679,10 @@ export function useComposerSend(input: ComposerSendInput) {
       reviewComments: composerReviewComments,
       threadContexts: composerThreadContexts,
       environmentContexts: composerEnvironmentContexts,
+      teamRequested:
+        teamToggleAvailable &&
+        useComposerDraftStore.getState().getComposerDraft(composerDraftTarget)?.teamRequested ===
+          true,
     });
     const {
       files: composerFilesSnapshot,
@@ -722,6 +730,10 @@ export function useComposerSend(input: ComposerSendInput) {
           attachment,
           attachmentId: attachmentIds[index] ?? attachment.id,
         })),
+        teamRequested: sendsTeamRequest({
+          teamRequested: sendSnapshot.teamRequested,
+          prompt: messageTextForSend,
+        }),
       });
     const outgoingMessageContext = buildOutgoingMessageContext(
       composerAttachmentsSnapshot.map((attachment) => attachment.id),
