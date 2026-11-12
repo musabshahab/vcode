@@ -109,6 +109,14 @@ describe("reduceCommandPaletteUiState", () => {
     const source = { environmentId: EnvironmentId.make("local"), source: "clone" } as const;
     state = reduceCommandPaletteUiState(state, { _tag: "OpenAddProject", source });
     expect(state).toMatchObject({ openIntent: { kind: "add-project", source }, session: 3 });
+    state = reduceCommandPaletteUiState(state, { _tag: "ToggleMode", mode: "content" });
+    state = reduceCommandPaletteUiState(state, { _tag: "OpenNewProject" });
+    expect(state).toEqual({
+      open: true,
+      mode: "command",
+      openIntent: { kind: "new-project" },
+      session: 4,
+    });
   });
 });
 

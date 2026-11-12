@@ -35,9 +35,9 @@ export function NoProjectsHero() {
                   : "Add a project, or start without one."}
               </EmptyDescription>
               <div className="mt-6 flex justify-center gap-2">
-                <Button size="sm" onClick={() => openCommandPalette({ open: "add-project" })}>
+                <Button size="sm" onClick={() => openCommandPalette({ open: "new-project" })}>
                   <PlusIcon className="size-4" />
-                  Add project
+                  New project
                 </Button>
                 {scratchTargetEnvironmentId === null ? null : (
                   <Button

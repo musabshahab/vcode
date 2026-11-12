@@ -44,8 +44,8 @@ custom server name as GitHub once it has a credential for that host.
 
 ## Start, clone, or publish a project
 
-To start from nothing, choose **New project** in the command palette (`Cmd/Ctrl+K`), or
-**New project** under **Add Project**, and type a name. Codenine makes a Git
+To start from nothing, click **New project** in the sidebar or the command palette (`Cmd/Ctrl+K`)
+and type a name. Codenine makes a Git
 repository in `~/.codenine/projects` (the `projects` folder of your Codenine data directory) with a README,
 an icon, and a first commit, then opens a new thread in it. Until the project has a thread, new
 threads work in its folder, even when your default is a new worktree. The folder is named after the project,
@@ -53,7 +53,8 @@ like `pinball-stats` for "Pinball Stats". Turn on **Create private repository** 
 publish it on GitHub. If Git has no name or email on that machine, the project is created without the
 first commit.
 
-Use **Add Project** in the command palette (`Cmd/Ctrl+K`) to clone a repository. Choose GitHub
+To clone a repository, choose **Add existing project** under **New project** or in the command
+palette. Choose GitHub
 or paste a Git URL, then choose where to save it. The project opens right away while the
 clone runs in the background: you can write your first prompt, and sending waits until the files
 are in place. A toast tracks progress and lets you cancel; if the clone fails, retry it from the

@@ -79,7 +79,7 @@ export interface AddProjectIntentSource {
 
 export type CommandPaletteOpenIntent =
   | { readonly kind: "add-project"; readonly source?: AddProjectIntentSource }
-  | { readonly kind: "new-thread-in" | "change-theme" }
+  | { readonly kind: "new-project" | "new-thread-in" | "change-theme" }
   | {
       readonly kind: "search";
       readonly query: string;
@@ -106,6 +106,7 @@ export type CommandPaletteUiAction =
       readonly linkedThreads?: CommandPaletteLinkedThreads;
     }
   | { readonly _tag: "OpenAddProject"; readonly source?: AddProjectIntentSource }
+  | { readonly _tag: "OpenNewProject" }
   | { readonly _tag: "OpenNewThreadIn" }
   | { readonly _tag: "OpenChangeTheme" }
   | {
@@ -163,6 +164,8 @@ export function reduceCommandPaletteUiState(
       return openWithIntent(
         action.source ? { kind: "add-project", source: action.source } : { kind: "add-project" },
       );
+    case "OpenNewProject":
+      return openWithIntent({ kind: "new-project" });
     case "OpenNewThreadIn":
       return openWithIntent({ kind: "new-thread-in" });
     case "OpenChangeTheme":

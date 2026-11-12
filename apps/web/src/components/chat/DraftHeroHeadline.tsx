@@ -54,7 +54,7 @@ import { resolveProjectSettings } from "@codenine/shared/projectSettings";
 import { resolveProjectDefaultProviderModelSelection } from "../../providerInstances";
 import { resolveNewThreadModelSelection } from "@codenine/shared/usageLimits";
 
-const ADD_PROJECT_VALUE = "add-project";
+const NEW_PROJECT_VALUE = "new-project";
 
 interface PickerItem {
   readonly value: string;
@@ -85,7 +85,7 @@ export function DraftHeroHeadline({
   const getComposerDraft = useComposerDraftStore((store) => store.getComposerDraft);
   const applyStickyState = useComposerDraftStore((store) => store.applyStickyState);
   const setModelSelection = useComposerDraftStore((store) => store.setModelSelection);
-  const openAddProject = () => openCommandPalette({ open: "add-project" });
+  const openNewProject = () => openCommandPalette({ open: "new-project" });
   const { scratchEnvironmentId, scratchWorkspaceRootFor, openScratchProject } = useScratchProject();
   const openProjectDraft = useNewThreadHandler();
   const keybindings = useAtomValue(primaryServerKeybindingsAtom);
@@ -159,7 +159,7 @@ export function DraftHeroHeadline({
   const pickerItems: readonly PickerItem[] = useOrderWhileOpen(
     [
       ...menuEntries.map(({ group }) => ({ value: group.projectKey, label: group.displayName })),
-      { value: ADD_PROJECT_VALUE, label: "Add project" },
+      { value: NEW_PROJECT_VALUE, label: "New project" },
     ],
     (item) => item.value,
     pickerOpen,
@@ -170,7 +170,7 @@ export function DraftHeroHeadline({
       ? pickerItems
       : pickerItems.filter(
           (item) =>
-            item.value !== ADD_PROJECT_VALUE &&
+            item.value !== NEW_PROJECT_VALUE &&
             pickerFilter.contains(item, pickerSearch, (candidate) => candidate.label),
         );
   const selectedPickerItem = pickerItems.find((item) => item.value === activeProjectKey) ?? null;
@@ -273,8 +273,8 @@ export function DraftHeroHeadline({
       onValueChange={(item) => {
         if (!item) return;
         setPickerOpen(false);
-        if (item.value === ADD_PROJECT_VALUE) {
-          openAddProject();
+        if (item.value === NEW_PROJECT_VALUE) {
+          openNewProject();
           return;
         }
         const entry = projectEntryByKey.get(item.value);
@@ -326,7 +326,7 @@ export function DraftHeroHeadline({
             const entry = projectEntryByKey.get(item.value);
             return (
               <ComboboxItem key={item.value} hideIndicator value={item}>
-                {item.value === ADD_PROJECT_VALUE ? (
+                {item.value === NEW_PROJECT_VALUE ? (
                   <FolderPlusIcon className="size-4 shrink-0" />
                 ) : entry ? (
                   <ProjectFavicon project={entry.group} className="size-4 shrink-0" />
@@ -361,7 +361,7 @@ export function DraftHeroHeadline({
   ) : (
     <button
       type="button"
-      onClick={openAddProject}
+      onClick={openNewProject}
       className="pointer-events-auto inline min-w-0 max-w-full cursor-pointer border-muted-foreground/35 border-b border-dotted text-muted-foreground/60 transition-colors hover:border-muted-foreground/60 hover:text-muted-foreground/80 focus-visible:rounded-sm focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
     >
       <DraftProjectName value={activeProjectTitle ?? "Add a project"} singleLine />

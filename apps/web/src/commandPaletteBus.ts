@@ -9,7 +9,7 @@ export interface CommandPaletteLinkedThreads {
 }
 
 export interface CommandPaletteOpenDetail {
-  readonly open?: "add-project" | "new-thread-in";
+  readonly open?: "add-project" | "new-project" | "new-thread-in";
   /** With `open: "add-project"`: start in this source's flow. */
   readonly addProjectSource?: AddProjectIntentSource;
   readonly query?: string;
@@ -22,6 +22,8 @@ export function openCommandPalette(detail: CommandPaletteOpenDetail = {}): void 
   if (!isCommandPaletteMounted()) return;
   if (detail.open === "new-thread-in") {
     dispatchCommandPalette({ _tag: "OpenNewThreadIn" });
+  } else if (detail.open === "new-project") {
+    dispatchCommandPalette({ _tag: "OpenNewProject" });
   } else if (detail.open === "add-project") {
     dispatchCommandPalette(
       detail.addProjectSource

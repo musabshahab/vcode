@@ -262,6 +262,7 @@ import { threadRecentUse } from "@codenine/shared/paletteSearch";
 
 const EMPTY_BROWSE_ENTRIES: FilesystemBrowseResult["entries"] = [];
 const ADD_PROJECT_ENTRY_GROUP = "add-project";
+const NEW_PROJECT_ENTRY_GROUP = "new-project";
 const NEW_THREAD_IN_GROUP = "projects";
 
 /** The submenu an open intent starts in; its groups resolve while rendering. */
@@ -271,6 +272,11 @@ function openIntentView(intent: CommandPaletteOpenIntent | null): CommandPalette
       return {
         addonIcon: <FolderPlusIcon className={ADDON_ICON_CLASS} />,
         groups: [{ value: ADD_PROJECT_ENTRY_GROUP, label: "", items: [] }],
+      };
+    case "new-project":
+      return {
+        addonIcon: <FolderGit2Icon className={ADDON_ICON_CLASS} />,
+        groups: [{ value: NEW_PROJECT_ENTRY_GROUP, label: "", items: [] }],
       };
     case "new-thread-in":
       return {
@@ -560,7 +566,7 @@ function OpenCommandPaletteDialog(props: {
       ? { step: "repository", environmentId: addProjectSource.environmentId, source: "url" }
       : null,
   );
-  const [newProjectFlow, setNewProjectFlow] = useState<{
+  const [startedNewProjectFlow, setNewProjectFlow] = useState<{
     readonly environmentId: EnvironmentId;
     readonly sourcesEnvironmentId: EnvironmentId | null;
   } | null>(
@@ -649,6 +655,23 @@ function OpenCommandPaletteDialog(props: {
   })();
   const defaultAddProjectEnvironmentId =
     addProjectEnvironmentOptions.find((option) => option.isConnected)?.environmentId ?? null;
+  const newProjectsRootFor = (environmentId: EnvironmentId | null): string | null =>
+    environments.find((environment) => environment.environmentId === environmentId)?.serverConfig
+      ?.newProjectsRoot ?? null;
+  const newProjectEnvironmentOptions = addProjectEnvironmentOptions.filter(
+    (option) => option.isConnected && newProjectsRootFor(option.environmentId) !== null,
+  );
+  // Like "Add project", a "New project" intent follows the environments as they
+  // connect: it falls back to adding a project until one can create projects.
+  const newProjectIntentEnvironmentId =
+    currentView?.groups[0]?.value === NEW_PROJECT_ENTRY_GROUP
+      ? (newProjectEnvironmentOptions[0]?.environmentId ?? null)
+      : null;
+  const newProjectFlow =
+    startedNewProjectFlow ??
+    (newProjectIntentEnvironmentId === null
+      ? null
+      : { environmentId: newProjectIntentEnvironmentId, sourcesEnvironmentId: null });
   const wslAddProjectEnvironmentOption =
     addProjectEnvironmentOptions.find((option) => {
       if (!option.isConnected) {
@@ -661,7 +684,8 @@ function OpenCommandPaletteDialog(props: {
         ? desktopLocalBackendId(environment.entry.target)?.startsWith("wsl:") === true
         : false;
     }) ?? null;
-  const browseEnvironmentId = addProjectEnvironmentId ?? defaultAddProjectEnvironmentId;
+  const browseEnvironmentId =
+    newProjectFlow?.environmentId ?? addProjectEnvironmentId ?? defaultAddProjectEnvironmentId;
   const canCreateProject = useEnvironmentScope(browseEnvironmentId, AuthOrchestrationOperateScope);
   const browseEnvironment =
     environments.find((environment) => environment.environmentId === browseEnvironmentId) ?? null;
@@ -1025,10 +1049,6 @@ function OpenCommandPaletteDialog(props: {
     });
   };
 
-  const newProjectsRootFor = (environmentId: EnvironmentId | null): string | null =>
-    environments.find((environment) => environment.environmentId === environmentId)?.serverConfig
-      ?.newProjectsRoot ?? null;
-
   const startNewProject = (
     environmentId: EnvironmentId,
     sourcesEnvironmentId: EnvironmentId | null,
@@ -1206,9 +1226,6 @@ function OpenCommandPaletteDialog(props: {
       `action:add-project:environment:${option.environmentId}`,
       startAddProjectSourceSelection,
     ),
-  );
-  const newProjectEnvironmentOptions = addProjectEnvironmentOptions.filter(
-    (option) => option.isConnected && newProjectsRootFor(option.environmentId) !== null,
   );
 
   const addProjectEnvironmentGroups = [
@@ -1540,7 +1557,7 @@ function OpenCommandPaletteDialog(props: {
       "url",
       "environment",
     ],
-    title: "Add project",
+    title: "Add existing project",
     icon: <FolderPlusIcon className={ITEM_ICON_CLASS} />,
     keepOpen: true,
     run: async () => {
@@ -1723,7 +1740,8 @@ function OpenCommandPaletteDialog(props: {
           addProjectEnvironmentId,
           buildPaletteRemoteSourceReadiness(sourceControlDiscovery.data),
         )
-      : currentView?.groups[0]?.value === ADD_PROJECT_ENTRY_GROUP
+      : currentView?.groups[0]?.value === ADD_PROJECT_ENTRY_GROUP ||
+          currentView?.groups[0]?.value === NEW_PROJECT_ENTRY_GROUP
         ? addProjectEntryGroups()
         : currentView?.groups[0]?.value === NEW_THREAD_IN_GROUP
           ? [
@@ -2247,7 +2265,8 @@ function OpenCommandPaletteDialog(props: {
     startAddProjectSourceSelection(environmentId);
   };
   const switchNewProjectEnvironment = (environmentId: EnvironmentId) => {
-    setNewProjectFlow((flow) => (flow === null ? flow : { ...flow, environmentId }));
+    if (newProjectFlow === null) return;
+    setNewProjectFlow({ ...newProjectFlow, environmentId });
     setAddProjectEnvironmentId(environmentId);
   };
   const selectedNewProjectEnvironment =
