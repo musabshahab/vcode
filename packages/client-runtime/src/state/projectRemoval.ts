@@ -33,12 +33,12 @@ export function planProjectRemoval<
   const targetKind = hasOtherMembers || !isWholeGroup ? "checkout" : "project";
   const singleMember = members.length === 1 ? members[0]! : null;
   const targetLabel = singleMember?.title ?? displayName;
-  const threadsLabel = `${threadCount} thread${threadCount === 1 ? "" : "s"}`;
+  const chatsLabel = `${threadCount} chat${threadCount === 1 ? "" : "s"}`;
   const confirmationMessage = [
     deleteFolder
-      ? `Delete ${targetKind} "${targetLabel}", its folder${threadCount > 0 ? `, and its ${threadsLabel}` : ""}?`
+      ? `Delete ${targetKind} "${targetLabel}" and its folder?`
       : threadCount > 0
-        ? `Remove ${targetKind} "${targetLabel}" and delete its ${threadsLabel}?`
+        ? `Remove ${targetKind} "${targetLabel}" and its ${chatsLabel}?`
         : `Remove ${targetKind} "${targetLabel}"?`,
     ...(singleMember
       ? [
@@ -53,22 +53,20 @@ export function planProjectRemoval<
         ]),
     ...(deleteFolder
       ? [
-          `This permanently deletes ${singleMember ? "the folder" : "each folder"} and everything in it, including uncommitted work, and Codenine's worktrees for its threads.`,
+          `This permanently deletes ${singleMember ? "the folder" : "each folder"} and everything in it, including uncommitted work and the worktrees Codenine made for its chats.`,
         ]
       : []),
-    ...(threadCount > 0
-      ? [
-          "Those threads and any archived threads are deleted from Codenine. Provider sessions are kept.",
-        ]
-      : ["Any archived threads are deleted from Codenine. Provider sessions are kept."]),
+    threadCount > 0 && deleteFolder
+      ? `Its ${chatsLabel} and any archived chats are deleted from Codenine.`
+      : "Any archived chats are deleted from Codenine.",
     ...(deleteFolder && isWholeGroup && !hasOtherMembers
       ? []
       : [
           isWholeGroup && !hasOtherMembers
-            ? "This removes only the project entries, not the files on disk."
+            ? "Files on disk are kept."
             : "Other entries in this grouped project are unaffected.",
         ]),
-    "This action cannot be undone.",
+    "This can't be undone.",
   ].join("\n");
 
   return { projectThreads, isWholeGroup, targetKind, confirmationMessage };

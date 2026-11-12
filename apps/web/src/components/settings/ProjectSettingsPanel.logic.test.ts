@@ -43,7 +43,18 @@ describe("project removal confirmation", () => {
     });
     expect(plan.projectThreads).toHaveLength(3);
     expect(plan.confirmationMessage).toBe(
-      'Remove checkout "Repo" and delete its 1 thread?\nPath: /work/repo\nEnvironment: Local\nThose threads and any archived threads are deleted from Codenine. Provider sessions are kept.\nOther entries in this grouped project are unaffected.\nThis action cannot be undone.',
+      'Remove checkout "Repo" and its 1 chat?\nPath: /work/repo\nEnvironment: Local\nAny archived chats are deleted from Codenine.\nOther entries in this grouped project are unaffected.\nThis can\'t be undone.',
+    );
+    const folderPlan = planProjectRemoval({
+      members: [local],
+      groupMemberCount: 1,
+      hasOtherMembers: false,
+      displayName: "Repo",
+      threads: [{ environmentId: local.environmentId, projectId: local.id, lineage: listed }],
+      deleteFolder: true,
+    });
+    expect(folderPlan.confirmationMessage).toBe(
+      'Delete project "Repo" and its folder?\nFolder: /work/repo\nEnvironment: Local\nThis permanently deletes the folder and everything in it, including uncommitted work and the worktrees Codenine made for its chats.\nIts 1 chat and any archived chats are deleted from Codenine.\nThis can\'t be undone.',
     );
   });
 
@@ -60,9 +71,7 @@ describe("project removal confirmation", () => {
     expect(plan.confirmationMessage).toContain(
       "Other entries in this grouped project are unaffected.",
     );
-    expect(plan.confirmationMessage).toContain(
-      "Any archived threads are deleted from Codenine. Provider sessions are kept.",
-    );
+    expect(plan.confirmationMessage).toContain("Any archived chats are deleted from Codenine.");
   });
 
   // regression: #21409 project-wide removal must count every checkout's threads and keep files
@@ -76,8 +85,6 @@ describe("project removal confirmation", () => {
     });
     expect(plan.targetKind).toBe("project");
     expect(plan.confirmationMessage).toContain("This removes 2 grouped project entries.");
-    expect(plan.confirmationMessage).toContain(
-      "This removes only the project entries, not the files on disk.",
-    );
+    expect(plan.confirmationMessage).toContain("Files on disk are kept.");
   });
 });
