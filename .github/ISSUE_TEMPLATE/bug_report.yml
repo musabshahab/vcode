@@ -9,7 +9,7 @@ body:
     attributes:
       value: |
         Use this form for broken behavior, regressions, crashes, or reliability problems.
-        Feature requests belong in [Discussions](https://github.com/musabshahab/vcode/discussions).
+        Feature requests belong in [Discussions](https://github.com/musabshahab/codenine/discussions).
         Report security problems privately, as the security policy describes, not here.
         Search existing issues first and keep the report focused on one problem.
 

@@ -1,7 +1,7 @@
 # Installs the Codenine CLI from a GitHub Release archive on Windows. Needs
 # only PowerShell 5.1+; no Node, npm, or compiler.
 #
-#   irm https://raw.githubusercontent.com/musabshahab/vcode/main/scripts/install.ps1 | iex
+#   irm https://raw.githubusercontent.com/musabshahab/codenine/main/scripts/install.ps1 | iex
 #
 # Environment:
 #   CODENINE_CHANNEL           release train to follow: stable, nightly, or preview
@@ -16,7 +16,7 @@
 $ErrorActionPreference = "Stop"
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
-$repo = "musabshahab/vcode"
+$repo = "musabshahab/codenine"
 $baseUrl = if ($env:CODENINE_RELEASE_BASE_URL) { $env:CODENINE_RELEASE_BASE_URL.TrimEnd("/") } else { "https://github.com/$repo/releases/download" }
 $codenineHome = if ($env:CODENINE_HOME) { $env:CODENINE_HOME } else { Join-Path $HOME ".codenine" }
 $binDir = if ($env:CODENINE_INSTALL_BIN_DIR) { $env:CODENINE_INSTALL_BIN_DIR } else { Join-Path $HOME ".local\bin" }

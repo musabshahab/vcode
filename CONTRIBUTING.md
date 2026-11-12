@@ -17,10 +17,10 @@ the working rules for this repository; they apply to people as well as to coding
 
 ## Before you start
 
-- Report bugs in [issues](https://github.com/musabshahab/vcode/issues). Search for an existing
+- Report bugs in [issues](https://github.com/musabshahab/codenine/issues). Search for an existing
   report first.
 - Propose features and behavior changes in
-  [discussions](https://github.com/musabshahab/vcode/discussions) before you build them. A small fix
+  [discussions](https://github.com/musabshahab/codenine/discussions) before you build them. A small fix
   for an obvious bug does not need one.
 - Report security problems privately. See [SECURITY.md](.github/SECURITY.md).
 

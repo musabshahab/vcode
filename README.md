@@ -58,8 +58,8 @@ irm https://vite.plus/ps1 | iex
 Then clone and start the server and the web app:
 
 ```bash
-git clone https://github.com/musabshahab/vcode.git
-cd vcode
+git clone https://github.com/musabshahab/codenine.git
+cd codenine
 vp i
 vp run dev
 ```
@@ -92,8 +92,8 @@ To work on Codenine, start with [CONTRIBUTING.md](./CONTRIBUTING.md) and the
 
 ## Contributing and support
 
-Report bugs in [issues](https://github.com/musabshahab/vcode/issues) and propose features in
-[discussions](https://github.com/musabshahab/vcode/discussions). Report security problems
+Report bugs in [issues](https://github.com/musabshahab/codenine/issues) and propose features in
+[discussions](https://github.com/musabshahab/codenine/discussions). Report security problems
 privately, as [SECURITY.md](./.github/SECURITY.md) describes.
 
 ## License

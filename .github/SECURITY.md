@@ -1,7 +1,7 @@
 # Security policy
 
 Report security vulnerabilities in Codenine through GitHub private vulnerability reporting:
-[open a private report](https://github.com/musabshahab/vcode/security/advisories/new).
+[open a private report](https://github.com/musabshahab/codenine/security/advisories/new).
 
 Please do not open a public issue or discussion for a vulnerability, and do not disclose it
 publicly until we have had a reasonable opportunity to investigate and fix it.

@@ -151,7 +151,7 @@ If Codenine on the host disappears when SSH closes, see
 ## Report a problem
 
 If none of this helps, open an issue on
-[GitHub](https://github.com/musabshahab/vcode/issues). Include:
+[GitHub](https://github.com/musabshahab/codenine/issues). Include:
 
 - The text from **Copy diagnostics** in the environment's **Details**.
 - The output of `codenine connect status` on the host.

@@ -1,7 +1,7 @@
 // Files that cannot import this hardcode the same slug: scripts/install.sh, scripts/install.ps1,
 // scripts/npm-launcher/codenine.mjs, the Linux metainfo XML, apps/server/package.json, and the
 // web boot shell (apps/web/src/lib/bootError.ts).
-const CODENINE_REPOSITORY_SLUG = "musabshahab/vcode";
+const CODENINE_REPOSITORY_SLUG = "musabshahab/codenine";
 const CODENINE_RAW_MAIN_URL = `https://raw.githubusercontent.com/${CODENINE_REPOSITORY_SLUG}/main`;
 
 export const CODENINE_REPOSITORY_URL = `https://github.com/${CODENINE_REPOSITORY_SLUG}`;

@@ -1,7 +1,7 @@
 import type { DesktopBridge, DesktopUpdateState } from "@codenine/contracts";
 
 // The boot shell runs before any package loads, so it repeats codenineRepository.ts's slug.
-const REPOSITORY_URL = "https://github.com/musabshahab/vcode";
+const REPOSITORY_URL = "https://github.com/musabshahab/codenine";
 const LAST_FAILURE_KEY = "codenine:boot-failed-at";
 const REPEAT_FAILURE_MS = 5 * 60_000;
 const MAX_CAUSES = 3;

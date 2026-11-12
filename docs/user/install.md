@@ -26,8 +26,8 @@ irm https://vite.plus/ps1 | iex
 ## Run from source
 
 ```bash
-git clone https://github.com/musabshahab/vcode.git
-cd vcode
+git clone https://github.com/musabshahab/codenine.git
+cd codenine
 vp i
 vp run dev
 ```

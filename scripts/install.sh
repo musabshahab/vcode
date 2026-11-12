@@ -2,7 +2,7 @@
 # Installs the Codenine CLI from a GitHub Release archive. Needs only sh, tar,
 # sha256sum or shasum, and curl or wget; no Node, npm, or compiler.
 #
-#   curl -fsSL https://raw.githubusercontent.com/musabshahab/vcode/main/scripts/install.sh | sh
+#   curl -fsSL https://raw.githubusercontent.com/musabshahab/codenine/main/scripts/install.sh | sh
 #
 # Environment:
 #   CODENINE_CHANNEL           release train to follow: stable, nightly, or preview
@@ -17,7 +17,7 @@
 # instead of fetching the release again.
 set -eu
 
-repo="musabshahab/vcode"
+repo="musabshahab/codenine"
 base_url="${CODENINE_RELEASE_BASE_URL:-https://github.com/${repo}/releases/download}"
 codenine_home="${CODENINE_HOME:-$HOME/.codenine}"
 case "$codenine_home" in
