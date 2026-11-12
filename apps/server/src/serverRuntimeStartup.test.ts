@@ -224,6 +224,7 @@ it.effect.each([
           assert.isDefined(welcome);
           if (welcome?.type === "welcome") {
             assert.equal(welcome.payload.bootstrapProjectId, projectId);
+            assert.isTrue(welcome.payload.bootstrapProjectCreated);
             assert.isUndefined(welcome.payload.bootstrapThreadId);
           }
         }
