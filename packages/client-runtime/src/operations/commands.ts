@@ -66,6 +66,7 @@ export interface UpdateProjectInput extends CommandMetadata {
 export interface DeleteProjectInput extends CommandMetadata {
   readonly projectId: ProjectId;
   readonly force?: boolean;
+  readonly deleteFolder?: boolean;
 }
 
 export interface CreateThreadInput extends CommandMetadata {
@@ -335,6 +336,7 @@ const mutateProject = Effect.fn("EnvironmentCommands.mutateProject")(function* (
         readonly commandId: CommandId;
         readonly projectId: ProjectId;
         readonly force?: boolean;
+        readonly deleteFolder?: boolean;
       },
 ) {
   return yield* request(WS_METHODS.projectsMutate, mutation);
@@ -391,6 +393,7 @@ export const deleteProject = Effect.fn("EnvironmentCommands.deleteProject")(func
     commandId: yield* allocateCommandId(input),
     projectId: input.projectId,
     ...(input.force === undefined ? {} : { force: input.force }),
+    ...(input.deleteFolder === undefined ? {} : { deleteFolder: input.deleteFolder }),
   });
 });
 

@@ -35,7 +35,7 @@ follow-ups from delegated tasks. A turn already running when the switch flips fi
 task's result still lands in its parent thread, which sees it on its next turn. Reset returns the project to the
 machine's setting. Every other provider setting stays per machine.
 
-## Pin and archive projects
+## Pin, archive, and remove projects
 
 Pinned projects come first in the project pickers: the project picker on a new chat, the
 **New chat in...** list, the command palette, and the sidebar project filter. When chats are
@@ -50,6 +50,11 @@ Settings project list, marked **Archived**. Choose one there and select **Unarch
 back.
 
 A project on several machines must have every machine connected to pin or archive it.
+
+Remove a project from its folder's right-click menu in the sidebar or from **Settings → Projects**.
+Removing it deletes its threads from Codenine and leaves its folder on disk; **Delete project and
+folder** also permanently deletes the folder, including uncommitted work, and the project's
+Codenine worktrees on the machine that holds it.
 
 ## Worktree branch names
 

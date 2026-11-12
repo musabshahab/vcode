@@ -131,6 +131,7 @@ import {
 import { useHandleNewThread } from "../hooks/useHandleNewThread";
 import { useOrderWhileOpen } from "../hooks/useOrderWhileOpen";
 import { useProjectPin } from "../hooks/useProjectGroupUpdate";
+import { useProjectRemoval } from "../hooks/useProjectRemoval";
 import { useSidebarProjectGroups } from "../hooks/useSidebarProjectGroups";
 import { useTerminalFocus } from "../hooks/useTerminalFocus";
 import { isCommandPaletteOpen, openCommandPalette } from "../commandPaletteBus";
@@ -1300,6 +1301,7 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
       openProjectSettings(projectGroup);
     },
   );
+  const removeProjectGroup = useProjectRemoval();
   const startThreadInProjectFolder = useStableCallback((group: SidebarProjectSnapshot) => {
     if (isMobile) setOpenMobile(false);
     void handleNewThread(scopeProjectRef(group.environmentId, group.id));
@@ -1322,6 +1324,31 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
                   ]
                 : []),
               { id: "project-settings", label: "Project settings", icon: "settings" },
+              ...(group.isScratch
+                ? []
+                : [
+                    {
+                      id: "remove-project",
+                      label: "Remove from Codenine…",
+                      destructive: true,
+                      separatorBefore: true,
+                      disabled: !canOperateThreads(group.memberProjects),
+                    },
+                    // A grouped project's checkouts may sit on other machines; settings picks one.
+                    ...(group.memberProjects.length === 1 &&
+                    serverConfigs.get(group.environmentId)?.environment.capabilities
+                      .projectFolderDeletion === true
+                      ? [
+                          {
+                            id: "delete-project-folder",
+                            label: "Delete project and folder…",
+                            icon: "trash",
+                            destructive: true,
+                            disabled: !canOperateThreads(group.memberProjects),
+                          },
+                        ]
+                      : []),
+                  ]),
             ],
             position,
           ),
@@ -1330,6 +1357,16 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
         switch (clicked.value) {
           case "new-thread":
             startThreadInProjectFolder(group);
+            return;
+          case "remove-project":
+          case "delete-project-folder":
+            await removeProjectGroup({
+              members: group.memberProjects,
+              groupMemberCount: group.memberProjects.length,
+              hasOtherMembers: false,
+              displayName: group.displayName,
+              deleteFolder: clicked.value === "delete-project-folder",
+            });
             return;
           case "copy-path":
             copyPathToClipboard(group.workspaceRoot, { path: group.workspaceRoot });

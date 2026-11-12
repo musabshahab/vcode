@@ -1,25 +1,14 @@
 import { useComposerMenuState } from "../chat/useComposerMenuState";
-import { useOrchestrationCommand } from "../../state/use-orchestration-command";
 import { AuthOrchestrationOperateScope } from "@codenine/contracts";
 import { useEnvironmentsWithScope } from "../../state/session";
-import { mapAtomCommandResult, settlePromise } from "@codenine/client-runtime/state/runtime";
-import { scopeProjectRef, scopeThreadRef } from "@codenine/client-runtime/environment";
-import { planProjectRemoval } from "@codenine/client-runtime/state/projects";
 import { type EnvironmentId, type SidebarProjectGroupingMode } from "@codenine/contracts";
-import {
-  checkProjectAccess,
-  reportProjectFailure,
-  useProjectGroupUpdate,
-  type ProjectGroupUpdate,
-} from "../../hooks/useProjectGroupUpdate";
+import { useProjectGroupUpdate, type ProjectGroupUpdate } from "../../hooks/useProjectGroupUpdate";
+import { useProjectRemoval } from "../../hooks/useProjectRemoval";
 import { Navigate, useLocation, useNavigate } from "@tanstack/react-router";
 import { InfoIcon, Trash2Icon } from "lucide-react";
 import { lazy, Suspense, useRef, useState, type ReactNode } from "react";
 
-import { useComposerDraftStore } from "../../composerDraftStore";
-import { releaseProjectDraftUploads } from "../../lib/composerDraftUploads";
 import { persistClientSettingsUpdate, useClientSettings } from "../../hooks/useSettings";
-import { readLocalApi } from "../../localApi";
 import { derivePhysicalProjectKey } from "@codenine/client-runtime/state/project-grouping";
 import {
   PROJECT_GROUPING_MODE_LABELS,
@@ -28,8 +17,6 @@ import {
   type SidebarProjectSnapshot,
 } from "../../sidebarProjectGrouping";
 import { useEnvironments, usePrimaryEnvironmentId } from "../../state/environments";
-import { useThreadShells, waitForProjectRemoval } from "../../state/entities";
-import { projectEnvironment } from "../../state/projects";
 import { ProjectFavicon } from "../ProjectFavicon";
 import { Alert, AlertDescription } from "../ui/alert";
 import { Button } from "../ui/button";
@@ -57,7 +44,6 @@ import {
   SCRATCH_PROJECT_TITLE,
 } from "./ProjectSettingsPanel.logic";
 import { useSettingsProjectGroups } from "./useSettingsProjectGroups";
-import { readUnloadedThreadCount } from "../../state/olderSettledShelf";
 import { settingsScopeEnvironmentLabels } from "./settingsScopeAxis";
 
 const ProjectIconPickerDialog = lazy(() =>
@@ -275,10 +261,7 @@ function ProjectDetail({
     group.memberProjects.find(
       (member) => environmentById.get(member.environmentId)?.serverConfig != null,
     ) ?? group.memberProjects[0]!;
-  const threads = useThreadShells();
-  const deleteProject = useOrchestrationCommand(projectEnvironment.delete, {
-    reportFailure: false,
-  });
+  const removeProject = useProjectRemoval();
   const projectNameEditedRef = useRef(false);
 
   const faviconPath = representative.faviconPath ?? null;
@@ -340,63 +323,29 @@ function ProjectDetail({
   };
 
   const hasMultipleCheckouts = group.memberProjects.length > 1;
+  // Codenine owns the folder of chats without a project; the server refuses to delete it.
+  const folderMembers = group.memberProjects.filter(
+    (member) =>
+      !member.isScratch &&
+      environmentById.get(member.environmentId)?.serverConfig?.environment.capabilities
+        .projectFolderDeletion === true,
+  );
   const canResetScratchTitle =
     group.memberProjects.every((member) => member.isScratch) &&
     group.memberProjects.some((member) => member.title !== SCRATCH_PROJECT_TITLE);
 
-  const removeMembers = async (members: ReadonlyArray<SidebarProjectGroupMember>) => {
-    if (checkProjectAccess(members, "Failed to remove project")) return;
-    const api = readLocalApi();
-    if (!api) return;
-
-    const { projectThreads, isWholeGroup, confirmationMessage } = planProjectRemoval({
+  const removeMembers = async (
+    members: ReadonlyArray<SidebarProjectGroupMember>,
+    options?: { readonly deleteFolder?: boolean },
+  ) => {
+    const removed = await removeProject({
       members,
       groupMemberCount: group.memberProjects.length,
       hasOtherMembers,
       displayName: group.displayName,
-      threads,
-      unloadedThreadCount: readUnloadedThreadCount(members, threads),
+      ...options,
     });
-    const confirmed = await settlePromise(() =>
-      api.dialogs.confirm(confirmationMessage, { variant: "destructive" }),
-    );
-    if (confirmed._tag === "Failure" || !confirmed.value) return;
-    if (checkProjectAccess(members, "Failed to remove project")) return;
-
-    const draftStore = useComposerDraftStore.getState();
-    for (const member of members) {
-      if (checkProjectAccess([member], "Failed to remove project")) return;
-      const memberThreads = projectThreads.filter(
-        (thread) => thread.environmentId === member.environmentId && thread.projectId === member.id,
-      );
-      const result = mapAtomCommandResult(
-        await deleteProject({
-          environmentId: member.environmentId,
-          input: {
-            projectId: member.id,
-            force: true,
-          },
-        }),
-        () => undefined,
-      );
-      if (result._tag === "Failure") {
-        reportProjectFailure(`Failed to remove "${member.title}"`, result);
-        return;
-      }
-      const projectRef = scopeProjectRef(member.environmentId, member.id);
-      await waitForProjectRemoval(projectRef);
-      releaseProjectDraftUploads(
-        projectRef,
-        memberThreads.map((thread) => scopeThreadRef(thread.environmentId, thread.id)),
-      );
-      const projectDraftThread = draftStore.getDraftThreadByProjectRef(projectRef);
-      if (projectDraftThread) {
-        draftStore.clearDraftThread(projectDraftThread.draftId);
-      }
-      draftStore.clearProjectDraftThreadId(projectRef);
-    }
-
-    if (isWholeGroup && !hasOtherMembers) {
+    if (removed && members.length === group.memberProjects.length && !hasOtherMembers) {
       void navigate({
         to: "/settings/projects",
         search: ({ machine }) => ({ project: undefined, machine, checkout: undefined }),
@@ -688,6 +637,75 @@ function ProjectDetail({
               </Button>
             }
           />
+          {folderMembers.length > 0 ? (
+            <SettingsRow
+              title={
+                hasMultipleCheckouts
+                  ? "Delete a checkout and its folder"
+                  : hasOtherMembers
+                    ? "Delete checkout and folder"
+                    : "Delete project and folder"
+              }
+              description={
+                hasMultipleCheckouts
+                  ? "Deletes one checkout entry, its threads, and its folder on that machine, including uncommitted work. Other checkouts are not touched."
+                  : hasOtherMembers
+                    ? "Deletes the selected machine's checkout entry, its threads, and its folder on that machine, including uncommitted work. Other machines are not touched."
+                    : "Deletes the project entry, its threads, and its folder on disk, including uncommitted work."
+              }
+              control={
+                hasMultipleCheckouts ? undefined : (
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    disabled={!canEditGroup}
+                    onClick={() => void removeMembers(folderMembers, { deleteFolder: true })}
+                  >
+                    <Trash2Icon />
+                    {hasOtherMembers ? "Delete checkout and folder" : "Delete project and folder"}
+                  </Button>
+                )
+              }
+            >
+              {hasMultipleCheckouts ? (
+                <div className="space-y-3 pb-2 pt-1">
+                  {folderMembers.map((member) => {
+                    const location = [member.environmentLabel, member.workspaceRoot]
+                      .filter(Boolean)
+                      .join(" · ");
+                    return (
+                      <div
+                        key={member.physicalProjectKey}
+                        className="flex min-w-0 items-center justify-between gap-3"
+                      >
+                        <Tooltip>
+                          <TooltipTrigger
+                            render={
+                              <span className="min-w-0 truncate text-xs text-muted-foreground/80" />
+                            }
+                          >
+                            {location}
+                          </TooltipTrigger>
+                          <TooltipPopup>{location}</TooltipPopup>
+                        </Tooltip>
+                        <div className="shrink-0">
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            disabled={!editableIds.has(member.environmentId)}
+                            onClick={() => void removeMembers([member], { deleteFolder: true })}
+                            aria-label={`Delete checkout and folder ${member.workspaceRoot}`}
+                          >
+                            Delete folder
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : null}
+            </SettingsRow>
+          ) : null}
         </SettingsSection>
       </SettingsPageContainer>
 
