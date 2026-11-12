@@ -8,10 +8,13 @@ import {
   ProviderInstanceId,
   ThreadId,
 } from "@codenine/contracts";
+import * as HostProcess from "@codenine/shared/HostProcess";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
+import * as FileSystem from "effect/FileSystem";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
+import * as Path from "effect/Path";
 import * as Schema from "effect/Schema";
 import { TestClock } from "effect/testing";
 import * as SqlClient from "effect/sql/SqlClient";
@@ -75,20 +78,27 @@ const decodeEffectRequest = Schema.decodeUnknownEffect(
   Schema.fromJsonString(OrchestrationEffectRequestV2),
 );
 
-const seedProject = Effect.fn("ProjectDeletionTest.seedProject")(function* (projectId: ProjectId) {
+const seedProject = Effect.fn("ProjectDeletionTest.seedProject")(function* (
+  projectId: ProjectId,
+  workspaceRoot = `/work/${projectId}`,
+) {
   const sql = yield* SqlClient.SqlClient;
   yield* sql`
     INSERT INTO projection_projects (
       project_id, title, workspace_root, default_model_selection_json,
       scripts_json, created_at, updated_at, deleted_at
     ) VALUES (
-      ${projectId}, 'Deletion test', ${`/work/${projectId}`}, NULL,
+      ${projectId}, 'Deletion test', ${workspaceRoot}, NULL,
       '[]', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z', NULL
     )
   `;
 });
 
-function nativeThreadCreated(projectId: ProjectId, threadId: ThreadId) {
+function nativeThreadCreated(
+  projectId: ProjectId,
+  threadId: ThreadId,
+  worktreePath: string | null = null,
+) {
   const createdAt = DateTime.makeUnsafe("2026-01-01T00:00:00.000Z");
   const providerInstanceId = ProviderInstanceId.make("codex");
   const payload: OrchestrationV2AppThread = {
@@ -102,7 +112,7 @@ function nativeThreadCreated(projectId: ProjectId, threadId: ThreadId) {
     runtimeMode: "full-access",
     interactionMode: "default",
     branch: null,
-    worktreePath: null,
+    worktreePath,
     activeProviderThreadId: null,
     lineage: { parentThreadId: null, relationshipToParent: null, rootThreadId: threadId },
     forkedFrom: null,
@@ -511,4 +521,151 @@ it.effect(
         assert.isUndefined(settingsAfterDelete.projectSettingsOverrides[projectId]);
       }).pipe(Effect.provide(layerServices));
     }).pipe(Effect.provide(layerDatabase)),
+);
+
+/** Builds the service over a temp data folder and home. Removing anything outside the temp folder dies. */
+const withFolderService = <A, E, R>(
+  body: (layout: {
+    readonly service: ProjectService.ProjectService["Service"];
+    readonly tmp: string;
+    readonly baseDir: string;
+    readonly home: string;
+  }) => Effect.Effect<A, E, R>,
+) =>
+  Effect.gen(function* () {
+    const fileSystem = yield* FileSystem.FileSystem;
+    const path = yield* Path.Path;
+    const tmp = yield* fileSystem.realPath(
+      yield* fileSystem.makeTempDirectoryScoped({ prefix: "project-folder-deletion-" }),
+    );
+    const baseDir = path.join(tmp, "apps", "codenine");
+    const home = path.join(tmp, "users", "me");
+    yield* fileSystem.makeDirectory(home, { recursive: true });
+    const guarded: FileSystem.FileSystem = {
+      ...fileSystem,
+      remove: (target, options) => {
+        const relative = path.relative(tmp, path.resolve(target));
+        return relative.startsWith("..") || path.isAbsolute(relative)
+          ? Effect.die(new Error(`Removed ${target} outside the test folder.`))
+          : fileSystem.remove(target, options);
+      },
+    };
+    const service = yield* ProjectService.make.pipe(
+      Effect.provide(ServerConfig.layerTest(process.cwd(), baseDir)),
+      Effect.provideService(FileSystem.FileSystem, guarded),
+    );
+    return yield* body({ service, tmp, baseDir, home }).pipe(
+      Effect.provideService(HostProcess.HomeDirectory, home),
+    );
+  }).pipe(Effect.scoped);
+const layerFolderTest = layerServices.pipe(Layer.provideMerge(layerDatabase));
+
+it.effect("deletes a project's folder and Codenine worktrees only when asked", () =>
+  withFolderService(({ service, tmp, baseDir }) =>
+    Effect.gen(function* () {
+      const fileSystem = yield* FileSystem.FileSystem;
+      const path = yield* Path.Path;
+      const eventSink = yield* EventSink.EventSinkV2;
+      const withNotes = Effect.fn("ProjectDeletionTest.withNotes")(function* (folder: string) {
+        yield* fileSystem.makeDirectory(folder, { recursive: true });
+        yield* fileSystem.writeFileString(path.join(folder, "notes.txt"), "uncommitted");
+      });
+      const kept = ProjectId.make("project:folder-kept");
+      const doomed = ProjectId.make("project:folder-doomed");
+      const created = ProjectId.make("project:folder-created");
+      const missing = ProjectId.make("project:folder-missing");
+      const roots = new Map([
+        [kept, path.join(tmp, "kept")],
+        [doomed, path.join(tmp, "doomed")],
+        [created, path.join(baseDir, "projects", "created")],
+        [missing, path.join(tmp, "missing")],
+      ]);
+      const managedWorktree = path.join(baseDir, "worktrees", "doomed", "feature");
+      const ownWorktree = path.join(tmp, "own-worktree");
+      for (const folder of [
+        roots.get(kept)!,
+        roots.get(doomed)!,
+        roots.get(created)!,
+        managedWorktree,
+        ownWorktree,
+      ]) {
+        yield* withNotes(folder);
+      }
+      for (const [projectId, root] of roots) yield* seedProject(projectId, root);
+      yield* eventSink.write({
+        events: [
+          nativeThreadCreated(doomed, ThreadId.make("thread:doomed-managed"), managedWorktree),
+          nativeThreadCreated(doomed, ThreadId.make("thread:doomed-own"), ownWorktree),
+        ],
+      });
+
+      yield* service.delete({
+        commandId: CommandId.make("command:folder-kept"),
+        projectId: kept,
+      });
+      assert.isTrue(yield* fileSystem.exists(path.join(roots.get(kept)!, "notes.txt")));
+
+      for (const projectId of [doomed, created, missing]) {
+        const deleted = yield* service.delete({
+          commandId: CommandId.make(`command:${projectId}`),
+          projectId,
+          force: true,
+          deleteFolder: true,
+        });
+        assert.isNotNull(deleted.deletedAt);
+        assert.isFalse(yield* fileSystem.exists(roots.get(projectId)!));
+      }
+      assert.isFalse(yield* fileSystem.exists(managedWorktree));
+      assert.isTrue(yield* fileSystem.exists(path.join(ownWorktree, "notes.txt")));
+    }),
+  ).pipe(Effect.provide(layerFolderTest)),
+);
+
+it.effect("refuses to delete a protected folder before touching the project", () =>
+  withFolderService(({ service, tmp, baseDir, home }) =>
+    Effect.gen(function* () {
+      const fileSystem = yield* FileSystem.FileSystem;
+      const path = yield* Path.Path;
+      const eventSink = yield* EventSink.EventSinkV2;
+      const projections = yield* ProjectionStore.ProjectionStoreV2;
+      const parent = path.join(tmp, "parent");
+      const target = path.join(tmp, "target");
+      yield* fileSystem.makeDirectory(path.join(parent, "child"), { recursive: true });
+      yield* fileSystem.makeDirectory(path.join(baseDir, "scratch"));
+      yield* fileSystem.makeDirectory(target);
+      yield* fileSystem.symlink(target, path.join(tmp, "link"));
+      yield* seedProject(ProjectId.make("project:refusal-child"), path.join(parent, "child"));
+      const cases = [
+        ["/", "it is the root of the file system"],
+        [home, "it is the home folder"],
+        [path.dirname(home), "it contains the home folder"],
+        [baseDir, "it is Codenine's data folder"],
+        [path.dirname(baseDir), "it contains Codenine's data folder"],
+        [path.join(baseDir, "worktrees"), "it holds Codenine's worktrees"],
+        [path.join(baseDir, "scratch"), "is not a project folder Codenine created"],
+        [path.join(baseDir, "userdata"), "is not a project folder Codenine created"],
+        [parent, `it contains the project "Deletion test" at ${path.join(parent, "child")}`],
+        [path.join(tmp, "link"), "it is a symbolic link"],
+      ] as const;
+      for (const [index, [root, reason]] of cases.entries()) {
+        const projectId = ProjectId.make(`project:refusal-${index}`);
+        const threadId = ThreadId.make(`thread:refusal-${index}`);
+        yield* seedProject(projectId, root);
+        yield* eventSink.write({ events: [nativeThreadCreated(projectId, threadId)] });
+        const failure = yield* service
+          .delete({
+            commandId: CommandId.make(`command:refusal-${index}`),
+            projectId,
+            force: true,
+            deleteFolder: true,
+          })
+          .pipe(Effect.flip);
+        assert.instanceOf(failure, ProjectService.ProjectFolderDeleteError);
+        assert.include(failure.message, reason);
+        assert.isTrue(Option.isSome(yield* service.getById(projectId)), root);
+        assert.isNull((yield* projections.getThreadProjection(threadId)).thread.deletedAt);
+        assert.isTrue(yield* fileSystem.exists(root), root);
+      }
+    }),
+  ).pipe(Effect.provide(layerFolderTest)),
 );

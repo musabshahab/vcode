@@ -219,6 +219,8 @@ export const ProjectMutation = Schema.Union([
     commandId: CommandId,
     projectId: ProjectId,
     force: Schema.optional(Schema.Boolean),
+    /** Also deletes the workspace root on the server's disk, and the project's worktrees. */
+    deleteFolder: Schema.optional(Schema.Boolean),
   }),
 ]);
 export type ProjectMutation = typeof ProjectMutation.Type;

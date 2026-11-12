@@ -51,6 +51,7 @@ export const projectMutationOperation = Effect.fn("projectMutationOperation")(fu
         commandId: mutation.commandId,
         projectId: mutation.projectId,
         ...(mutation.force === undefined ? {} : { force: mutation.force }),
+        ...(mutation.deleteFolder === undefined ? {} : { deleteFolder: mutation.deleteFolder }),
       });
   }
 });
@@ -65,6 +66,11 @@ export const mutateProjectWithClone = Effect.fn("mutateProjectWithClone")(functi
     return yield* projectMutationOperation(projects, mutation);
   return yield* projectMutationOperation(projects, mutation).pipe(
     Effect.tap(() => clones.discard(mutation.projectId)),
+    Effect.tapError((error) =>
+      error._tag === "ProjectFolderDeleteError" && error.projectRemoved
+        ? clones.discard(mutation.projectId)
+        : Effect.void,
+    ),
     Effect.uninterruptible,
   );
 });

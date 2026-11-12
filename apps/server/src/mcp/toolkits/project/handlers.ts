@@ -33,7 +33,7 @@ import { ProjectToolkit } from "./tools.ts";
 function projectFailure(error: Project.ProjectServiceError) {
   if (error._tag === "ProjectOperationError") return unavailable();
   const message =
-    error._tag === "ProjectInvalidError"
+    error._tag === "ProjectInvalidError" || error._tag === "ProjectFolderDeleteError"
       ? error.detail
       : error._tag === "ProjectNotFoundError"
         ? "The project was not found."

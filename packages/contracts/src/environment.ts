@@ -145,6 +145,8 @@ export const ExecutionEnvironmentCapabilities = Schema.Struct({
   projectCloneTracking: Schema.optionalKey(Schema.Boolean),
   /** Server keeps `pinned` and `archived` from project.update. Older servers drop them. */
   projectOrganization: Schema.optionalKey(Schema.Boolean),
+  /** Server honors `deleteFolder` on project.delete. Older servers ignore it and keep the folder. */
+  projectFolderDeletion: Schema.optionalKey(Schema.Boolean),
   /** Server answers projects.listIgnoredFiles. */
   ignoredFileListing: Schema.optionalKey(Schema.Boolean),
   environmentIcon: Schema.optionalKey(Schema.Boolean),

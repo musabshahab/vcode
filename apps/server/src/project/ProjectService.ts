@@ -1,6 +1,7 @@
 import {
   CommandId,
   type OrchestrationProjectShell,
+  type OrchestrationV2ThreadShell,
   ProjectId,
   type Project,
   type ProjectCreatePayload,
@@ -8,15 +9,19 @@ import {
   type ProjectSnapshot,
   type ThreadId,
 } from "@codenine/contracts";
+import * as HostProcess from "@codenine/shared/HostProcess";
 import * as KeyedLock from "@codenine/shared/KeyedLock";
 import * as Context from "effect/Context";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
+import * as FileSystem from "effect/FileSystem";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
+import * as Path from "effect/Path";
 import * as Result from "effect/Result";
 import * as Schema from "effect/Schema";
 
+import * as ServerConfig from "../config.ts";
 import { withCommandMetrics } from "../observability/Metrics.ts";
 import * as EventSink from "../orchestration-v2/EventSink.ts";
 import * as IdAllocator from "@codenine/provider-core/server/IdAllocator";
@@ -33,7 +38,13 @@ import * as ThreadCommandExecutor from "../orchestration-v2/ThreadCommandExecuto
 import { planThreadDeletion } from "../orchestration-v2/ThreadDeletion.ts";
 import * as ServerSettings from "../serverSettings.ts";
 import * as ProjectEnrichmentService from "./ProjectEnrichmentService.ts";
+import { isWithinRoot } from "../workspace/KnownWorkspaces.ts";
 import * as WorkspacePaths from "../workspace/WorkspacePaths.ts";
+import {
+  isFilesystemRoot,
+  makeIsManagedWorktreePath,
+  managedWorktreesDirectories,
+} from "../worktreesDirectory.ts";
 
 export interface ProjectCreateInput extends ProjectCreatePayload {
   readonly commandId: CommandId;
@@ -51,6 +62,7 @@ export interface ProjectDeleteInput {
   readonly commandId: CommandId;
   readonly projectId: ProjectId;
   readonly force?: boolean;
+  readonly deleteFolder?: boolean;
 }
 
 export class ProjectNotFoundError extends Schema.TaggedError<ProjectNotFoundError>()(
@@ -94,6 +106,21 @@ export class ProjectInvalidError extends Schema.TaggedError<ProjectInvalidError>
   }
 }
 
+/** Refused before anything changed, or failed after the project was already removed. */
+export class ProjectFolderDeleteError extends Schema.TaggedError<ProjectFolderDeleteError>()(
+  "ProjectFolderDeleteError",
+  {
+    projectId: ProjectId,
+    workspaceRoot: Schema.String,
+    projectRemoved: Schema.Boolean,
+    detail: Schema.String,
+  },
+) {
+  override get message(): string {
+    return this.detail;
+  }
+}
+
 export class ProjectOperationError extends Schema.TaggedError<ProjectOperationError>()(
   "ProjectOperationError",
   {
@@ -120,6 +147,7 @@ export type ProjectServiceError =
   | ProjectConflictError
   | ProjectNotEmptyError
   | ProjectInvalidError
+  | ProjectFolderDeleteError
   | ProjectOperationError;
 
 export class ProjectService extends Context.Service<
@@ -173,6 +201,10 @@ export const make = Effect.gen(function* () {
   const legacyImporter = yield* LegacyV1ThreadImporter.LegacyV1ThreadImporter;
   const threadCommands = yield* ThreadCommandExecutor.ThreadCommandExecutor;
   const serverSettings = yield* ServerSettings.ServerSettingsService;
+  const config = yield* ServerConfig.ServerConfig;
+  const fileSystem = yield* FileSystem.FileSystem;
+  const path = yield* Path.Path;
+  const isManagedWorktreePath = yield* makeIsManagedWorktreePath;
   const projectLocks = yield* KeyedLock.make<ProjectId>();
   const workspaceLocks = yield* KeyedLock.make<string>();
 
@@ -469,18 +501,19 @@ export const make = Effect.gen(function* () {
     }
   });
 
+  const listProjectThreads = (projectId: ProjectId) =>
+    threadProjections.getShellSnapshot({ projectId }).pipe(
+      Effect.map((snapshot) => [...snapshot.threads, ...snapshot.archivedThreads]),
+      Effect.mapError(
+        (cause) => new ProjectOperationError({ operation: "list-threads", projectId, cause }),
+      ),
+    );
+
   const deleteChildThreads = Effect.fn("ProjectService.deleteChildThreads")(function* (
     input: ProjectDeleteInput,
+    projectThreads: ReadonlyArray<OrchestrationV2ThreadShell>,
   ) {
     const { projectId } = input;
-    const snapshot = yield* threadProjections
-      .getShellSnapshot({ projectId })
-      .pipe(
-        Effect.mapError(
-          (cause) => new ProjectOperationError({ operation: "list-threads", projectId, cause }),
-        ),
-      );
-    const projectThreads = [...snapshot.threads, ...snapshot.archivedThreads];
     if (projectThreads.length > 0 && input.force !== true) {
       return yield* new ProjectNotEmptyError({ projectId });
     }
@@ -512,6 +545,126 @@ export const make = Effect.gen(function* () {
       ),
     );
 
+  const realPath = (target: string) =>
+    fileSystem.realPath(target).pipe(Effect.orElseSucceed(() => target));
+  const pathForms = (target: string) =>
+    realPath(path.resolve(target)).pipe(
+      Effect.map((real) => [...new Set([path.resolve(target), real])]),
+    );
+
+  /** Why a project's folder must stay, or null. Each rule checks the path as given and as resolved. */
+  const folderDeletionRefusal = Effect.fn("ProjectService.folderDeletionRefusal")(function* (
+    project: ProjectStore.ProjectRow,
+    others: ReadonlyArray<ProjectStore.ProjectRow & { readonly forms: ReadonlyArray<string> }>,
+  ) {
+    const platform = yield* HostProcess.Platform;
+    const key = (target: string) =>
+      platform === "win32" || platform === "darwin" ? target.toLowerCase() : target;
+    const within = (target: string, root: string) => isWithinRoot(path, key(target), key(root));
+    const root = path.resolve(project.workspaceRoot);
+    const roots = yield* pathForms(root);
+    const home = yield* HostProcess.HomeDirectory;
+    const homes = yield* pathForms(home);
+    const baseDirs = yield* pathForms(config.baseDir);
+    // ManagedProjectFolders creates new projects' folders directly inside these.
+    const managedParents = baseDirs.flatMap((baseDir) =>
+      ["projects", "scratch"].map((name) => key(path.join(baseDir, name))),
+    );
+    const settings = yield* serverSettings.getSettings.pipe(
+      Effect.orElseSucceed(() => ({ worktreesDirectory: "", previousWorktreesDirectories: [] })),
+    );
+    const worktreeDirs = (yield* Effect.forEach(
+      managedWorktreesDirectories(settings, config.worktreesDir, path, home),
+      pathForms,
+    )).flat();
+
+    if (
+      (yield* fileSystem.exists(root).pipe(Effect.orElseSucceed(() => false))) &&
+      roots.at(-1) !== path.join(yield* realPath(path.dirname(root)), path.basename(root))
+    ) {
+      return "it is a symbolic link";
+    }
+    for (const candidate of roots) {
+      const same = (dirs: ReadonlyArray<string>) => dirs.some((dir) => key(dir) === key(candidate));
+      const holds = (dirs: ReadonlyArray<string>) => dirs.some((dir) => within(dir, candidate));
+      const inside = (dirs: ReadonlyArray<string>) => dirs.some((dir) => within(candidate, dir));
+      if (isFilesystemRoot(candidate, path)) return "it is the root of the file system";
+      if (same(homes)) return "it is the home folder";
+      if (holds(homes)) return "it contains the home folder";
+      if (same(baseDirs)) return "it is Codenine's data folder";
+      if (holds(baseDirs)) return "it contains Codenine's data folder";
+      if (holds(worktreeDirs)) return "it holds Codenine's worktrees";
+      if (inside(worktreeDirs)) return "it is inside Codenine's worktrees folder";
+      if (inside(baseDirs) && !managedParents.includes(key(path.dirname(candidate)))) {
+        return "it is inside Codenine's data folder and is not a project folder Codenine created";
+      }
+      const contained = others.find((other) => other.forms.some((form) => within(form, candidate)));
+      if (contained !== undefined) {
+        return `it contains the project "${contained.title}" at ${contained.workspaceRoot}`;
+      }
+    }
+    return null;
+  });
+
+  const planFolderDeletion = Effect.fn("ProjectService.planFolderDeletion")(function* (
+    project: ProjectStore.ProjectRow,
+    projectThreads: ReadonlyArray<OrchestrationV2ThreadShell>,
+  ) {
+    const others = yield* Effect.forEach(
+      (yield* listRows).filter((other) => other.projectId !== project.projectId),
+      (other) => pathForms(other.workspaceRoot).pipe(Effect.map((forms) => ({ ...other, forms }))),
+    );
+    const refusal = yield* folderDeletionRefusal(project, others);
+    if (refusal !== null) {
+      return yield* new ProjectFolderDeleteError({
+        projectId: project.projectId,
+        workspaceRoot: project.workspaceRoot,
+        projectRemoved: false,
+        detail: `Codenine won't delete ${project.workspaceRoot} because ${refusal}. Remove the project without deleting its folder, or delete the folder yourself.`,
+      });
+    }
+    const otherRoots = others.flatMap((other) => other.forms);
+    // Thread deletion keeps worktrees; once the project's folder is gone nothing would clean them up.
+    const worktrees = yield* Effect.filter(
+      new Set(
+        projectThreads.flatMap((thread) =>
+          thread.worktreePath === null ? [] : [path.resolve(thread.worktreePath)],
+        ),
+      ),
+      (worktree) =>
+        otherRoots.some((root) => isWithinRoot(path, root, worktree))
+          ? Effect.succeed(false)
+          : isManagedWorktreePath(worktree),
+    );
+    return [...worktrees, path.resolve(project.workspaceRoot)];
+  });
+
+  const deleteFolders = Effect.fn("ProjectService.deleteFolders")(function* (
+    project: ProjectStore.ProjectRow,
+    folders: ReadonlyArray<string>,
+  ) {
+    const failures: Array<string> = [];
+    for (const folder of folders) {
+      yield* fileSystem
+        .remove(folder, { recursive: true, force: true })
+        .pipe(
+          Effect.catch((cause) =>
+            Effect.logWarning(`Failed to delete ${folder} of a deleted project.`, cause).pipe(
+              Effect.andThen(Effect.sync(() => failures.push(`${folder} (${cause.message})`))),
+            ),
+          ),
+        );
+    }
+    if (failures.length > 0) {
+      return yield* new ProjectFolderDeleteError({
+        projectId: project.projectId,
+        workspaceRoot: project.workspaceRoot,
+        projectRemoved: true,
+        detail: `The project was removed, but Codenine could not delete ${failures.join(", ")}.`,
+      });
+    }
+  });
+
   const deleteProject: ProjectService["Service"]["delete"] = Effect.fn("ProjectService.delete")(
     function* (input) {
       const { projectId } = input;
@@ -522,14 +675,21 @@ export const make = Effect.gen(function* () {
       }
 
       const isFirstDelete = existing.value.deletedAt === null;
+      const projectThreads = isFirstDelete ? yield* listProjectThreads(projectId) : [];
+      // Refuse before anything changes, so a refused folder leaves the project intact.
+      const folders =
+        input.deleteFolder === true
+          ? yield* planFolderDeletion(existing.value, projectThreads)
+          : [];
       if (isFirstDelete) {
-        yield* deleteChildThreads(input);
+        yield* deleteChildThreads(input, projectThreads);
       }
       yield* commit({ type: "project.delete", commandId: input.commandId, projectId });
       if (isFirstDelete) {
         yield* clearProjectSettingsOverrides(projectId);
       }
       yield* projectEnrichment.invalidate([existing.value.workspaceRoot]);
+      yield* deleteFolders(existing.value, folders);
       return yield* readCommitted(projectId);
     },
   );

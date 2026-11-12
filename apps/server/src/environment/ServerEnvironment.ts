@@ -268,6 +268,7 @@ export const make = Effect.gen(function* () {
       environmentIcon: true,
       projectCloneTracking: true,
       projectOrganization: true,
+      projectFolderDeletion: true,
       ignoredFileListing: true,
       freshContext: true,
       npmReleaseLookup: true,
