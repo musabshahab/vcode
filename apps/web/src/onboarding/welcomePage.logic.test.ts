@@ -14,6 +14,9 @@ import {
   codexNeedsSetup,
   groupWelcomeAgents,
   turnedOnInstance,
+  welcomeExistingProjects,
+  welcomeProjectSources,
+  welcomeStepIndicator,
 } from "./welcomePage.logic";
 
 function provider(name: string, overrides: Partial<ServerProvider> = {}): ServerProvider {
@@ -212,5 +215,52 @@ describe("codexCardProvider", () => {
         settings: undefined,
       }),
     ).toBeNull();
+  });
+});
+
+describe("project step", () => {
+  it("marks agents done once the project step is current", () => {
+    expect(welcomeStepIndicator("agents").map((step) => step.state)).toEqual([
+      "current",
+      "upcoming",
+      "upcoming",
+    ]);
+    expect(welcomeStepIndicator("project").map((step) => step.state)).toEqual([
+      "done",
+      "current",
+      "upcoming",
+    ]);
+  });
+
+  it("offers a new project only where the computer has a folder for new projects", () => {
+    expect(welcomeProjectSources("/home/user/codenine-projects")).toEqual([
+      "new",
+      "folder",
+      "clone",
+    ]);
+    expect(welcomeProjectSources(null)).toEqual(["folder", "clone"]);
+  });
+
+  it("lists this computer's three latest projects, without archived ones or the no-project home", () => {
+    const project = (id: string, updatedAt: string, extra: object = {}) => ({
+      id,
+      environmentId: "local",
+      updatedAt,
+      archivedAt: null,
+      ...extra,
+    });
+    const listed = welcomeExistingProjects(
+      [
+        project("old", "2026-01-01T00:00:00.000Z"),
+        project("new", "2026-04-01T00:00:00.000Z"),
+        project("scratch", "2026-05-01T00:00:00.000Z", { isScratch: true }),
+        project("archived", "2026-05-01T00:00:00.000Z", { archivedAt: "2026-05-02T00:00:00.000Z" }),
+        project("remote", "2026-05-01T00:00:00.000Z", { environmentId: "remote" }),
+        project("mid", "2026-03-01T00:00:00.000Z"),
+        project("older", "2026-02-01T00:00:00.000Z"),
+      ],
+      "local",
+    );
+    expect(listed.map((entry) => entry.id)).toEqual(["new", "mid", "older"]);
   });
 });

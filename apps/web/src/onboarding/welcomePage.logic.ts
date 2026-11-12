@@ -150,3 +150,50 @@ export function codexCardProvider(input: {
     welcomeAgentState(provider, input.settings) === "checking";
   return open ? provider : null;
 }
+
+export type WelcomeStep = "agents" | "project";
+
+const WELCOME_STEP_LABELS = ["Agents", "Project", "First task"] as const;
+
+/** The step indicator. The first task is the start screen that setup lands on. */
+export function welcomeStepIndicator(step: WelcomeStep) {
+  const current = step === "agents" ? 0 : 1;
+  return WELCOME_STEP_LABELS.map((label, index) => ({
+    label,
+    state:
+      index < current
+        ? ("done" as const)
+        : index === current
+          ? ("current" as const)
+          : ("upcoming" as const),
+  }));
+}
+
+export type WelcomeProjectSource = "new" | "folder" | "clone";
+
+/** A new project needs the folder this computer makes projects in; the others work anywhere. */
+export function welcomeProjectSources(
+  newProjectsRoot: string | null | undefined,
+): ReadonlyArray<WelcomeProjectSource> {
+  return newProjectsRoot == null ? ["folder", "clone"] : ["new", "folder", "clone"];
+}
+
+/** Projects this computer already has, most recently changed first, to continue with one. */
+export function welcomeExistingProjects<
+  T extends {
+    readonly environmentId: string;
+    readonly isScratch?: true;
+    readonly archivedAt?: string | null | undefined;
+    readonly updatedAt: string;
+  },
+>(projects: ReadonlyArray<T>, environmentId: string): ReadonlyArray<T> {
+  return projects
+    .filter(
+      (project) =>
+        project.environmentId === environmentId &&
+        project.isScratch !== true &&
+        project.archivedAt == null,
+    )
+    .toSorted((left, right) => right.updatedAt.localeCompare(left.updatedAt))
+    .slice(0, 3);
+}

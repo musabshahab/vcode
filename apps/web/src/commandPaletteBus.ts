@@ -1,5 +1,6 @@
 import type { EnvironmentId, PullRequestLinkedThreadsResult } from "@codenine/contracts";
 
+import type { AddProjectIntentSource } from "./components/CommandPalette.logic";
 import { dispatchCommandPalette, isCommandPaletteMounted } from "./commandPaletteStore";
 
 export interface CommandPaletteLinkedThreads {
@@ -9,6 +10,8 @@ export interface CommandPaletteLinkedThreads {
 
 export interface CommandPaletteOpenDetail {
   readonly open?: "add-project" | "new-thread-in";
+  /** With `open: "add-project"`: start in this source's flow. */
+  readonly addProjectSource?: AddProjectIntentSource;
   readonly query?: string;
   readonly linkedThreads?: CommandPaletteLinkedThreads;
 }
@@ -20,7 +23,11 @@ export function openCommandPalette(detail: CommandPaletteOpenDetail = {}): void 
   if (detail.open === "new-thread-in") {
     dispatchCommandPalette({ _tag: "OpenNewThreadIn" });
   } else if (detail.open === "add-project") {
-    dispatchCommandPalette({ _tag: "OpenAddProject" });
+    dispatchCommandPalette(
+      detail.addProjectSource
+        ? { _tag: "OpenAddProject", source: detail.addProjectSource }
+        : { _tag: "OpenAddProject" },
+    );
   } else if (detail.query !== undefined) {
     dispatchCommandPalette({
       _tag: "OpenSearch",

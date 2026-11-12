@@ -1,11 +1,12 @@
 import { useAtomValue } from "@effect/atom-react";
 import type {
   EnvironmentId,
+  ProjectId,
   ProviderInstanceId,
   ServerConfig,
   ServerProvider,
 } from "@codenine/contracts";
-import { scopeThreadRef } from "@codenine/client-runtime/environment";
+import { scopeProjectRef, scopeThreadRef } from "@codenine/client-runtime/environment";
 import { resolveProviderInstanceDisplayName as agentName } from "@codenine/client-runtime/state/provider-instance-display";
 import {
   isAtomCommandInterrupted,
@@ -18,8 +19,11 @@ import { CheckIcon, ChevronDownIcon, PlusIcon, TerminalIcon } from "lucide-react
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { TYPOGRAPHY_ADVANCED_STORAGE_KEY } from "../../appearanceFonts";
+import { openCommandPalette } from "../../commandPaletteBus";
 import { isElectron } from "../../env";
+import { useNewThreadHandler } from "../../hooks/useHandleNewThread";
 import { useLocalStorage } from "../../hooks/useLocalStorage";
+import { useScratchProject } from "../../hooks/useScratchProject";
 import { usePersistEnvironmentProviderInstanceMutation } from "../../hooks/useSettings";
 import { workspaceAreaProps } from "../../lib/workspaceFocus";
 import { completeOnboarding } from "../../onboarding/firstRun";
@@ -34,6 +38,8 @@ import {
   groupWelcomeAgents,
   isBrokenVersion,
   turnedOnInstance,
+  type WelcomeProjectSource,
+  type WelcomeStep,
   welcomeAgentState,
 } from "../../onboarding/welcomePage.logic";
 import { randomUUID } from "../../lib/utils";
@@ -54,27 +60,36 @@ import { SidebarInset } from "../ui/sidebar";
 import { toastManager } from "../ui/toast";
 import { WorkspacePageHeader } from "../WorkspacePageHeader";
 import { cn } from "../../lib/utils";
+import { WelcomeProjectStep, WelcomeSteps } from "./WelcomeProjectStep";
 
 const AGENT_ONBOARDING_THREAD_ID = ThreadId.make("onboarding-agent-setup");
 
+/** Opens the page setup ends on. False sends the user to the app's home instead. */
+export type WelcomeLanding = () => Promise<boolean>;
+
 /**
- * First-run page for one computer and its agents. Every part is optional except one ready agent to start chatting.
+ * First-run page for one computer: its agents, then a project. Every part is optional except one
+ * ready agent to start chatting.
  */
 export function WelcomePage({
   environmentId,
   onDone,
 }: {
   readonly environmentId: EnvironmentId;
-  readonly onDone: () => void | Promise<void>;
+  readonly onDone: (landing: WelcomeLanding) => void | Promise<void>;
 }) {
   const { environments } = useEnvironments();
-  const label =
-    environments.find((environment) => environment.environmentId === environmentId)?.label ??
-    "this computer";
-  const agentReady = useWelcomeAgents(environmentId).readyCount > 0;
+  const environment = environments.find((entry) => entry.environmentId === environmentId);
+  const label = environment?.label ?? "this computer";
+  const welcomeAgents = useWelcomeAgents(environmentId);
+  const agentReady = welcomeAgents.readyCount > 0;
+  const [step, setStep] = useState<WelcomeStep>("agents");
+  const handleNewThread = useNewThreadHandler();
+  const { scratchEnvironmentId, openScratchProject } = useScratchProject();
+  const scratchTargetEnvironmentId = scratchEnvironmentId(environmentId);
   // `codenine` on PATH belongs to the primary computer, so only it offers that.
   const isPrimary = usePrimaryEnvironmentId() === environmentId;
-  // True from Start until the landing; leaving earlier would drop the landing.
+  // True while setup is saved before a landing; leaving earlier would drop the landing.
   const holdPageRef = useRef(false);
   useBlocker({
     shouldBlockFn: () => {
@@ -92,7 +107,8 @@ export function WelcomePage({
   });
   const finishingPromiseRef = useRef<Promise<boolean> | null>(null);
   const completionErrorToastIdRef = useRef<ReturnType<typeof toastManager.add> | null>(null);
-  const finish = () => {
+  // Without a landing, setup is saved and the page stays, for a flow that navigates on its own.
+  const finish = (landing: WelcomeLanding | null) => {
     if (finishingPromiseRef.current !== null) return finishingPromiseRef.current;
     if (completionErrorToastIdRef.current !== null) {
       toastManager.close(completionErrorToastIdRef.current);
@@ -108,7 +124,7 @@ export function WelcomePage({
         }
         // Release before onDone so its own navigation is not blocked.
         holdPageRef.current = false;
-        await onDone();
+        if (landing !== null) await onDone(landing);
         return true;
       })
       .catch(() => {
@@ -133,8 +149,26 @@ export function WelcomePage({
     finishingPromiseRef.current = completion;
     return completion;
   };
-  const start = () => {
-    void finish();
+  const openProjectDraft = async (project: {
+    readonly environmentId: EnvironmentId;
+    readonly id: ProjectId;
+  }) =>
+    (await handleNewThread(scopeProjectRef(project.environmentId, project.id), {
+      replace: true,
+    })) !== null;
+  // The palette's add-project flows open the new project's start screen themselves.
+  const addProject = (source: WelcomeProjectSource) => {
+    void finish(null).then((saved) => {
+      if (saved)
+        openCommandPalette({ open: "add-project", addProjectSource: { environmentId, source } });
+    });
+  };
+  const skip = () => {
+    void finish(async () => {
+      if (scratchTargetEnvironmentId === null) return false;
+      const project = await openScratchProject(scratchTargetEnvironmentId);
+      return project !== null && (await openProjectDraft(project));
+    });
   };
 
   return (
@@ -146,7 +180,8 @@ export function WelcomePage({
       <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-background">
         {/* The desktop window only moves where CSS opts in, so keep a titlebar strip. */}
         {isElectron ? <WorkspacePageHeader electron /> : null}
-        <div className="min-h-0 flex-1 overflow-y-auto scrollbar-gutter-both">
+        {/* Keyed by step, so each step opens at its top. */}
+        <div key={step} className="min-h-0 flex-1 overflow-y-auto scrollbar-gutter-both">
           <div className="mx-auto flex min-h-full w-full max-w-3xl flex-col px-6 pt-12 pb-8 sm:pt-20">
             <h1 className="text-2xl font-semibold tracking-tight text-foreground">
               Welcome to Codenine
@@ -154,26 +189,56 @@ export function WelcomePage({
             <p className="mt-1.5 text-sm text-muted-foreground">
               Setting up <span className="text-foreground">{label}</span>.
             </p>
-            <div className="mt-10 border-t border-border/60">
-              <AgentsSection environmentId={environmentId} label={label} isPrimary={isPrimary} />
-            </div>
-            <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
-              {agentReady ? (
-                <span />
-              ) : (
-                <Button variant="ghost-muted" onClick={start}>
-                  Start without an agent
-                </Button>
-              )}
-              <div className="flex items-center gap-3">
-                {agentReady ? null : (
-                  <span className="text-xs text-muted-foreground">Set up one agent to start.</span>
-                )}
-                <Button disabled={!agentReady} onClick={start}>
-                  Start
-                </Button>
-              </div>
-            </div>
+            <WelcomeSteps step={step} />
+            {step === "agents" ? (
+              <>
+                <div className="mt-8 border-t border-border/60">
+                  <AgentsSection
+                    environmentId={environmentId}
+                    label={label}
+                    isPrimary={isPrimary}
+                  />
+                </div>
+                <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+                  {agentReady ? (
+                    <span />
+                  ) : (
+                    <Button variant="ghost-muted" onClick={() => setStep("project")}>
+                      Continue without an agent
+                    </Button>
+                  )}
+                  <div className="flex items-center gap-3">
+                    {agentReady ? null : (
+                      <span className="text-xs text-muted-foreground">
+                        Set up one agent to continue.
+                      </span>
+                    )}
+                    <Button disabled={!agentReady} onClick={() => setStep("project")}>
+                      Continue
+                    </Button>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <WelcomeProjectStep
+                environmentId={environmentId}
+                label={label}
+                newProjectsRoot={environment?.serverConfig?.newProjectsRoot}
+                readyAgentNames={welcomeAgents.found
+                  .filter(
+                    (provider) =>
+                      welcomeAgentState(provider, welcomeAgents.serverConfig?.settings) === "ready",
+                  )
+                  .map(agentName)}
+                canChatWithoutProject={scratchTargetEnvironmentId !== null}
+                onChangeAgents={() => setStep("agents")}
+                onAddProject={addProject}
+                onOpenProject={(projectId) =>
+                  void finish(() => openProjectDraft({ environmentId, id: projectId }))
+                }
+                onSkip={skip}
+              />
+            )}
           </div>
         </div>
       </div>

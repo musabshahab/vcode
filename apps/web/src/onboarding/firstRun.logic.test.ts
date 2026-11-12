@@ -226,6 +226,27 @@ describe("isFreshFirstRunWorkspace", () => {
     ).toBe(true);
   });
 
+  // The welcome page's project step adds a project, or the no-project home on skip, before the
+  // gate runs again. Either one ends first run even if saving completion did not happen.
+  it.each([
+    { name: "a first project", projects: [{ ...bootstrapProject, id: "added-project" }] },
+    {
+      name: "a project beside the bootstrap one",
+      projects: [bootstrapProject, { ...bootstrapProject, id: "added", workspaceRoot: "/p/new" }],
+    },
+  ])("ends first run once the project step adds $name", ({ projects }) => {
+    const workspaceFresh = isFreshFirstRunWorkspace({ ...freshBootstrap, projects, threads: [] });
+    expect(workspaceFresh).toBe(false);
+    expect(
+      resolveFirstRunDecision({
+        ...freshWorkspace,
+        workspaceFresh,
+        projectCount: projects.length,
+        threadCount: 0,
+      }),
+    ).toEqual({ decision: "app", persistCompletion: true });
+  });
+
   it("rejects a bootstrap thread that already has a user message", () => {
     expect(
       isFreshFirstRunWorkspace({

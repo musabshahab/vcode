@@ -45,9 +45,9 @@ function WelcomeRouteView() {
     <WelcomePage
       key={environmentId}
       environmentId={environmentId}
-      onDone={async () => {
+      onDone={async (landing) => {
         setDismissed(true);
-        await navigate({ to: "/", replace: true });
+        if (!(await landing())) await navigate({ to: "/", replace: true });
       }}
     />
   );

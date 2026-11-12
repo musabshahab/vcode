@@ -79,6 +79,7 @@ import { openThreadFind } from "./chat/threadFindStore";
 import {
   useDeferredValue,
   useEffect,
+  useEffectEvent,
   useReducer,
   useRef,
   useState,
@@ -121,6 +122,7 @@ import { useNewProject } from "../hooks/useNewProject";
 import { useOrderWhileOpen } from "../hooks/useOrderWhileOpen";
 import { reportProjectFailure, useProjectPin } from "../hooks/useProjectGroupUpdate";
 import {
+  type EnvironmentPresentation,
   useEnvironmentProviders,
   useEnvironments,
   usePrimaryEnvironmentId,
@@ -183,6 +185,7 @@ import {
   enumerateCommandPaletteItems,
   newThreadNoProjectIndex,
   findHighlightedCommandPaletteItem,
+  type AddProjectIntentSource,
   type CommandPaletteActionItem,
   type CommandPaletteOpenIntent,
   type CommandPaletteProject,
@@ -283,6 +286,49 @@ function openIntentView(intent: CommandPaletteOpenIntent | null): CommandPalette
     case undefined:
       return null;
   }
+}
+
+/** An add-project source intent opens its environment's sources with the source's flow on top. */
+function addProjectSourceViews(
+  intent: AddProjectIntentSource,
+  folderQuery: string,
+): readonly [CommandPaletteView, CommandPaletteView] {
+  const sources: CommandPaletteView = {
+    addonIcon: <FolderPlusIcon className={ADDON_ICON_CLASS} />,
+    groups: [{ value: `sources:${intent.environmentId}`, label: "Sources", items: [] }],
+  };
+  switch (intent.source) {
+    case "new":
+      return [sources, { addonIcon: <FolderGit2Icon className={ADDON_ICON_CLASS} />, groups: [] }];
+    case "folder":
+      return [
+        sources,
+        {
+          addonIcon: <FolderPlusIcon className={ADDON_ICON_CLASS} />,
+          groups: [],
+          initialQuery: folderQuery,
+        },
+      ];
+    case "clone":
+      return [
+        sources,
+        {
+          addonIcon: remoteProjectSourceIcon("url", ADDON_ICON_CLASS),
+          groups: [],
+          initialQuery: "",
+        },
+      ];
+  }
+}
+
+/** Where browsing for a folder starts: the environment's add-project base directory, else home. */
+function addProjectInitialQuery(
+  environments: ReadonlyArray<EnvironmentPresentation>,
+  environmentId: EnvironmentId | null,
+): string {
+  const environment = environments.find((candidate) => candidate.environmentId === environmentId);
+  const baseDirectory = environment?.serverConfig?.settings.addProjectBaseDirectory?.trim() ?? "";
+  return baseDirectory.length === 0 ? "~/" : ensureBrowseDirectoryPath(baseDirectory);
 }
 
 const NEW_THREAD_NO_PROJECT_VALUE = "new-thread-in:no-project";
@@ -408,7 +454,23 @@ function OpenCommandPaletteDialog(props: {
   const linkedEnvironmentId = linkedThreadSearch?.linkedThreads?.environmentId ?? null;
   const hidingAnywhere = useAnyEnvironmentHiding();
   const linkedThreadRefs = useEnvironmentThreadRefs(linkedEnvironmentId);
+  const { environments } = useEnvironments();
+  const [addProjectSource] = useState(() =>
+    props.initialContext === undefined && props.openIntent?.kind === "add-project"
+      ? props.openIntent.source
+      : undefined,
+  );
   const [searchState, dispatchSearch] = useReducer(reduceCommandPaletteSearchState, null, () => {
+    if (addProjectSource !== undefined) {
+      const [sources, flow] = addProjectSourceViews(
+        addProjectSource,
+        addProjectInitialQuery(environments, addProjectSource.environmentId),
+      );
+      return reduceCommandPaletteSearchState(
+        { query: "", views: [{ view: sources, parentQuery: "" }] },
+        { type: "push", view: flow },
+      );
+    }
     const view = props.initialContext ? null : openIntentView(props.openIntent);
     return view
       ? { query: "", views: [{ view, parentQuery: "" }] }
@@ -452,7 +514,6 @@ function OpenCommandPaletteDialog(props: {
   const refreshProviders = useAtomCommand(serverEnvironment.refreshProviders, {
     reportFailure: false,
   });
-  const { environments } = useEnvironments();
   const desktopLocalBootstraps = useDesktopLocalBootstraps();
   const primaryEnvironmentId = usePrimaryEnvironmentId();
   const availableSettingsSearchItems = useAvailableSettingsSearchItems();
@@ -491,14 +552,25 @@ function OpenCommandPaletteDialog(props: {
   const [browseGeneration, setBrowseGeneration] = useState(0);
   const [browseNavigation] = useState(createBrowseNavigationCoordinator);
   const [addProjectEnvironmentId, setAddProjectEnvironmentId] = useState<EnvironmentId | null>(
-    null,
+    addProjectSource?.environmentId ?? null,
   );
   const [isPickingProjectFolder, setIsPickingProjectFolder] = useState(false);
-  const [addProjectCloneFlow, setAddProjectCloneFlow] = useState<AddProjectCloneFlow | null>(null);
+  const [addProjectCloneFlow, setAddProjectCloneFlow] = useState<AddProjectCloneFlow | null>(
+    addProjectSource?.source === "clone"
+      ? { step: "repository", environmentId: addProjectSource.environmentId, source: "url" }
+      : null,
+  );
   const [newProjectFlow, setNewProjectFlow] = useState<{
     readonly environmentId: EnvironmentId;
     readonly sourcesEnvironmentId: EnvironmentId | null;
-  } | null>(null);
+  } | null>(
+    addProjectSource?.source === "new"
+      ? {
+          environmentId: addProjectSource.environmentId,
+          sourcesEnvironmentId: addProjectSource.environmentId,
+        }
+      : null,
+  );
   const [newProjectPublishes, setNewProjectPublishes] = useState(false);
   const [newProjectPublishKind, setNewProjectPublishKind] =
     useState<SourceControlProviderKind | null>(null);
@@ -637,15 +709,8 @@ function OpenCommandPaletteDialog(props: {
   const isBrowsing = browsePath.isBrowsing;
   const browseDirectoryPath = browsePath.directoryPath;
   const paletteMode = getCommandPaletteMode({ currentView, isBrowsing });
-  const getAddProjectInitialQueryForEnvironment = (environmentId: EnvironmentId | null): string => {
-    const environment = environments.find((candidate) => candidate.environmentId === environmentId);
-    const environmentSettings = environment?.serverConfig?.settings ?? null;
-    const baseDirectory = environmentSettings?.addProjectBaseDirectory?.trim() ?? "";
-    if (baseDirectory.length === 0) {
-      return "~/";
-    }
-    return ensureBrowseDirectoryPath(baseDirectory);
-  };
+  const getAddProjectInitialQueryForEnvironment = (environmentId: EnvironmentId | null): string =>
+    addProjectInitialQuery(environments, environmentId);
 
   const { projectByKey } = useProjectLookups();
 
@@ -2683,6 +2748,21 @@ function OpenCommandPaletteDialog(props: {
     }
     await handleAddProject(pickedPath);
   };
+  // Strict mode runs mount effects twice; one intent opens one system dialog.
+  const folderPickerRequestedRef = useRef(false);
+  const openRequestedFolderPicker = useEffectEvent(() => {
+    if (
+      addProjectSource?.source !== "folder" ||
+      folderPickerRequestedRef.current ||
+      !canOpenProjectFromFileManager
+    ) {
+      return;
+    }
+    folderPickerRequestedRef.current = true;
+    void handleOpenProjectFromFileManager();
+  });
+  // oxlint-disable-next-line codenine/no-unreasoned-state-sync -- an intent to open a folder goes straight to the desktop's system folder picker, once per palette session
+  useEffect(() => openRequestedFolderPicker(), []);
 
   const inputAccessory =
     newProjectFlow !== null ? (

@@ -106,6 +106,9 @@ describe("reduceCommandPaletteUiState", () => {
       openIntent: { kind: "add-project" },
       session: 2,
     });
+    const source = { environmentId: EnvironmentId.make("local"), source: "clone" } as const;
+    state = reduceCommandPaletteUiState(state, { _tag: "OpenAddProject", source });
+    expect(state).toMatchObject({ openIntent: { kind: "add-project", source }, session: 3 });
   });
 });
 
