@@ -806,6 +806,44 @@ it.layer(NodeServices.layer)("cli config resolution", (it) => {
     }),
   );
 
+  it.effect("adds no project for the working directory unless asked", () =>
+    Effect.gen(function* () {
+      const baseDir = yield* FileSystem.FileSystem.pipe(
+        Effect.flatMap((fs) =>
+          fs.makeTempDirectoryScoped({ prefix: "codenine-cli-auto-bootstrap-" }),
+        ),
+      );
+      const resolveAutoBootstrap = (flags: {
+        readonly mode: Option.Option<"web" | "desktop">;
+        readonly autoBootstrapProjectFromCwd: Option.Option<boolean>;
+      }) =>
+        resolveServerConfig({ ...minimalWebFlags(baseDir), ...flags }, Option.none()).pipe(
+          Effect.map((config) => config.autoBootstrapProjectFromCwd),
+          Effect.provide(
+            Layer.merge(
+              NetService.layer,
+              ConfigProvider.layer(ConfigProvider.fromEnv({ env: {} })),
+            ),
+          ),
+        );
+
+      for (const mode of ["web", "desktop"] as const) {
+        expect(
+          yield* resolveAutoBootstrap({
+            mode: Option.some(mode),
+            autoBootstrapProjectFromCwd: Option.none(),
+          }),
+        ).toBe(false);
+      }
+      expect(
+        yield* resolveAutoBootstrap({
+          mode: Option.some("web"),
+          autoBootstrapProjectFromCwd: Option.some(true),
+        }),
+      ).toBe(true);
+    }),
+  );
+
   it.effect(
     "resolves each signal's endpoint through CODENINE_OTLP_*_URL, an OTEL endpoint, the bootstrap envelope, and persisted Settings, in that order",
     () =>
