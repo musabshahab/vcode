@@ -19,9 +19,11 @@ What works today is the base the team feature will be built on:
 - A terminal, Git worktrees, pull request creation and pull request status
 - A desktop app (Electron) and a web app that mirrors it
 
-Teams are early. Ask the lead agent for a team and it proposes one; a card above the composer lets
-you change each agent's model and effort, add or remove agents and tasks, then approve, cancel, or
-retry. See [Run a team](./docs/user/thread-sidebar.md#run-a-team). A terminal app is planned next.
+Teams are early. Turn on Team in the composer, or ask the lead agent for a team, and it proposes
+one. The Task tab in the right panel lets you change each agent's model and effort, add or remove
+agents and tasks, and approve or cancel the team; while the team runs, it shows each agent's status
+and result and lets you retry a failed task. See
+[Run a team](./docs/user/thread-sidebar.md#run-a-team). A terminal app is planned next.
 More providers, such as OpenRouter models, may follow.
 
 Codenine is self-hosted. There is no hosted service, no website, and no published release yet, so

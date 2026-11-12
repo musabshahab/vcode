@@ -12,8 +12,8 @@ inserts a new line.
 **Follow-up behavior** chooses Queue or Steer while the agent runs. Use
 `mod+Enter` to do the opposite for one message, even when the send shortcut
 requires a modifier. `mod+Alt+Enter` sends, keeps that thread running in the
-background, and opens a fresh new-thread composer. In a new thread, `mod+Enter`
-does the same. Change these shortcuts in **Settings → Keybindings** under
+background, and opens a new chat. In a new chat, `mod+Enter` does the same. Change
+these shortcuts in **Settings → Keybindings** under
 **Composer: Opposite Queue or Steer Action**, **Composer: Start in Background**,
 or **Composer: Send and Start New Chat**. These bindings take priority over the
 send shortcut. Click the send button to use the configured follow-up behavior.
@@ -24,7 +24,8 @@ while a turn is running, or as a new turn when the thread is stopped. Change it 
 
 Use `mod+shift+m` to choose a model and `mod+shift+h` to choose a host.
 To step a new thread to the next machine instead of opening the menu, bind
-**Composer: Cycle Host** in Keybindings. It has no default shortcut.
+**Composer: Cycle Host** in Keybindings. It has no default shortcut. Neither does
+**Composer: Toggle Team**, which turns [Team](./composer.md#ask-for-a-team) on or off.
 Use `mod+shift+e` for effort, `mod+shift+a` for permissions, `mod+shift+x` for the
 workspace, and `mod+shift+g` for the Git branch. The workspace menu includes the
 current checkout, a new worktree, and the previous worktree when available.
@@ -85,7 +86,8 @@ Invalid rules are ignored; if the file cannot be parsed, Codenine uses defaults.
 Each rule requires a `key` shortcut and a `command` ID. An optional `when`
 expression restricts when it runs.
 
-Project commands use `script.{id}.run`, such as `script.test.run`.
+Project commands use `script.{id}.run`, such as `script.test.run`. Settings lists
+them as **Run Command: Test** and so on.
 
 ## Key syntax
 
@@ -134,6 +136,9 @@ a shortcut.
 
 `thread.stop` interrupts the running turn in the focused thread. It has no default
 shortcut; assign one in **Settings → Keybindings**.
+
+`thread.settle` (`mod+shift+s` by default) is **Thread: Mark Done** in Settings. It marks
+the current thread done, or not done when it already is.
 
 `thread.undo` (`mod+z` by default) reverses the actions shown in the notice at the
 bottom of the sidebar, such as unpin, mark done, snooze, archive, or discarding a

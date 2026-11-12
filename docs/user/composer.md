@@ -248,6 +248,18 @@ its progress.
   stop the turn only when it is working on the goal. Other goal commands wait for
   the turn to end.
 
+## Ask for a team
+
+Turn on **Team**, next to the attach button, to have the agent plan a
+[team](./thread-sidebar.md#run-a-team) for your message instead of starting the work. The sent
+message shows **Team requested**. Team turns off once the message is sent or you reload, and it
+does not apply to a message that starts with a `/` command. It is not offered in a thread that
+already leads a team or works for one, nor in subagent threads and side chats. To toggle it from
+the keyboard, bind **Composer: Toggle Team** in **Settings → Keybindings**.
+
+A new chat in a project suggests a few example prompts under the composer. Choosing one fills in
+the composer without sending; the team example also turns on Team.
+
 ## Context in your message
 
 Context you attach lands where your cursor is, as a chip inside your text: a terminal excerpt,

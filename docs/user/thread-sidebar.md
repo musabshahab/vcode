@@ -6,7 +6,7 @@ need a separate branch and working directory.
 ## Start a thread
 
 **New chat** opens the project picker when you have more than one
-open project in the default or project-grouped sidebar. Archived projects don't count. **Shift-click** to start in
+open project. Archived projects don't count. **Shift-click** to start in
 the current project, or use a project's own **New chat** button. A new thread carries
 your model and mode selections, unless the destination project has its own model default.
 Its branch and workspace mode come from your configured defaults. To continue in
@@ -50,6 +50,32 @@ in a new thread's model picker to add or remove them. A regular click returns to
 single model. Choose a base branch and send. Each selection starts a separate thread
 and worktree while you stay in the new thread composer. This requires a Git project.
 
+## Group chats by project
+
+By default, the sidebar groups chats by project. From the top it shows:
+
+- **Needs you**: every thread waiting for an approval or an answer, a team waiting for your
+  approval, and a team that failed, across projects. An entry leaves once you act on it, mark the
+  thread done, or snooze it. This section is hidden while you search.
+- Your unsent drafts, then **Pinned** threads.
+- A folder for each project, pinned projects first. Threads without a project are in **Chats
+  without a project**.
+- **Snoozed** and **Done**.
+
+A project with no active threads has no folder unless it is pinned or you pick it in the project
+filter. An archived project's folder comes last and shows only while it has active threads. Click a
+folder to open or close it. A closed folder shows how many threads it holds, and a dot when one of
+them needs you. Use a folder's **New chat** button, or right-click it, to start a thread in that
+project. You can drag a thread onto the composer to mention it, but not within the sidebar.
+
+To show each thread on two lines, with its branch, pull request, and agent under the title, turn on
+**Settings → Labs → Two-line chat rows**.
+
+For one list without folders, turn off **Settings → General → Sidebar → Group chats by project**.
+The single list has no **Needs you** section; instead you can drag threads between sections and
+reorder them, and [working threads fold away](#fold-working-threads-beta). Each device keeps its
+own choice.
+
 ## Pin and reorder threads
 
 Pin a thread from its menu to keep it above your active work.
@@ -72,7 +98,7 @@ scroll position instead of following the thread to its new place in the list.
 Pinning does not stop a thread from being marked done automatically. Marking a thread done
 removes its pin.
 
-Drag a thread between sections to change its state. Drag a thread up into
+In the single list, drag a thread between sections to change its state. Drag a thread up into
 the pinned section to pin it at the spot you drop it; drag a pinned thread down into the active
 list to unpin it. Dragging a thread onto the **Done** header marks it done, and dragging a done
 thread into the active list marks it not done. A snoozed thread can be dragged out of the snoozed
@@ -89,8 +115,7 @@ thread is over takes the accent color. Section labels also
 identify empty sections and a collapsed **Done** shelf.
 
 Drag within the pinned or active section to change its order. Other rows slide aside to show the
-spot where the thread will land. Drops into either section keep the position you choose.
-**Move up** and **Move down** are also available in the thread menu. The server
+spot where the thread will land. Drops into either section keep the position you choose. The server
 saves the order, so it survives a refresh and appears on your other connected devices.
 
 The list also animates section changes made with thread actions such as
@@ -130,23 +155,12 @@ there. A thread returns to the top of the active list when it finishes, fails, o
 answer. The Working section lists the thread you last sent work to first. Pinned threads stay in
 the pinned section.
 
-This is on by default. Turn it off with **Settings → General → Working section**. Each device
+This applies only to the single list; chats grouped by project have no Working section. It is on
+by default. Turn it off with **Settings → General → Sidebar → Working section**. Each device
 keeps its own choice.
 
 While this is on, the active list is ordered by when each thread last came back to you, so you
 cannot drag or move threads within it. Your saved order returns when you turn it off.
-
-### Group threads by project (beta)
-
-Turn on **Settings → Labs → Boring sidebar (group by project)** to put active
-threads in a folder for each project. Pinned projects come first. A project with no active
-threads has no folder unless it is pinned or you pick it in the project filter. An archived
-project's folder comes last and shows only while it has active threads. Click a folder to open or
-close it. A closed folder shows how many threads it holds, and a dot when one of them
-needs you. Use the pen button on a folder, or right-click it, to start a thread in that project.
-Pinned threads stay above the folders, and Snoozed and Done stay below them. In this mode you
-can drag a thread onto the composer to mention it, but not within the sidebar, and the Working
-section is off. Each device keeps its own choice.
 
 ## Mark finished work done
 
@@ -276,28 +290,44 @@ back the standard rows.
 ## Run a team
 
 A team splits one job across several agents, each on the model that fits its part, so a quick
-model can do the routine work while a stronger one reviews. Ask the agent for one, for example
-"propose a team for this: one agent writes the code, one tests it, one reviews". The proposed team
-appears above the composer with its agents, their models and effort, and its tasks in order.
+model can do the routine work while a stronger one reviews. To ask for one, turn on
+[**Team**](./composer.md#ask-for-a-team) in the composer before you send, or ask in your own words,
+for example "propose a team for this: one agent writes the code, one tests it, one reviews". The
+agent you asked, the lead, plans the team and starts nothing. The plan opens in the **Task** tab of
+the right panel.
 
-Nothing runs until you approve. Before that you can change an agent's model or effort, add an
-agent, remove one that has no tasks, move a task to another agent, remove a task, and edit a
-task's brief. Changes stay on this device until you choose **Save** or **Approve**. If the team
-changes while you edit, for example because the agent proposed a new one, the card shows the new
-team and tells you your changes were not applied.
+Nothing runs until you approve. In the Task tab you can change an agent's model or effort, add an
+agent, remove one that has no tasks, move a task to another agent, remove a task, and edit a task's
+brief. Your edits apply once you choose **Save** or **Approve and start**. If the team changes while
+you edit, for example because the lead proposed a new one, the tab shows the new team and tells you
+your changes were not applied. **Cancel team** drops the plan.
 
-Each task runs in a thread of its own, which you can open from the card. A task starts once the
-tasks it follows are done, with at most two running at a time on each provider. When the team
-finishes or gets stuck on a failed task, the agent that proposed it reads the results and goes on.
+Each task runs in a thread of its own. A task starts once the tasks it follows are done, with at
+most two running at a time on each provider. The Task tab shows each agent's status, model, and
+result, which agent each result goes to, and a link to its thread. **View changes** opens the
+Changes tab. When the Task tab is out of sight, or the window is too narrow for the right panel, the
+**Team** line above the composer shows where the team stands and opens the tab. The right panel's
+**+** menu also has **Task**.
 
-In the sidebar, the agents' threads appear under the thread that proposed the team, and the team
-count on that row shows or hides them. When the team finishes or is cancelled, they are marked
-done for you.
+When the team finishes or gets stuck on a failed task, the lead reads the results and goes on.
+After a finished team, its reply shows as the **Task result**.
+
+An agent's thread opens with **Assignment from the lead**: its brief and the results it received
+from earlier agents. Its header links back to the lead and shows the agent's place in the team, its
+model, and its status. A message you send there goes to that agent only; to change the plan, ask
+the lead. When an agent needs an approval or an answer, the lead's thread shows that too.
+
+In the sidebar, the lead's row shows a team icon and where the team stands: **Review**,
+**Running 1/3**, **Done**, **Failed 1**, or **Cancelled**. The agents' threads appear under it,
+and the team count on that row shows or hides them. A team waiting for your approval, or one that
+failed, also appears under [**Needs you**](#group-chats-by-project). When the team finishes or is
+cancelled, the agents' threads are marked done for you. After a failure they stay, so you can read
+and retry them. The lead is never marked done for you.
 
 - **Cancel team** stops the tasks that are running. Tasks that have not started never start.
 - **Retry** runs a failed or cancelled task again in a new thread. To retry on a different model,
-  such as a stronger one, choose another agent of the team from the menu beside it.
-  A cancelled team cannot be retried; ask the agent for a new one.
+  such as a stronger one, choose another agent of the team under **Retry on**.
+  A cancelled team cannot be retried; ask the lead for a new one.
 
 ## Side chats
 

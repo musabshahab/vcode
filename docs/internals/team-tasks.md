@@ -20,9 +20,9 @@ moving it to another model would switch a provider session mid-conversation, whi
 team exists to avoid.
 
 Task threads are working threads, not where the user reads the outcome; the lead's final message
-is. So when a plan completes or is cancelled, the server settles the thread of every attempt of
-every task (attempt ids are derived from the plan, task and attempt). A failed plan keeps its
-threads active, because the user reads and retries them there. The lead is never settled, and a
+is. So when a plan completes or is cancelled, the server settles (the UI says "marks done") the
+thread of every attempt of every task (attempt ids are derived from the plan, task and attempt). A
+failed plan keeps its threads active, because the user reads and retries them there. The lead is never settled, and a
 thread the user explicitly unsettled keeps that choice.
 
 ## The plan lives in the thread payload
@@ -37,11 +37,36 @@ event type or table. Two things follow:
   than its server keeps the thread and loses only the plan.
 
 Thread lists read shells, and every client receives every shell change, so a lead's shell carries
-`teamSummary` (the plan's status and task counts), never the plan.
+`teamSummary` (the plan's status and task counts), never the plan. Lists, Needs you and the Team
+strip read only `teamSummary`. An agent thread's header and the Task tab read the plan from the
+lead's thread detail, so viewing an agent thread keeps the lead's thread stream open too. Anything
+shown for many threads at once stays on the summary.
 
 Only the server may set `teamTask`: a thread with it reports its result into the lead's plan, so a
 client's `thread.create` has the field removed, and `team.task.settle` is an internal command.
 Forks and delegated children reset both fields.
+
+## The client finds two messages by structure
+
+The web client marks two messages by where they sit in the thread, not by their text, so the server
+must keep that shape:
+
+- The **Task result** card is the lead's final message in a run that a completed system
+  notification started. The team wake for a completed plan is the only such notification (a restart
+  continuation is `updated`), so a new sender of completed system notifications would turn its
+  reply into a Task result too. See `isTeamFinishedNotification` in
+  [`client-runtime/team.ts`](../../packages/client-runtime/src/team.ts).
+- An agent's **Assignment from the lead** is the first user message of a `teamTask` thread when
+  its `createdBy` is `"system"`. The composed brief must stay that thread's first user message.
+
+## The composer's Team toggle
+
+A message sent with Team on carries a `team-request` context record that no text links.
+`projectComposerContextForProvider` in
+[`composerContextReferences.ts`](../../packages/shared/src/composerContextReferences.ts) appends one
+instruction for it, so Codex and Claude get the same text on turn start and on steer, and no adapter
+adds its own. A server older than the record cannot decode it (an unknown record needs a
+`payload`), drops it, and sends the message without the instruction.
 
 ## Effects run on the lead's lane
 

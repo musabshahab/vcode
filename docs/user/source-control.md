@@ -124,9 +124,9 @@ watch already reported; unlinking the pull request clears that. Subagents cannot
 requests; the thread that delegated to them does. In the thread details card, a watched pull
 request shows an eye; click it to stop watching.
 
-A watched thread counts as working between wakes, so it stays in the **Working** section and does
-is not marked done automatically. Agents stop watching when they hand the work back to you, and the thread then
-returns to your inbox.
+A watched thread counts as working between wakes, so it is not marked done automatically, and in
+the single sidebar list it stays in the **Working** section. Agents stop watching when they hand the
+work back to you, and the thread then returns to your inbox.
 
 Cross-repository links use a project on the same host.
 

@@ -145,6 +145,7 @@ Passes per case, main's text → the request_secret guidance change stacked on t
 - `apps/server/src/provider/CodexDeveloperInstructions.ts`
 - `apps/server/src/mcp/toolkits/*/tools.ts` (tool descriptions)
 - `packages/contracts/src/*Mcp.ts` (parameter descriptions and result text)
+- `packages/shared/src/composerContextReferences.ts` (context markers and the Team instruction)
 
 ## Templates
 
