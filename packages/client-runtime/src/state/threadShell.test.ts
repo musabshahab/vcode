@@ -3,6 +3,8 @@ import {
   ProjectId,
   RunId,
   RuntimeRequestId,
+  TeamPlanId,
+  TeamTaskId,
   ThreadId,
   type OrchestrationV2ShellSnapshot,
   type OrchestrationV2ThreadShell,
@@ -247,6 +249,53 @@ describe("v2 thread shell lists", () => {
     disposeNavigation();
     disposeInputs();
     disposeParent();
+    registry.dispose();
+  });
+
+  it("rolls a team agent's approvals and questions up to its lead in the same environment", () => {
+    const { registry, threads, snapshotAtom } = makeHarness([environmentId, remoteEnvironmentId]);
+    const lead = v2ThreadShell;
+    const teamAgent = {
+      ...lead,
+      id: ThreadId.make("team-agent"),
+      title: "Tester",
+      teamTask: {
+        rootThreadId: lead.id,
+        planId: TeamPlanId.make("plan"),
+        taskId: TeamTaskId.make("test"),
+        attempt: 1,
+      },
+    };
+    const asking = (kind: "command" | "user_input") => ({
+      ...teamAgent,
+      pendingRuntimeRequest: { id: RuntimeRequestId.make("ask"), kind, createdAt: v2Now },
+    });
+    // The same ids on another environment belong to another lead.
+    registry.set(snapshotAtom(remoteEnvironmentId), {
+      ...v2ShellSnapshot,
+      threads: [lead, asking("command")],
+    });
+    const inputs = threads.childThreadInputsAtom({ environmentId, threadId: lead.id });
+    const dispose = registry.mount(inputs);
+
+    registry.set(snapshotAtom(environmentId), {
+      ...v2ShellSnapshot,
+      threads: [lead, asking("command")],
+    });
+    expect(registry.get(inputs).map((thread) => [thread.environmentId, thread.id])).toEqual([
+      [environmentId, teamAgent.id],
+    ]);
+    expect(childThreadInputsTitle(registry.get(inputs))).toBe("Agent needs approval");
+
+    registry.set(snapshotAtom(environmentId), {
+      ...v2ShellSnapshot,
+      threads: [lead, asking("user_input")],
+    });
+    expect(childThreadInputsTitle(registry.get(inputs))).toBe("Agent needs input");
+
+    registry.set(snapshotAtom(environmentId), { ...v2ShellSnapshot, threads: [lead, teamAgent] });
+    expect(registry.get(inputs)).toEqual([]);
+    dispose();
     registry.dispose();
   });
 

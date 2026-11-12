@@ -80,6 +80,15 @@ function sideChatRequest(thread: OrchestrationV2ThreadShell): PendingSubagentReq
   return kind === "user_input" ? "user_input" : "approval";
 }
 
+/** A team agent asks its user directly too, while the lead waits on the team. */
+function teamAgentRequest(thread: OrchestrationV2ThreadShell): PendingSubagentRequest | null {
+  const kind = thread.pendingRuntimeRequest?.kind;
+  if (kind === undefined || kind === "auth_refresh" || thread.teamTask === undefined) {
+    return null;
+  }
+  return kind === "user_input" ? "user_input" : "approval";
+}
+
 /**
  * The threads to flag for a subagent's live approval, up its
  * subagent chain and through a side chat to its parent.
@@ -131,16 +140,28 @@ const sameRequests = (
   left.size === right.size &&
   [...right].every(([threadId, request]) => left.get(threadId) === request);
 
-export function childThreadInputsTitle(
-  children: ReadonlyArray<Pick<EnvironmentThreadShell, "hasPendingApprovals" | "lineage">>,
-): string {
+type ChildThreadInput = Pick<EnvironmentThreadShell, "hasPendingApprovals" | "lineage" | "source">;
+
+/** What the waiting children are: "side chat", "agent" (a team's), "subagent", or mixed "thread". */
+export function childThreadInputsNoun(children: ReadonlyArray<ChildThreadInput>): string {
+  const nouns = new Set(
+    children.map((child) =>
+      child.lineage.sideChat === true
+        ? "side chat"
+        : child.source.teamTask !== undefined
+          ? "agent"
+          : "subagent",
+    ),
+  );
+  return nouns.size === 1 ? [...nouns][0]! : "thread";
+}
+
+export function childThreadInputsTitle(children: ReadonlyArray<ChildThreadInput>): string {
   const approvals = children.filter((child) => child.hasPendingApprovals).length;
   const need = approvals === 0 ? "input" : approvals === children.length ? "approval" : "you";
-  const sideChats = children.filter((child) => child.lineage.sideChat === true).length;
-  const noun =
-    sideChats === children.length ? "side chat" : sideChats === 0 ? "subagent" : "thread";
+  const noun = childThreadInputsNoun(children);
   return children.length === 1
-    ? `${noun === "side chat" ? "Side chat" : "Subagent"} needs ${need}`
+    ? `${noun.charAt(0).toUpperCase()}${noun.slice(1)} needs ${need}`
     : `${children.length} ${noun}s need ${need}`;
 }
 
@@ -372,6 +393,13 @@ export function createEnvironmentThreadShellAtoms(input: {
             (thread.lineage.relationshipToParent === "subagent" || thread.lineage.sideChat === true)
           ) {
             addChild({ environmentId, threadId: parent }, environmentId, thread);
+          } else if (thread.teamTask !== undefined) {
+            // A team agent's thread is top-level, so it hangs off its lead by `teamTask`.
+            addChild(
+              { environmentId, threadId: thread.teamTask.rootThreadId },
+              environmentId,
+              thread,
+            );
           }
         }
       }
@@ -384,7 +412,11 @@ export function createEnvironmentThreadShellAtoms(input: {
           if (seen.has(childKey)) continue;
           seen.add(childKey);
           pending.push(childKey);
-          if (subagentRequest(thread) !== null || sideChatRequest(thread) !== null) {
+          if (
+            subagentRequest(thread) !== null ||
+            sideChatRequest(thread) !== null ||
+            teamAgentRequest(thread) !== null
+          ) {
             next.push(
               scopedThread(environmentId, thread, get(pendingSubagentRequestsAtom(environmentId))),
             );
