@@ -142,9 +142,9 @@ export function WelcomeProjectStep(props: {
                   className="flex min-h-10 w-full items-center justify-between gap-3 rounded-lg border border-border/60 px-3 text-start text-sm outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
                   onClick={() => props.onOpenProject(project.id)}
                 >
-                  <span className="truncate text-foreground">{project.title}</span>
-                  <span className="truncate font-mono text-muted-foreground text-xs">
-                    {project.workspaceRoot}
+                  <span className="shrink-0 text-foreground">{project.title}</span>
+                  <span className="min-w-0 truncate text-end font-mono text-muted-foreground text-xs [direction:rtl]">
+                    <bdi>{project.workspaceRoot}</bdi>
                   </span>
                 </button>
               </li>
